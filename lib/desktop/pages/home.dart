@@ -30,6 +30,8 @@
 //   lib/shared/widgets/unsaved_changes_dialog.dart
 // 遵循的 Rules:
 //   .agents/rules/hooks.md
+import 'dart:async' show unawaited;
+
 import '../../shared/widgets/plugin_view/navigation.dart';
 import '../../shared/widgets/plugin_view/page.dart';
 import '../../shared/models/plugin/view.dart';
@@ -74,6 +76,7 @@ import '../widgets/novel_form_dialog.dart';
 import '../widgets/novel_import_dialog.dart';
 import '../widgets/home/library_home_panel.dart';
 import '../widgets/settings/settings_dialog.dart';
+import '../../shared/widgets/support/customer_service_feedback_dialog.dart';
 import '../widgets/agent_management/subagent_edit_panel.dart';
 import '../widgets/agent_management/subagent_prompt_edit_panel.dart';
 import '../widgets/user_profile_bar.dart';
@@ -1260,6 +1263,16 @@ class NovelHomePage extends HookConsumerWidget {
                   icon: RevericIcons.settings_outlined,
                   title: context.t(LocaleKeys.librarySettings),
                   onTap: onOpenSettings,
+                ),
+                _buildLeafNavItem(
+                  context,
+                  icon: RevericIcons.chat_rounded,
+                  title: context.t(LocaleKeys.homeNavCustomerService),
+                  onTap: () {
+                    unawaited(
+                      showCustomerServiceFeedbackDialog(context: context),
+                    );
+                  },
                 ),
               ],
             ),

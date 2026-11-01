@@ -6,7 +6,7 @@
 
 const providerChannelUrls = {
   'metaso': 'https://metaso.cn/minimax-h3/?s=Reveric',
-  'api88': 'https://88api.ai/sign-up?aff=5q8X',
+  'api88': 'https://xcai.dpdns.org?yonghu=190J4H9V79H5APU0',
   'openai': 'https://platform.openai.com/api-keys',
   'openrouter': 'https://openrouter.ai/settings/keys',
   'xai': 'https://console.x.ai/',

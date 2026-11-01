@@ -1,5 +1,5 @@
 name: reveric
-description: "A new Flutter project."
+description: "书童AI工作台：Agent 原生 AI 小说与短剧创作桌面工作台"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -205,6 +205,7 @@ flutter:
     - assets/icons/collapse.svg
     - assets/images/map.webp
     - assets/images/onboarding-background.webp
+    - assets/images/customer_service_qr.jpg
     - assets/images/background/
     - assets/images/demo/
     - assets/images/production_styles/

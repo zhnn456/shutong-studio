@@ -17,7 +17,7 @@ const appVersion = '0.6.0';
 const anonymousReportingBaseUrl = '';
 
 /// 公开仓库地址；关于页与反馈的 GitHub Issue 都指向这里。
-const revericGitHubRepoUrl = 'https://github.com/looplj/reveric';
+const revericGitHubRepoUrl = 'https://github.com/zhnn456/shutong-studio';
 
 /// 技能广场只读取公开链接目录，导入沿用各来源平台的现有流程。
 const revericSkillsCatalogUrl =
@@ -27,7 +27,7 @@ const revericSkillsCatalogUrl =
 const revericAttribution = 'Based on Reveric by looplj.';
 
 /// 接收私下反馈的邮箱；诊断文件含作品内容，只通过邮件而非公开 Issue 发送。
-const revericFeedbackEmail = 'bababaa261@gmail.com';
+const revericFeedbackEmail = '282063152@qq.com';
 
 /// 产品线编码，通过 X-Product-Code 请求头发送给匿名诊断接收端。
 const revericProductCode = 'writer';

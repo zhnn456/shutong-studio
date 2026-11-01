@@ -77,20 +77,20 @@ void WriteNativeState() {
 
 // 与 path_provider_windows 的 Application Support 目录算法保持一致：
 // %APPDATA%\<ProductName>，ProductName 取自 exe 版本资源。
-// 读取失败时回退 "Reveric"（与 Runner.rc 中的 ProductName 一致）。
+// 读取失败时回退 "书童AI工作台"（与 Runner.rc 中的 ProductName 一致）。
 std::wstring ReadProductName() {
   wchar_t module_path[MAX_PATH] = {};
   if (::GetModuleFileNameW(nullptr, module_path, MAX_PATH) == 0) {
-    return L"Reveric";
+    return L"书童AI工作台";
   }
   DWORD handle = 0;
   const DWORD info_size = ::GetFileVersionInfoSizeW(module_path, &handle);
   if (info_size == 0) {
-    return L"Reveric";
+    return L"书童AI工作台";
   }
   std::vector<BYTE> info(info_size);
   if (!::GetFileVersionInfoW(module_path, handle, info_size, info.data())) {
-    return L"Reveric";
+    return L"书童AI工作台";
   }
 
   std::vector<DWORD> lang_codes;

@@ -1,13 +1,13 @@
 <div align="center">
 
-# Reveric | 幻界
+# 书童AI工作台
 
 ### AI Native 桌面创作工作台
 **智能体读懂整部作品，和你一起从小说写到成片**
 
 <p align="center">
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/looplj/reveric?color=brightgreen" alt="license"></a>
-  <a href="https://github.com/looplj/reveric/releases/latest"><img src="https://img.shields.io/github/v/release/looplj/reveric?color=brightgreen&include_prereleases" alt="release"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/zhnn456/shutong-studio?color=brightgreen" alt="license"></a>
+  <a href="https://github.com/zhnn456/shutong-studio/releases/latest"><img src="https://img.shields.io/github/v/release/zhnn456/shutong-studio?color=brightgreen&include_prereleases" alt="release"></a>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Android-blue" alt="platform">
   <img src="https://img.shields.io/badge/flutter-3.8%2B-02569B?logo=flutter&logoColor=white" alt="flutter">
   <img src="https://img.shields.io/badge/storage-SQLite%20Local--First-003B57?logo=sqlite&logoColor=white" alt="sqlite">
@@ -25,7 +25,7 @@
   <a href="#下载安装">下载安装</a> •
   <a href="#快速开始">快速开始</a> •
   <a href="#开发者指南">开发者指南</a> •
-  <a href="#问题反馈">问题反馈</a> •
+  <a href="#客服反馈">客服反馈</a> •
   <a href="#许可证">许可证</a>
 </p>
 
@@ -82,14 +82,14 @@
 
 ## 项目简介
 
-**Reveric（幻界）是一个本地优先、以智能体为核心的桌面创作工作台，覆盖长篇小说、剧本改编与短剧/漫剧制片。** 整部作品保存在你的设备上，同时也是智能体的工作区：写章节、改剧本、铺分镜、调机位、剪成片，说一句话，它就在作品里动手完成。
+**书童AI工作台是一个本地优先、以智能体为核心的桌面创作工作台，覆盖长篇小说、剧本改编与短剧/漫剧制片。** 整部作品保存在你的设备上，同时也是智能体的工作区：写章节、改剧本、铺分镜、调机位、剪成片，说一句话，它就在作品里动手完成。
 
 - **按需读取整部作品**：智能体自己检索需要的章节和设定，不用把人物小传复制进对话框。
 - **智能体操作所有模块**：小说、剧本、画布、3D 导演台、剪辑台，智能体都能直接上手操作。
 - **素材自动生成**：角色定妆、分镜参考图、视频片段与音频，由智能体调用模型直接生成到画布上。
 - **本地优先，模型自选（BYOK）**：作品数据保存在本地 SQLite，模型直连 OpenAI、Anthropic、Gemini、DeepSeek、Seedance、H3 或自建网关。
 
-![Reveric 主界面](.github/images/home.png)
+![书童AI工作台 主界面](.github/images/home.png)
 
 ---
 
@@ -186,7 +186,7 @@
 
 ## 模型支持
 
-Reveric 坚持 Local-First 与 BYOK（Bring Your Own Key）理念。无论是文学创作还是短剧制片，创作者对模型选择拥有完全自主权。
+书童AI工作台 坚持 Local-First 与 BYOK（Bring Your Own Key）理念。无论是文学创作还是短剧制片，创作者对模型选择拥有完全自主权。
 
 ### 1. 文本与推理模型 (LLM & Reasoning)
 
@@ -201,7 +201,7 @@ Reveric 坚持 Local-First 与 BYOK（Bring Your Own Key）理念。无论是文
 
 ### 2. 图像生成模型 (Image Generation)
 
-Reveric 在无限画布与故事图鉴中深度支持主流图像生成模型，用于角色定妆、分镜视觉参考、场景道具与概念插画创作：
+书童AI工作台 在无限画布与故事图鉴中深度支持主流图像生成模型，用于角色定妆、分镜视觉参考、场景道具与概念插画创作：
 
 | 图像模型 / 厂商 | 代表型号 | 核心控制能力 | 接入方式 |
 | :--- | :--- | :--- | :--- |
@@ -213,7 +213,7 @@ Reveric 在无限画布与故事图鉴中深度支持主流图像生成模型，
 
 ### 3. 视频生成模型 (Video Generation)
 
-Reveric 为短剧制片与无限画布深度集成了主流视频生成大模型，支持首尾帧锁定、多图参考、多画幅比例与运镜调度：
+书童AI工作台 为短剧制片与无限画布深度集成了主流视频生成大模型，支持首尾帧锁定、多图参考、多画幅比例与运镜调度：
 
 | 视频模型 / 厂商 | 代表型号 | 核心控制能力 | 接入方式 |
 | :--- | :--- | :--- | :--- |
@@ -227,7 +227,7 @@ Reveric 为短剧制片与无限画布深度集成了主流视频生成大模型
 
 ## 下载安装
 
-在 [Releases](https://github.com/looplj/reveric/releases/latest) 页面获取对应平台的预编译安装包：
+在 [Releases](https://github.com/zhnn456/shutong-studio/releases/latest) 页面获取对应平台的预编译安装包：
 
 | 操作系统 | 推荐环境 | 安装包格式 | 说明 |
 | :--- | :--- | :--- | :--- |
@@ -256,7 +256,7 @@ Reveric 为短剧制片与无限画布深度集成了主流视频生成大模型
 
 ## 开发者指南
 
-Reveric 采用 Flutter 与现代跨平台架构构建，欢迎社区开发者共同探索与改进。
+书童AI工作台 采用 Flutter 与现代跨平台架构构建，欢迎社区开发者共同探索与改进。
 
 ### 技术栈
 
@@ -270,8 +270,8 @@ Reveric 采用 Flutter 与现代跨平台架构构建，欢迎社区开发者共
 
 ```bash
 # 1. 克隆代码仓库
-git clone https://github.com/looplj/reveric.git
-cd reveric
+git clone https://github.com/zhnn456/shutong-studio.git
+cd shutong-studio
 
 # 2. 安装项目依赖 (推荐使用 FVM 管理 Flutter SDK)
 make deps
@@ -292,25 +292,27 @@ make build-windows-release # 构建 Windows 客户端
 
 ---
 
-## 问题反馈
+## 客服反馈
 
-如果你在使用中遇到了问题，或对新功能有独到想法，欢迎参与交流：
+使用中遇到问题、想咨询或提供建议？欢迎通过应用内「客服反馈」与我们联系：
 
-- 提交缺陷报告或需求建议：[GitHub Issues](https://github.com/looplj/reveric/issues)
-- 学 AI、交流经验：[LINUX DO 社区](https://linux.do/)
+- **客服反馈面板**：点击左侧工作栏「客服反馈」入口即可打开，支持：
+  - **写留言**：可选「投诉 / 建议 / 咨询 / 其他」类型，填写留言内容与联系方式（选填），提交后发送至官方邮箱并在本机留档。
+  - **官方客服二维码**：扫码添加官方客服微信，可实现问题反馈、使用咨询、购买授权等。
+  - **联系邮箱**：[282063152@qq.com](mailto:282063152@qq.com)
 
 ---
 
 ## 许可证
 
-本项目基于 [AGPLv3](./LICENSE) 授权开源，附加条款与第三方依赖声明详见 [NOTICES](./NOTICES)。商业授权请联系 [bababaa261@gmail.com](mailto:bababaa261@gmail.com)。
+本项目基于 [AGPLv3](./LICENSE) 授权开源，附加条款与第三方依赖声明详见 [NOTICES](./NOTICES)。商业授权请联系 [282063152@qq.com](mailto:282063152@qq.com)。
 
 ---
 
 <div align="center">
 
-**Reveric | 幻界** · 让智能体成为你的创作搭档
+**书童AI工作台** · 让智能体成为你的创作搭档
 
-[主页](https://github.com/looplj/reveric) • [发行版](https://github.com/looplj/reveric/releases) • [问题反馈](https://github.com/looplj/reveric/issues)
+[主页](https://github.com/zhnn456/shutong-studio) • [发行版](https://github.com/zhnn456/shutong-studio/releases) • [客服反馈](mailto:282063152@qq.com)
 
 </div>

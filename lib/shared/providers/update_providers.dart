@@ -30,8 +30,8 @@ final _log = AppLogger.forModule('UpdateProvider');
 @Riverpod(keepAlive: true)
 UpdateSource updateSource(Ref ref) {
   return GitHubReleasesSource(
-    owner: 'looplj',
-    repo: 'reveric',
+    owner: 'zhnn456',
+    repo: 'shutong-studio',
     createClient: () async => IOClient(
       await createProxyHttpClient(
         (await ref.read(appSettingsProvider.future)).networkProxy,

@@ -130,7 +130,7 @@ const Map<AiProviderType, AiProviderTypeConfig> aiProviderTypeConfigs = {
     imageProtocol: ImageProtocol.openai_images,
   ),
   AiProviderType.api88: AiProviderTypeConfig(
-    displayName: '88API',
+    displayName: '星辰AI',
     modelIdSource: ModelIdSource.open,
     textModelKinds: _chatOnlyKinds,
     imageProtocol: ImageProtocol.new_api_images,
@@ -295,7 +295,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
   ),
   AiProvider(
     id: 'api88',
-    name: '88API',
+    name: '星辰AI',
     builtin: true,
     type: 'api88',
     enabled: false,

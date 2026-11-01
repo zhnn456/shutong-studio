@@ -1312,6 +1312,28 @@ abstract final class LocaleKeys {
   static const aiFeedbackSession = 'ai.feedback_session';
   static const aiFeedbackModel = 'ai.feedback_model';
   static const aiFeedbackMessages = 'ai.feedback_messages';
+  static const supportTitle = 'support.title';
+  static const supportQrTitle = 'support.qr_title';
+  static const supportQrDescription = 'support.qr_description';
+  static const supportLeaveMessage = 'support.leave_message';
+  static const supportMessageLabel = 'support.message_label';
+  static const supportMessagePlaceholder = 'support.message_placeholder';
+  static const supportSubmitNote = 'support.submit_note';
+  static const supportContactLabel = 'support.contact_label';
+  static const supportContactHint = 'support.contact_hint';
+  static const supportContactNone = 'support.contact_none';
+  static const supportContactEmail = 'support.contact_email';
+  static const supportTypeComplaint = 'support.type_complaint';
+  static const supportTypeSuggestion = 'support.type_suggestion';
+  static const supportTypeInquiry = 'support.type_inquiry';
+  static const supportTypeOther = 'support.type_other';
+  static const supportSubmit = 'support.submit';
+  static const supportEmptyMessage = 'support.empty_message';
+  static const supportSubmitSuccess = 'support.submit_success';
+  static const supportSubmitFallbackSaved = 'support.submit_fallback_saved';
+  static const supportOpenEmailFailed = 'support.open_email_failed';
+  static const supportEmailSubject = 'support.email_subject';
+  static const supportEmailBody = 'support.email_body';
   static const aiFork = 'ai.fork';
   static const aiForkTooltip = 'ai.fork_tooltip';
   static const aiForkSuffix = 'ai.fork_suffix';
@@ -3049,6 +3071,7 @@ abstract final class LocaleKeys {
   static const homeSectionSettings = 'home.section_settings';
   static const homeSectionWorks = 'home.section_works';
   static const homeNavWorks = 'home.nav_works';
+  static const homeNavCustomerService = 'home.nav_customer_service';
   static const homeResumeEyebrow = 'home.resume_eyebrow';
   static const homeResumeRecent = 'home.resume_recent';
   static const homeResumeLastWritten = 'home.resume_last_written';
@@ -4968,12 +4991,6 @@ abstract final class LocaleKeys {
       'settings.about_open_logs_description';
   static const settingsAboutOpenStorageFailed =
       'settings.about_open_storage_failed';
-  static const settingsAboutFeedback = 'settings.about_feedback';
-  static const settingsAboutFeedbackDescription =
-      'settings.about_feedback_description';
-  static const settingsAboutOpenIssues = 'settings.about_open_issues';
-  static const settingsAboutOpenIssuesFailed =
-      'settings.about_open_issues_failed';
   static const settingsAboutOpenSource = 'settings.about_open_source';
   static const settingsAboutOpenSourceDescription =
       'settings.about_open_source_description';

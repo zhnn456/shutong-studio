@@ -67,7 +67,7 @@ IDI_APP_ICON            ICON                    "resources\\app_icon.ico"
 
 STRINGTABLE
 BEGIN
-    IDS_APP_TITLE           "Reveric"
+    IDS_APP_TITLE           "书童AI工作台"
 END
 
 
@@ -106,34 +106,34 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", APPLICATION_ID "\0"
-            VALUE "FileDescription", "Reveric" "\0"
+            VALUE "FileDescription", "书童AI工作台" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Reveric" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 ai.reveric. All rights reserved." "\0"
+            VALUE "InternalName", "书童AI工作台" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 书童工作室. All rights reserved." "\0"
             VALUE "OriginalFilename", "reveric.exe" "\0"
-            VALUE "ProductName", "Reveric" "\0"
+            VALUE "ProductName", "书童AI工作台" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
         BLOCK "080404b0"
         BEGIN
             VALUE "CompanyName", APPLICATION_ID "\0"
-            VALUE "FileDescription", "幻界" "\0"
+            VALUE "FileDescription", "书童AI工作台" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Reveric" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 ai.reveric. All rights reserved." "\0"
+            VALUE "InternalName", "书童AI工作台" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 书童工作室. All rights reserved." "\0"
             VALUE "OriginalFilename", "reveric.exe" "\0"
-            VALUE "ProductName", "幻界" "\0"
+            VALUE "ProductName", "书童AI工作台" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
         BLOCK "040404b0"
         BEGIN
             VALUE "CompanyName", APPLICATION_ID "\0"
-            VALUE "FileDescription", "幻界" "\0"
+            VALUE "FileDescription", "书童AI工作台" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Reveric" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 ai.reveric. All rights reserved." "\0"
+            VALUE "InternalName", "书童AI工作台" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 书童工作室. All rights reserved." "\0"
             VALUE "OriginalFilename", "reveric.exe" "\0"
-            VALUE "ProductName", "幻界" "\0"
+            VALUE "ProductName", "书童AI工作台" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
@@ -154,7 +154,7 @@ LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 
 STRINGTABLE
 BEGIN
-    IDS_APP_TITLE           "幻界"
+    IDS_APP_TITLE           "书童AI工作台"
 END
 
 #endif    // Chinese (Simplified) resources
@@ -168,7 +168,7 @@ LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
 
 STRINGTABLE
 BEGIN
-    IDS_APP_TITLE           "幻界"
+    IDS_APP_TITLE           "书童AI工作台"
 END
 
 #endif    // Chinese (Traditional) resources
