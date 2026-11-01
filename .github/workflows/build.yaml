@@ -80,6 +80,12 @@ jobs:
           content = re.sub(r'^version:.*', f'version: {ver}+{build}', content, flags=re.MULTILINE)
           with open('pubspec.yaml', 'w', encoding='utf-8') as f:
               f.write(content)
+          # 同步注入运行期版本号，避免设置页显示旧的 appVersion 并导致更新检查误报。
+          with open('lib/shared/app_config.dart', 'r', encoding='utf-8') as f:
+              cfg = f.read()
+          cfg = re.sub(r"const appVersion = '[^']*';", f"const appVersion = '{ver}';", cfg)
+          with open('lib/shared/app_config.dart', 'w', encoding='utf-8') as f:
+              f.write(cfg)
           github_output = os.environ.get('GITHUB_OUTPUT')
           if github_output:
               with open(github_output, 'a', encoding='utf-8') as f:
@@ -194,6 +200,12 @@ jobs:
           content = re.sub(r'^version:.*', f'version: {ver}+{build}', content, flags=re.MULTILINE)
           with open('pubspec.yaml', 'w', encoding='utf-8') as f:
               f.write(content)
+          # 同步注入运行期版本号，避免设置页显示旧的 appVersion 并导致更新检查误报。
+          with open('lib/shared/app_config.dart', 'r', encoding='utf-8') as f:
+              cfg = f.read()
+          cfg = re.sub(r"const appVersion = '[^']*';", f"const appVersion = '{ver}';", cfg)
+          with open('lib/shared/app_config.dart', 'w', encoding='utf-8') as f:
+              f.write(cfg)
           github_output = os.environ.get('GITHUB_OUTPUT')
           if github_output:
               with open(github_output, 'a', encoding='utf-8') as f:
