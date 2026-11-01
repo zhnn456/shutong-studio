@@ -230,7 +230,7 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           files: |
-            dist/**/*-setup.exe
+            dist/**/*.exe
 
   package-android:
     if: |
