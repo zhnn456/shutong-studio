@@ -27,12 +27,17 @@ class ContinueWritingHero extends StatelessWidget {
     this.lastWrittenChapter,
     required this.onSelectionChanged,
     required this.onContinueWriting,
+    required this.hasAnyFoundation,
   });
 
   final List<Chapter> chapters;
   final Chapter? lastWrittenChapter;
   final ValueSetter<WorkspaceSelection> onSelectionChanged;
   final ValueChanged<String> onContinueWriting;
+
+  /// 是否已有任何创作基础（世界观 / 角色 / 大纲至少一项非空）。
+  /// 无章节且无任何基础时进入引导态，主按钮引导用户先定世界观。
+  final bool hasAnyFoundation;
 
   @override
   Widget build(BuildContext context) {
@@ -42,12 +47,27 @@ class ContinueWritingHero extends StatelessWidget {
     final lastWritten = lastWrittenChapter;
     final lastSentence = extractLastWrittenSentence(lastWritten?.content);
     final hasChapter = latest != null;
+    // 引导态：无章节 且 无任何创作基础（世界观/角色/大纲全空）。
+    final isOnboarding = !hasChapter && !hasAnyFoundation;
     final continueLabel = hasChapter
         ? context.t(
             LocaleKeys.workspaceContinueChapter,
             namedArgs: {'number': '${latest.chapterNum ?? "?"}'},
           )
         : context.t(LocaleKeys.workspaceStartFirstChapter);
+    // 引导态主按钮：label 与 onPressed 均切换为"先定世界观"引导。
+    final primaryLabel = isOnboarding
+        ? context.t(LocaleKeys.workspaceOverviewPlanFirst)
+        : continueLabel;
+    final VoidCallback primaryAction = isOnboarding
+        ? () => onSelectionChanged(
+            const WorkspaceSelection(section: NovelWorkspaceSection.lore),
+          )
+        : () => onContinueWriting(continueLabel);
+    // 引导态 hint：提示建议创作顺序。
+    final hintText = isOnboarding
+        ? context.t(LocaleKeys.workspaceOverviewCreationOrder)
+        : context.t(LocaleKeys.workspaceContinueWritingHint);
     // 当"上次写到"来源章节不是当前要继续的最新章节时，
     // 在标题里提示用户句子来自更早的一章，避免误以为最新章已写过内容。
     final isLastFromOlderChapter =
@@ -131,7 +151,7 @@ class ContinueWritingHero extends StatelessWidget {
                     ),
                     const SizedBox(height: RevericSpacing.md),
                     Text(
-                      context.t(LocaleKeys.workspaceContinueWritingHint),
+                      hintText,
                       style: typo.uiSmall.copyWith(color: colors.textMuted),
                     ),
                     const SizedBox(height: RevericSpacing.x2l),
@@ -140,9 +160,9 @@ class ContinueWritingHero extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           RevericButton.primary(
-                            onPressed: () => onContinueWriting(continueLabel),
+                            onPressed: primaryAction,
                             icon: RevericIcons.create_outlined,
-                            label: continueLabel,
+                            label: primaryLabel,
                           ),
                           const SizedBox(height: RevericSpacing.lg),
                           Wrap(
@@ -180,9 +200,9 @@ class ContinueWritingHero extends StatelessWidget {
                       Row(
                         children: [
                           RevericButton.primary(
-                            onPressed: () => onContinueWriting(continueLabel),
+                            onPressed: primaryAction,
                             icon: RevericIcons.create_outlined,
-                            label: continueLabel,
+                            label: primaryLabel,
                           ),
                           const SizedBox(width: RevericSpacing.x2l),
                           Expanded(

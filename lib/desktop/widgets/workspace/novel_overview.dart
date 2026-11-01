@@ -30,6 +30,7 @@ import '../../../shared/localization/app_localization.dart';
 import '../../../shared/localization/locale_keys.dart';
 import '../../../shared/models/content_status.dart';
 import '../../../shared/models/novel_workspace.dart';
+import '../../../shared/models/outline.dart';
 import '../../../shared/theme/theme.dart';
 import '../agent_management/agent_model_settings_page.dart';
 import 'hero.dart';
@@ -46,6 +47,7 @@ class NovelOverview extends StatelessWidget {
     this.lastWrittenChapter,
     required this.characterProfiles,
     required this.worldbuildingEntries,
+    required this.outlineEntries,
     required this.foreshadowings,
     required this.canOpenCoverStudio,
     required this.onOpenCoverStudio,
@@ -62,6 +64,7 @@ class NovelOverview extends StatelessWidget {
   final Chapter? lastWrittenChapter;
   final List<CharacterProfile> characterProfiles;
   final List<Document> worldbuildingEntries;
+  final List<OutlineDraft> outlineEntries;
   final List<Foreshadowing> foreshadowings;
   final bool canOpenCoverStudio;
   final VoidCallback onOpenCoverStudio;
@@ -89,6 +92,10 @@ class NovelOverview extends StatelessWidget {
             chapters: chapters,
             lastWrittenChapter: lastWrittenChapter,
             onSelectionChanged: onSelectionChanged,
+            hasAnyFoundation:
+                characterProfiles.isNotEmpty ||
+                worldbuildingEntries.isNotEmpty ||
+                outlineEntries.isNotEmpty,
           ),
           const SizedBox(height: RevericSpacing.x4l),
           _SecondRow(

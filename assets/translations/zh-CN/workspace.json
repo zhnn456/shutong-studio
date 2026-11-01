@@ -416,5 +416,8 @@
   "workspace.sidebar_outline": "大纲",
   "workspace.sidebar_foreshadowing": "伏笔",
   "workspace.sidebar_map": "地图",
-  "workspace.sidebar_assets": "素材"
+  "workspace.sidebar_assets": "素材",
+  "workspace.ai_create": "AI 创作",
+  "workspace.overview_plan_first": "先定世界观，再开始创作",
+  "workspace.overview_creation_order": "建议创作顺序：世界观 → 人物 → 大纲 → 正文写作"
 }

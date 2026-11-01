@@ -264,18 +264,18 @@ const _RailGroup _inspirationGroup = _RailGroup(
 );
 
 const List<_RailGroup> _railGroupsNovel = <_RailGroup>[
-  _systemGroup,
-  _writingGroupNovel,
-  _worldGroup,
   _aiGroup,
+  _writingGroupNovel,
+  _systemGroup,
+  _worldGroup,
   _inspirationGroup,
 ];
 
 const List<_RailGroup> _railGroupsScreenplay = <_RailGroup>[
-  _systemGroup,
-  _writingGroupScreenplay,
-  _worldGroup,
   _aiGroup,
+  _writingGroupScreenplay,
+  _systemGroup,
+  _worldGroup,
   _inspirationGroup,
 ];
 

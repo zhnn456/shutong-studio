@@ -453,6 +453,26 @@ class NovelWorkspacePanel extends ConsumerWidget {
               ],
             ),
           ),
+          // 页面级 AI 创作按钮：仅在世界观/角色/大纲/章节四个内容页且非创建态时显示，
+          // 不依赖具体 itemId，点击后通过 onRunShortcutAction 预置 AI 对话。
+          if (_showsPageLevelAiCreate()) ...[
+            const SizedBox(width: RevericSpacing.md),
+            KeyedSubtree(
+              key: headerGestureExclusionKey,
+              child: RevericIconButton(
+                icon: RevericIcons.auto_awesome_outlined,
+                tooltip: context.t(LocaleKeys.workspaceAiCreate),
+                onPressed: onRunShortcutAction == null
+                    ? null
+                    : () {
+                        final id = _pageLevelAiActionId();
+                        final action = pageLevelAiShortcutActions
+                            .firstWhere((a) => a.id == id);
+                        onRunShortcutAction!(action);
+                      },
+              ),
+            ),
+          ],
           if (canShowActions) ...[
             const SizedBox(width: RevericSpacing.x2l),
             // 这个 key 会被 DesktopWindowFrame 用来排除标题栏拖拽命中；
@@ -517,6 +537,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
           lastWrittenChapter: lastWrittenChapter,
           characterProfiles: characterProfiles,
           worldbuildingEntries: worldbuildingEntries,
+          outlineEntries: outlineEntries,
           foreshadowings: foreshadowings,
           canOpenCoverStudio: canOpenCoverStudio,
           onOpenCoverStudio: onOpenCoverStudio,
@@ -1205,6 +1226,32 @@ class NovelWorkspacePanel extends ConsumerWidget {
       case NovelWorkspaceSection.canvas:
         return true;
     }
+  }
+
+  /// 页面级 AI 创作按钮的显示条件：仅在世界观/角色/大纲/章节四个内容页，
+  /// 且当前不处于"新建条目"编辑态时显示。不依赖 itemId。
+  bool _showsPageLevelAiCreate() {
+    if (selection.isCreating) {
+      return false;
+    }
+    return switch (selection.section) {
+      NovelWorkspaceSection.lore ||
+      NovelWorkspaceSection.characters ||
+      NovelWorkspaceSection.outlines ||
+      NovelWorkspaceSection.chapters => true,
+      _ => false,
+    };
+  }
+
+  /// 将当前 section 映射到 [pageLevelAiShortcutActions] 中对应的动作 id。
+  String _pageLevelAiActionId() {
+    return switch (selection.section) {
+      NovelWorkspaceSection.lore => 'page_worldbuilding_create',
+      NovelWorkspaceSection.characters => 'page_character_create',
+      NovelWorkspaceSection.outlines => 'page_outline_create',
+      NovelWorkspaceSection.chapters => 'page_chapter_create',
+      _ => '',
+    };
   }
 
   Widget _buildStatusBar(

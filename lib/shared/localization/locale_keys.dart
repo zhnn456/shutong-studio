@@ -5250,6 +5250,7 @@ abstract final class LocaleKeys {
   static const workspaceAutomations = 'workspace.automations';
   static const workspaceBackToLibrary = 'workspace.back_to_library';
   static const workspaceAgentConfig = 'workspace.agent_config';
+  static const workspaceAiCreate = 'workspace.ai_create';
   static const workspaceAiQuickContinue = 'workspace.ai_quick_continue';
   static const workspaceAiQuickPlot = 'workspace.ai_quick_plot';
   static const workspaceAiQuickSetting = 'workspace.ai_quick_setting';
@@ -5687,6 +5688,9 @@ abstract final class LocaleKeys {
   static const workspaceOutlines = 'workspace.outlines';
   static const workspaceOutlinesHint = 'workspace.outlines_hint';
   static const workspaceOverview = 'workspace.overview';
+  static const workspaceOverviewCreationOrder =
+      'workspace.overview_creation_order';
+  static const workspaceOverviewPlanFirst = 'workspace.overview_plan_first';
   static const workspacePendingChangesTitle = 'workspace.pending_changes_title';
   static const workspacePreview = 'workspace.preview';
   static const workspacePreviewDescription = 'workspace.preview_description';
