@@ -8,6 +8,8 @@
 //   lib/shared/localization/locale_keys.dart
 //   assets/translations/zh-CN/support.json
 //   assets/translations/en/support.json
+import 'dart:convert';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -20,11 +22,11 @@ import 'package:reveric/shared/localization/app_localization.dart';
 import 'package:reveric/shared/localization/locale_keys.dart';
 import 'package:reveric/shared/logger/app_logger.dart';
 import 'package:reveric/shared/theme/theme.dart';
-import '../../../components/dialog_feedback.dart';
-import '../../../components/reveric_button.dart';
-import '../../../components/reveric_dialog.dart';
-import '../../../components/reveric_segmented_control.dart';
-import '../../../components/reveric_text_field.dart';
+import '../../components/dialog_feedback.dart';
+import '../../components/reveric_button.dart';
+import '../../components/reveric_dialog.dart';
+import '../../components/reveric_segmented_control.dart';
+import '../../components/reveric_text_field.dart';
 
 final _log = AppLogger.forModule('CustomerServiceFeedback');
 
