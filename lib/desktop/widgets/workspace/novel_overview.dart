@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
+import '../../../shared/components/reveric_button.dart';
 import '../../../shared/components/reveric_surfaces.dart';
 import '../../../shared/components/reveric_context_menu.dart';
 import '../../../shared/database/app_database.dart';
@@ -96,6 +97,14 @@ class NovelOverview extends StatelessWidget {
                 characterProfiles.isNotEmpty ||
                 worldbuildingEntries.isNotEmpty ||
                 outlineEntries.isNotEmpty,
+          ),
+          const SizedBox(height: RevericSpacing.x4l),
+          _NextStepGuideCard(
+            characterProfiles: characterProfiles,
+            worldbuildingEntries: worldbuildingEntries,
+            outlineEntries: outlineEntries,
+            chapters: chapters,
+            onSelectionChanged: onSelectionChanged,
           ),
           const SizedBox(height: RevericSpacing.x4l),
           _SecondRow(
@@ -1211,4 +1220,149 @@ class _CopyButton extends StatelessWidget {
       ),
     );
   }
+}
+
+// =============================================================================
+// Next-step guide: 按建设度提示下一步该做什么（微调新增，不改布局）
+// 无章节时给出「先搭世界观 → 设定角色 → 规划大纲 → 写第1章」的顺序引导；
+// 已有章节则隐藏，交给「继续写作」入口。
+// =============================================================================
+class _NextStepGuideCard extends StatelessWidget {
+  const _NextStepGuideCard({
+    required this.characterProfiles,
+    required this.worldbuildingEntries,
+    required this.outlineEntries,
+    required this.chapters,
+    required this.onSelectionChanged,
+  });
+
+  final List<CharacterProfile> characterProfiles;
+  final List<Document> worldbuildingEntries;
+  final List<OutlineDraft> outlineEntries;
+  final List<Chapter> chapters;
+  final ValueSetter<WorkspaceSelection> onSelectionChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final next = _resolveNextStep();
+    if (next == null) {
+      return const SizedBox.shrink();
+    }
+
+    return RevericElevatedCard(
+      fallback: colors.surfaceContainerHigh,
+      clipBehavior: Clip.antiAlias,
+      gradientColors: (fill, active) => [
+        fill,
+        colors.accentWarm.withValues(alpha: active ? 0.06 : 0.08),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.all(RevericSpacing.x4l),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      RevericIcon(
+                        RevericIcons.auto_awesome_outlined,
+                        size: 18,
+                        color: colors.accentWarm,
+                      ),
+                      const SizedBox(width: RevericSpacing.sm),
+                      Text(
+                        '下一步建议',
+                        style: typo.uiSemibold.copyWith(
+                          color: colors.accentWarm,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: RevericSpacing.x2l),
+                  Text(
+                    next.title,
+                    style: typo.heading2.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: RevericSpacing.sm),
+                  Text(
+                    next.description,
+                    style: typo.body.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: RevericSpacing.x4l),
+            RevericButton.primary(
+              label: next.buttonLabel,
+              onPressed: () => onSelectionChanged(
+                WorkspaceSelection(section: next.section),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  _NextStep? _resolveNextStep() {
+    final hasWorld = worldbuildingEntries.isNotEmpty;
+    final hasCharacters = characterProfiles.isNotEmpty;
+    final hasOutline = outlineEntries.isNotEmpty;
+    final hasChapter = chapters.isNotEmpty;
+    if (!hasWorld) {
+      return const _NextStep(
+        section: NovelWorkspaceSection.lore,
+        title: '先搭世界观',
+        description: '这是全书的地基：先定题材、时代、核心规则体系与主要势力。后续的角色和大纲都要长在这套设定上，先把地基打好再动笔。',
+        buttonLabel: '去搭世界观',
+      );
+    }
+    if (!hasCharacters) {
+      return const _NextStep(
+        section: NovelWorkspaceSection.characters,
+        title: '设定主角与核心人物',
+        description: '世界观已就位，下一步把人物立起来：主角的渴望、缺陷与弧光，以及和反派的关系网。人物立住，故事才有驱动力。',
+        buttonLabel: '去设定角色',
+      );
+    }
+    if (!hasOutline) {
+      return const _NextStep(
+        section: NovelWorkspaceSection.outlines,
+        title: '规划全书大纲',
+        description: '人物已就位，先搭全书骨架（分卷 + 逐章节奏），再动笔写正文。大纲是防止写到一半跑偏的导航图。',
+        buttonLabel: '去规划大纲',
+      );
+    }
+    if (!hasChapter) {
+      return const _NextStep(
+        section: NovelWorkspaceSection.chapters,
+        title: '开始写第 1 章',
+        description: '基础已齐，可以动笔了。写正文前建议先让 AI 产出一份本章场景清单，确认后再落笔，能显著减少返工。',
+        buttonLabel: '去写第 1 章',
+      );
+    }
+    return null;
+  }
+}
+
+class _NextStep {
+  const _NextStep({
+    required this.section,
+    required this.title,
+    required this.description,
+    required this.buttonLabel,
+  });
+
+  final NovelWorkspaceSection section;
+  final String title;
+  final String description;
+  final String buttonLabel;
 }
