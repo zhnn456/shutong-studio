@@ -1062,10 +1062,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
                 color: RevericTheme.colorsOf(context).textMuted,
               ),
               onPressed: () {
-                showDialog<void>(
-                  context: context,
-                  builder: (_) => const SettingsDialog(initialNavId: 'editor'),
-                );
+                showSettingsSectionDialog(context, 'editor');
               },
             ),
             const SizedBox(width: RevericSpacing.sm),
