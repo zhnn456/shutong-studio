@@ -41,7 +41,6 @@ class OpenAiImageClient extends ImageClient {
       final body = <String, dynamic>{
         'model': request.model,
         'prompt': request.prompt,
-        'response_format': 'b64_json',
         'output_format': 'png',
         'n': 1,
         'size': request.size ?? _generateSize,
@@ -109,7 +108,6 @@ class OpenAiImageClient extends ImageClient {
         'n': '1',
         'size': request.size ?? _editSize,
       });
-      form.fields.add(const MapEntry('response_format', 'b64_json'));
       final quality = request.quality;
       if (quality != null && quality.isNotEmpty) {
         form.fields.add(MapEntry('quality', quality));
