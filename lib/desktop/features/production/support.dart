@@ -9,8 +9,6 @@
 //   assets/translations/zh-CN/ai.json
 //   assets/translations/en/production.json
 //   assets/translations/zh-CN/production.json
-import 'dart:io';
-import 'package:sqlite3/sqlite3.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -104,6 +102,10 @@ String productionDraftSaveErrorKey(Object error) => switch (error) {
       'download_failed' => (
         error: LocaleKeys.productionImageDownloadFailed,
         action: LocaleKeys.productionRetryDownload,
+      ),
+      'local_wait_cancelled' => (
+        error: LocaleKeys.productionImageWaitCancelled,
+        action: LocaleKeys.productionRetryFetch,
       ),
       'result_fetch_failed' => (
         error: LocaleKeys.productionImageFetchFailed,
