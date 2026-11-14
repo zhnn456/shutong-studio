@@ -31,6 +31,7 @@ import '../../../shared/providers/video_tasks.dart';
 import '../../../shared/services/production/canvas_service.dart';
 import '../../../shared/services/production/video_tool_orchestrator.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/utils/image_clipboard.dart';
 import '../asset/library_menu_item.dart';
 import '../canvas/widgets/glass.dart';
 import 'certification.dart';
@@ -226,6 +227,20 @@ class ProductionNodeBar extends HookConsumerWidget {
         ? node.mediaAssetId
         : null;
     final libraryAsset = useProductionAsset(service, libraryAssetId);
+    final VoidCallback? copyImage =
+        libraryAsset?.type == 'image' && libraryAsset?.path != null
+        ? () => productionRun(context, () async {
+            await copyImageToClipboard(
+              File(service.library.resolve(libraryAsset!)),
+              name: libraryAsset.name,
+            );
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(context.t(LocaleKeys.commonCopied))),
+              );
+            }
+          })
+        : null;
     final appDatabase = service.library.database;
     final certifyProviders = useCertificationProviders(appDatabase);
     final certifications = useCertifications(
@@ -238,6 +253,12 @@ class ProductionNodeBar extends HookConsumerWidget {
       context: context,
       position: position,
       entries: [
+        if (copyImage != null)
+          RevericMenuItem(
+            icon: RevericIcons.copy,
+            label: context.t(LocaleKeys.commonCopy),
+            onTap: copyImage,
+          ),
         if (libraryAsset != null)
           assetLibraryMenuItem(
             context,
@@ -263,7 +284,7 @@ class ProductionNodeBar extends HookConsumerWidget {
         if (onCopy != null)
           RevericMenuItem(
             icon: RevericIcons.copy,
-            label: context.t(LocaleKeys.commonCopy),
+            label: context.t(LocaleKeys.commonDuplicate),
             onTap: onCopy,
           ),
         RevericMenuItem(
@@ -610,6 +631,14 @@ class ProductionNodeBar extends HookConsumerWidget {
                         onPreview,
                       ),
                   ],
+                  if (copyImage != null)
+                    [
+                      button(
+                        RevericIcons.copy,
+                        context.t(LocaleKeys.commonCopy),
+                        copyImage,
+                      ),
+                    ],
                   // 基于当前内容再创作。
                   [
                     if (image || sourceAsset?.type == 'image')
