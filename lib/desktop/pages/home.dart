@@ -89,6 +89,7 @@ import '../widgets/novel_form_dialog.dart';
 import '../widgets/novel_import_dialog.dart';
 import '../../shared/services/screenplay_import.dart';
 import '../../shared/widgets/screenplay/import_dialog.dart';
+import '../features/production/package_actions.dart';
 import '../widgets/home/library_home_panel.dart';
 import '../widgets/settings/settings_dialog.dart';
 import '../../shared/widgets/support/customer_service_feedback_dialog.dart';
@@ -950,7 +951,9 @@ class NovelHomePage extends HookConsumerWidget {
         headerGestureExclusionKey: greetingHeaderKeys[contentKind]!,
         onQuickStart: quickStartNovel,
         onCreateNovel: () => openCreateNovelDialog(contentKind),
-        onImportNovel: openImportNovelDialog,
+        onImportNovel: contentKind == contentKindCanvas
+            ? () => importCanvasFromShelf(context)
+            : openImportNovelDialog,
         onImportScreenplay: importScreenplay,
         onCreateDemoNovel: () => createDemoNovelWithNavigation(context, ref),
         onDeleteNovel: (novel) => deleteNovel(novel),
