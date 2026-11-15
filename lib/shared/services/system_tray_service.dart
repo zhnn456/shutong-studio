@@ -32,7 +32,6 @@ import '../../desktop/widgets/novel_form_dialog.dart';
 import '../providers/novel_providers.dart';
 import '../../desktop/pages/workspace_editor_page.dart';
 import '../components/reveric_dialog.dart';
-import '../widgets/confirm_dialog.dart';
 import '../components/reveric_button.dart';
 
 final _log = AppLogger.forModule('SystemTray');
@@ -195,25 +194,18 @@ class SystemTrayService with TrayListener {
   }
 
   Future<void> _quit() async {
-    await showMainWindow();
+    // 托盘「退出」是明确意图，直接走退出流程：不依赖主窗口可见，
+    // 也不弹确认框 —— 窗口在托盘隐藏时确认框可能根本看不见，
+    // 表现就是"点了退出没反应"。
+    await _exitApplication();
+  }
 
-    final ctx = navigatorKey.currentState?.context;
-    if (ctx == null || !ctx.mounted) {
-      await _exitApplication();
-      return;
-    }
-
-    final confirmed = await showConfirmDialog(
-      ctx,
-      title: '确认退出',
-      message: '确定要退出吗？',
-      confirmLabel: '退出',
-      cancelLabel: '取消',
-      variant: ConfirmDialogVariant.warning,
-    );
-
-    if (confirmed == true) {
-      await _exitApplication();
+  /// CrashSentinel 落盘失败不能阻断退出，统一降级为日志。
+  void _safeMarkExit(String phase) {
+    try {
+      CrashSentinel.markActiveExitProgressSync(source: 'tray', phase: phase);
+    } catch (error, stackTrace) {
+      _log.warning('[EXIT] crash sentinel mark failed phase=$phase error=$error');
     }
   }
 
@@ -223,112 +215,135 @@ class SystemTrayService with TrayListener {
     Future<void> Function()? cleanExit,
     StartupFailureReporter? failureReporter,
   }) async {
-    for (final guard in List<Future<bool> Function()>.of(
-      _exitGuards.reversed,
-    )) {
-      if (!await guard()) {
+    // 退出全流程兜底：任何一步抛异常都必须继续走到进程终止，
+    // 否则托盘退出会卡在中间，同样表现为"点了没反应"。
+    var proceed = true;
+    try {
+      for (final guard in List<Future<bool> Function()>.of(
+        _exitGuards.reversed,
+      )) {
+        if (!await guard()) {
+          proceed = false;
+          break;
+        }
+      }
+      if (!proceed) {
+        _log.info('[EXIT] cancelled by guard');
         return;
       }
-    }
-    _log.info('[EXIT] requested');
-    _log.checkpoint('application exit requested (tray)');
-    CrashSentinel.markActiveExitProgressSync(
-      source: 'tray',
-      phase: 'requested',
-    );
-    await windowManager.setPreventClose(false);
 
-    // Close content databases first. Their normal close path can wait for
-    // paused query streams; the process-exit path bypasses those listeners.
-    CrashSentinel.markActiveExitProgressSync(
-      source: 'tray',
-      phase: 'closing_content_databases',
-    );
-    _log.info('[EXIT] closing content databases');
-    try {
-      await NovelContentDatabase.closeAllCachedForProcessExit();
-    } catch (error, stackTrace) {
-      _log.error(
-        '[DB] table=novel_content_databases operation=CLOSE_ALL '
-        'error=$error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
-    _log.info('[EXIT] content databases closed');
-
-    // Close databases before terminating to prevent NativeFinalizer SIGSEGV
-    // during Dart isolate shutdown. The process-exit variant bypasses paused
-    // Drift stream listeners while still awaiting the SQLite executor.
-    CrashSentinel.markActiveExitProgressSync(
-      source: 'tray',
-      phase: 'closing_app_database',
-    );
-    _log.info('[EXIT] closing app database');
-    try {
-      await AppDatabase.closeCachedForProcessExit();
-    } catch (error, stackTrace) {
-      _log.error(
-        '[DB] table=app_database operation=CLOSE_FOR_PROCESS_EXIT '
-        'error=$error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
-    _log.info('[EXIT] app database closed');
-
-    // 正常退出：只清除当前会话 marker，待重试崩溃证据由 CrashSentinel 保留。
-    // 必须在释放单实例锁之前完成，避免新进程看到旧 marker 或被旧进程删除。
-    if (cleanExit != null) {
-      await cleanExit();
-    } else {
-      CrashSentinel.markActiveSessionCleanExitSync();
-    }
-    // await 锁释放：确保激活 server 关闭、端口文件删除后再退出，
-    // 避免残留端口文件误导下一次启动的第二实例。
-    try {
-      await Future<void>.sync(
-        unlock ?? SingleInstanceService.unlock,
-      ).timeout(const Duration(seconds: 3));
-    } catch (error, stack) {
-      _log.error(
-        'Tray exit instance cleanup failed',
-        error: error,
-        stackTrace: stack,
-      );
+      _log.info('[EXIT] requested');
+      _log.checkpoint('application exit requested (tray)');
+      _safeMarkExit('requested');
       try {
-        await (failureReporter ?? StartupFailureReporter())
-            .reportLifecycleFailure(
-              phase: 'tray_exit',
-              reason: error is TimeoutException
-                  ? 'release_instance_timeout'
-                  : 'release_instance_failed',
-              error: error,
-              stackTrace: stack,
-            )
-            .timeout(const Duration(seconds: 5));
-      } catch (reportError) {
-        _log.warning('Tray exit report did not finish: $reportError');
+        await windowManager.setPreventClose(false);
+      } catch (error, stackTrace) {
+        _log.warning(
+          '[EXIT] setPreventClose(false) failed error=$error\n$stackTrace',
+        );
+      }
+
+      // Close content databases first. Their normal close path can wait for
+      // paused query streams; the process-exit path bypasses those listeners.
+      _safeMarkExit('closing_content_databases');
+      _log.info('[EXIT] closing content databases');
+      try {
+        await NovelContentDatabase.closeAllCachedForProcessExit();
+      } catch (error, stackTrace) {
+        _log.error(
+          '[DB] table=novel_content_databases operation=CLOSE_ALL '
+          'error=$error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+      _log.info('[EXIT] content databases closed');
+
+      // Close databases before terminating to prevent NativeFinalizer SIGSEGV
+      // during Dart isolate shutdown. The process-exit variant bypasses paused
+      // Drift stream listeners while still awaiting the SQLite executor.
+      _safeMarkExit('closing_app_database');
+      _log.info('[EXIT] closing app database');
+      try {
+        await AppDatabase.closeCachedForProcessExit();
+      } catch (error, stackTrace) {
+        _log.error(
+          '[DB] table=app_database operation=CLOSE_FOR_PROCESS_EXIT '
+          'error=$error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+      _log.info('[EXIT] app database closed');
+
+      // 正常退出：只清除当前会话 marker，待重试崩溃证据由 CrashSentinel 保留。
+      // 必须在释放单实例锁之前完成，避免新进程看到旧 marker 或被旧进程删除。
+      try {
+        if (cleanExit != null) {
+          await cleanExit();
+        } else {
+          CrashSentinel.markActiveSessionCleanExitSync();
+        }
+      } catch (error, stackTrace) {
+        _log.warning('[EXIT] clean exit marker failed error=$error\n$stackTrace');
+      }
+
+      // await 锁释放：确保激活 server 关闭、端口文件删除后再退出，
+      // 避免残留端口文件误导下一次启动的第二实例。
+      try {
+        await Future<void>.sync(unlock ?? SingleInstanceService.unlock)
+            .timeout(const Duration(seconds: 3));
+      } catch (error, stack) {
+        _log.error(
+          'Tray exit instance cleanup failed',
+          error: error,
+          stackTrace: stack,
+        );
+        try {
+          await (failureReporter ?? StartupFailureReporter())
+              .reportLifecycleFailure(
+                phase: 'tray_exit',
+                reason: error is TimeoutException
+                    ? 'release_instance_timeout'
+                    : 'release_instance_failed',
+                error: error,
+                stackTrace: stack,
+              )
+              .timeout(const Duration(seconds: 5));
+        } catch (reportError) {
+          _log.warning('Tray exit report did not finish: $reportError');
+        }
+      }
+
+      // The tray plugin is native cleanup only; do not let its MethodChannel
+      // reply prevent the process termination path on Windows.
+      _log.info('[EXIT] destroying tray');
+      // 托盘图标不清理干净会在任务栏留下"幽灵图标"，看起来像没退出。
+      // 带超时 await，既保证图标移除，又不会因为 MethodChannel 无响应卡死退出。
+      try {
+        await trayManager.destroy().timeout(const Duration(seconds: 2));
+      } catch (error, stackTrace) {
+        _log.warning('tray destroy failed error=$error\n$stackTrace');
+      }
+      // close() only posts the native close request. Awaiting its MethodChannel
+      // reply can strand exit if native window teardown stops the host loop.
+      unawaited(
+        windowManager.close().catchError((error, stackTrace) {
+          _log.warning('window close request failed error=$error\n$stackTrace');
+        }),
+      );
+    } catch (error, stackTrace) {
+      _log.error(
+        '[EXIT] unexpected shutdown failure error=$error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (proceed) {
+        _log.info('[EXIT] terminating');
+        (terminate ?? exit)(0);
       }
     }
-
-    // The tray plugin is native cleanup only; do not let its MethodChannel
-    // reply prevent the process termination path on Windows.
-    _log.info('[EXIT] destroying tray');
-    unawaited(
-      trayManager.destroy().catchError((error, stackTrace) {
-        _log.warning('tray destroy failed error=$error\n$stackTrace');
-      }),
-    );
-    // close() only posts the native close request. Awaiting its MethodChannel
-    // reply can strand exit if native window teardown stops the host loop.
-    unawaited(
-      windowManager.close().catchError((error, stackTrace) {
-        _log.warning('window close request failed error=$error\n$stackTrace');
-      }),
-    );
-    _log.info('[EXIT] terminating');
-    (terminate ?? exit)(0);
   }
 
   @visibleForTesting
