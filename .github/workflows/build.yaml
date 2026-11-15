@@ -37,11 +37,10 @@ env:
   FASTFORGE_VERSION: '0.6.6'
 
 jobs:
+  # 当前只维护 Windows 版本：macOS 仅在 workflow_dispatch 显式指定时打包，
+  # 推 tag 发版不再自动触发，避免长耗时与签名/工具链问题阻塞发版。
   package-macos:
-    if: |
-      github.event_name != 'workflow_dispatch' ||
-      inputs.platform == 'all' ||
-      inputs.platform == 'macos'
+    if: github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'macos')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -244,11 +243,9 @@ jobs:
           files: |
             dist/**/*.exe
 
+  # 同上：Android 仅在 workflow_dispatch 显式指定时打包；缺少签名 secrets 时不会阻塞发版。
   package-android:
-    if: |
-      github.event_name != 'workflow_dispatch' ||
-      inputs.platform == 'all' ||
-      inputs.platform == 'android'
+    if: github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'android')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
