@@ -42,6 +42,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../shared/components/dialog_feedback.dart';
 import '../../shared/database/app_database.dart';
+import '../../shared/models/license.dart';
 import '../../shared/localization/app_localization.dart';
 import '../../shared/localization/locale_keys.dart';
 import '../../shared/widgets/quick_start_idea.dart';
@@ -322,6 +323,21 @@ class NovelHomePage extends HookConsumerWidget {
           );
         }
         return true;
+      } on NovelFreeLimitException catch (error) {
+        if (!feedbackContext.mounted) {
+          return false;
+        }
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              context.t(
+                LocaleKeys.settingsLicenseFreeLimitReached,
+                namedArgs: <String, String>{'limit': '${error.limit}'},
+              ),
+            ),
+          ),
+        );
+        return false;
       } on NovelTitleConflictException catch (error) {
         _log.error('createNovel title conflict', error: error);
         if (!feedbackContext.mounted) {
@@ -376,6 +392,20 @@ class NovelHomePage extends HookConsumerWidget {
             builder: (_) => WorkspaceEditorPage(
               novelId: novelId,
               initialChatKickoffPrompt: kickoffPrompt,
+            ),
+          ),
+        );
+      } on NovelFreeLimitException catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              context.t(
+                LocaleKeys.settingsLicenseFreeLimitReached,
+                namedArgs: <String, String>{'limit': '${error.limit}'},
+              ),
             ),
           ),
         );

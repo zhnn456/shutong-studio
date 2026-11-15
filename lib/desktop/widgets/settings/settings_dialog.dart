@@ -23,13 +23,17 @@
 import 'settings_mcp_section.dart';
 import 'settings_plugins_section.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../shared/components/dialog_feedback.dart';
 import '../../../shared/localization/app_localization.dart';
 import '../../../shared/localization/locale_keys.dart';
+import '../../../shared/models/license.dart';
 import '../../../shared/providers/settings_providers.dart';
+import '../../../shared/services/license_service.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/settings/about_settings_section.dart';
 import '../../../shared/widgets/settings/ai_agents_settings_section.dart';
@@ -58,6 +62,7 @@ part 'settings_reading_section.dart';
 part 'settings_backup_section.dart';
 part 'settings_about_section.dart';
 part 'settings_debug_section.dart';
+part 'settings_license_section.dart';
 
 /// 打开设置对话框并定位到「AI 供应商」页 — 没有可用模型时的配置入口。
 Future<void> showAiProviderSettingsDialog(BuildContext context) {
@@ -153,6 +158,11 @@ class SettingsDialog extends HookConsumerWidget {
       id: 'backup',
       labelKey: LocaleKeys.settingsBackup,
       icon: RevericIcons.archive_outlined,
+    ),
+    _SettingsNavItem(
+      id: 'license',
+      labelKey: LocaleKeys.settingsLicense,
+      icon: RevericIcons.crown,
     ),
     _SettingsNavItem(
       id: 'about',
@@ -402,6 +412,7 @@ class SettingsDialog extends HookConsumerWidget {
       'reading' => const _ReadingSettingsSection(),
       'storage' => const StorageSettingsSection(),
       'backup' => const _BackupSettingsSection(),
+      'license' => const _LicenseSettingsSection(),
       'about' => const _AboutSettingsSection(),
       'debug' => _DebugSettingsSection(onClose: onCloseDebugSection),
       _ => const SizedBox.shrink(),

@@ -4943,6 +4943,26 @@ abstract final class LocaleKeys {
   static const settingsThemeSection = 'settings.theme_section';
   static const settingsTaglineFooter = 'settings.tagline_footer';
   static const settingsTitle = 'settings.title';
+  static const settingsLicense = 'settings.license';
+  static const settingsLicenseDescription = 'settings.license_description';
+  static const settingsLicenseCurrentTier = 'settings.license_current_tier';
+  static const settingsLicenseTierFree = 'settings.license_tier_free';
+  static const settingsLicenseTierStandard = 'settings.license_tier_standard';
+  static const settingsLicenseTierPro = 'settings.license_tier_pro';
+  static const settingsLicenseExpiresAt = 'settings.license_expires_at';
+  static const settingsLicensePermanent = 'settings.license_permanent';
+  static const settingsLicenseLoading = 'settings.license_loading';
+  static const settingsLicenseCodeLabel = 'settings.license_code_label';
+  static const settingsLicenseCodeHint = 'settings.license_code_hint';
+  static const settingsLicenseActivate = 'settings.license_activate';
+  static const settingsLicenseActivateSuccess =
+      'settings.license_activate_success';
+  static const settingsLicenseActivateFailed =
+      'settings.license_activate_failed';
+  static const settingsLicenseBuy = 'settings.license_buy';
+  static const settingsLicenseCopyLinkDone = 'settings.license_copy_link_done';
+  static const settingsLicenseFreeLimitReached =
+      'settings.license_free_limit_reached';
   static const settingsAbout = 'settings.about';
   static const settingsAboutVersion = 'settings.about_version';
   static const settingsAboutUpdates = 'settings.about_updates';
