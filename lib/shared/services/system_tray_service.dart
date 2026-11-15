@@ -60,6 +60,10 @@ class SystemTrayService with TrayListener {
 
   bool _initialized = false;
 
+  /// 单个退出 guard 的等待上限。guard 自身卡住（例如深度任务停止时挂死）
+  /// 绝不能把整个退出流程一起拖住，否则用户看到的还是"点了退出没反应"。
+  static const Duration _guardBudget = Duration(seconds: 6);
+
   Future<void> init() async {
     if (_initialized) return;
 
@@ -204,8 +208,31 @@ class SystemTrayService with TrayListener {
   void _safeMarkExit(String phase) {
     try {
       CrashSentinel.markActiveExitProgressSync(source: 'tray', phase: phase);
-    } catch (error, stackTrace) {
+    } catch (error) {
       _log.warning('[EXIT] crash sentinel mark failed phase=$phase error=$error');
+    }
+  }
+
+  /// guard 取消退出时必须让用户看到原因：此时窗口很可能正藏在托盘里，
+  /// 静默 return 又会让用户以为"点了退出没反应"。
+  Future<void> _notifyExitCancelled() async {
+    if (!_initialized) return;
+    try {
+      await showMainWindow();
+    } catch (error, stackTrace) {
+      _log.warning(
+        '[EXIT] show window for cancel notice failed error=$error\n$stackTrace',
+      );
+      return;
+    }
+    final context = navigatorKey.currentState?.context;
+    if (context == null || !context.mounted) return;
+    try {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(content: Text('退出已取消：有内容正在保存，请稍后重试')),
+      );
+    } catch (error) {
+      _log.warning('[EXIT] cancel notice failed error=$error');
     }
   }
 
@@ -222,13 +249,32 @@ class SystemTrayService with TrayListener {
       for (final guard in List<Future<bool> Function()>.of(
         _exitGuards.reversed,
       )) {
-        if (!await guard()) {
+        var allowed = false;
+        try {
+          allowed = await guard().timeout(
+            _guardBudget,
+            onTimeout: () {
+              _log.warning(
+                '[EXIT] guard timed out after ${_guardBudget.inSeconds}s; '
+                'continuing shutdown',
+              );
+              return true;
+            },
+          );
+        } catch (error, stackTrace) {
+          // guard 失效不能让用户彻底无法退出：记录后继续走退出流程，
+          // 与修复前的异常传播语义一致（异常同样会落到 finally 终止）。
+          _log.warning('[EXIT] guard failed error=$error\n$stackTrace');
+          allowed = true;
+        }
+        if (!allowed) {
           proceed = false;
           break;
         }
       }
       if (!proceed) {
         _log.info('[EXIT] cancelled by guard');
+        await _notifyExitCancelled();
         return;
       }
 

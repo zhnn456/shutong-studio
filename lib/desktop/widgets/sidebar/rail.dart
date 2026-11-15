@@ -347,7 +347,9 @@ extension _LeftSidebarRail on _LeftSidebarState {
         _activateAgentItem(item);
       case _RailLicenseTarget():
         Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const LicensePage()),
+          MaterialPageRoute<void>(
+            builder: (_) => const license_page.LicensePage(),
+          ),
         );
     }
   }

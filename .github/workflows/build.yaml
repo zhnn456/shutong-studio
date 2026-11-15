@@ -170,7 +170,7 @@ jobs:
       - run: dart pub global activate fastforge ${{ env.FASTFORGE_VERSION }}
       - name: Install packaging tools
         shell: bash
-        run: choco install innosetup --no-progress
+        run: choco install innosetup --version=6.2.2 --no-progress --allow-downgrade
       - name: Download Chinese language file for Inno Setup
         shell: pwsh
         run: |
@@ -241,9 +241,16 @@ jobs:
       - name: Verify installer output
         shell: pwsh
         run: |
+          $innos = Get-ChildItem 'C:\Program Files (x86)' -Directory -Filter 'Inno Setup*' -ErrorAction SilentlyContinue
+          Write-Host "Inno Setup dirs: $($innos.FullName -join ' | ')"
           Get-ChildItem -Path dist -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
-          $exe = Get-ChildItem -Path dist -Recurse -Filter *.exe
-          if (-not $exe) { throw 'No installer produced in dist/' }
+          $exe = Get-ChildItem -Path dist -Recurse -Filter *.exe -ErrorAction SilentlyContinue
+          if (-not $exe) {
+            $subs = (Get-ChildItem -Path dist -Directory -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name) -join ','
+            Write-Host "::error::No installer produced in dist/ (subdirs=$subs; inno=$($innos.FullName -join ',') )"
+            exit 1
+          }
+          Write-Host "Installer: $($exe.FullName -join ' | ')"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer

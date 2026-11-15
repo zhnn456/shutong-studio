@@ -46,7 +46,7 @@ import '../../../shared/widgets/screenplay/labels.dart';
 import '../../features/cover_studio/records.dart';
 import '../../features/canvas/widgets/canvas_list_panel.dart';
 import '../../features/screenplay/context_panel.dart';
-import '../../pages/license_page.dart';
+import '../../pages/license_page.dart' as license_page;
 import '../ai/chat/session_list.dart';
 import 'rail_only.dart';
 import '../ai/mode_session_list_row.dart';

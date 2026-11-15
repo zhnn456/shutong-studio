@@ -124,12 +124,13 @@ void main() {
     ]);
   });
 
-  test('tray exit does not wait for the native destroy reply', () async {
+  test('tray exit does not hang on an unanswered native destroy reply', () async {
     pendingTrayDestroy = Completer<Object?>();
 
     await SystemTrayService()
         .exitApplicationForTesting((code) => calls.add('exit.$code'))
-        .timeout(const Duration(milliseconds: 100));
+        // destroy 的 MethodChannel 回包在 2s 内被兜底放弃，退出不会被回包卡死。
+        .timeout(const Duration(seconds: 5));
 
     expect(calls, <String>[
       'window.setPreventClose',

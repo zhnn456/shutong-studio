@@ -52,6 +52,14 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
+# runner 的 .cpp/.h 带中文注释且以 UTF-8 无 BOM 保存。在中文 Windows 上 MSVC
+# 默认按系统代码页(936)解析源码，会把 UTF-8 字节判成非法字符（C4819），
+# 而项目开了 /WX，导致构建失败。只对 runner 目标显式声明源码/执行字符集为
+# UTF-8，避免影响插件的默认字符集行为。
+if(MSVC)
+  target_compile_options(${BINARY_NAME} PRIVATE /utf-8)
+endif()
+
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
