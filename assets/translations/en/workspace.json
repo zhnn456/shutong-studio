@@ -419,5 +419,6 @@
   "workspace.sidebar_assets": "Assets",
   "workspace.ai_create": "AI Create",
   "workspace.overview_plan_first": "Start with the world, then write",
-  "workspace.overview_creation_order": "Recommended order: World → Characters → Outline → Drafting"
+  "workspace.overview_creation_order": "Recommended order: World → Characters → Outline → Drafting",
+  "workspace.license": "Upgrade"
 }

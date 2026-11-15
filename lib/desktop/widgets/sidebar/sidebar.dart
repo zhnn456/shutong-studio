@@ -46,6 +46,7 @@ import '../../../shared/widgets/screenplay/labels.dart';
 import '../../features/cover_studio/records.dart';
 import '../../features/canvas/widgets/canvas_list_panel.dart';
 import '../../features/screenplay/context_panel.dart';
+import '../../pages/license_page.dart';
 import '../ai/chat/session_list.dart';
 import 'rail_only.dart';
 import '../ai/mode_session_list_row.dart';
@@ -312,6 +313,7 @@ const String _iconUsersFour = 'assets/icons/phosphor/users-four.svg';
 const String _iconArticle = 'assets/icons/phosphor/article.svg';
 const String _iconPath = 'assets/icons/phosphor/path.svg';
 const String _iconSquaresFour = 'assets/icons/phosphor/squares-four.svg';
+const String _iconCrown = 'assets/icons/phosphor/crown.svg';
 
 void _noopVoidCallback() {}
 

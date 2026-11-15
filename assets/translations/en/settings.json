@@ -673,5 +673,20 @@
   "settings.mcp_client_required": "Client registration failed. Check the client ID and whether the provider supports this registration.",
   "settings.mcp_callback_rejected": "Authorization could not validate the callback. Check the registered callback address and sign in again.",
   "settings.plugins": "Plugins",
-  "settings.usage_source_plugin": "Plugins"
+  "settings.usage_source_plugin": "Plugins",
+  "settings.license_pricing_title": "Choose your plan",
+  "settings.license_pricing_subtitle": "One-time purchase, yours to keep. You bring your own AI API key, so we never charge for tokens.",
+  "settings.license_current_badge": "Current",
+  "settings.license_free_price": "¥0",
+  "settings.license_standard_price": "¥299",
+  "settings.license_pro_price": "¥699",
+  "settings.license_free_tagline": "See whether it fits how you write",
+  "settings.license_free_features": "1 novel\nAll writing and AI authoring features\nBring your own API key, any model",
+  "settings.license_free_cta": "On free plan",
+  "settings.license_standard_tagline": "Enough for one person on a long project",
+  "settings.license_standard_features": "Unlimited novels\nPerpetual use, no time limit\n1 year of free updates\nSingle-device license",
+  "settings.license_buy_standard": "Buy Standard ¥299",
+  "settings.license_pro_tagline": "Multiple devices, longer updates",
+  "settings.license_pro_features": "Unlimited novels\nPerpetual use, no time limit\n2 years of free updates\n3 devices\nPriority support",
+  "settings.license_buy_pro": "Buy Pro ¥699"
 }

@@ -35,6 +35,7 @@ import '../../../shared/models/license.dart';
 import '../../../shared/providers/settings_providers.dart';
 import '../../../shared/services/license_service.dart';
 import '../../../shared/theme/theme.dart';
+import '../license/license_pricing_view.dart';
 import '../../../shared/widgets/settings/about_settings_section.dart';
 import '../../../shared/widgets/settings/ai_agents_settings_section.dart';
 import '../../../shared/widgets/settings/ai_providers_section.dart';

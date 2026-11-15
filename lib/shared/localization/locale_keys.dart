@@ -4963,6 +4963,25 @@ abstract final class LocaleKeys {
   static const settingsLicenseCopyLinkDone = 'settings.license_copy_link_done';
   static const settingsLicenseFreeLimitReached =
       'settings.license_free_limit_reached';
+  static const settingsLicensePricingTitle = 'settings.license_pricing_title';
+  static const settingsLicensePricingSubtitle =
+      'settings.license_pricing_subtitle';
+  static const settingsLicenseCurrentBadge = 'settings.license_current_badge';
+  static const settingsLicenseFreePrice = 'settings.license_free_price';
+  static const settingsLicenseStandardPrice = 'settings.license_standard_price';
+  static const settingsLicenseProPrice = 'settings.license_pro_price';
+  static const settingsLicenseFreeTagline = 'settings.license_free_tagline';
+  static const settingsLicenseFreeFeatures = 'settings.license_free_features';
+  static const settingsLicenseFreeCta = 'settings.license_free_cta';
+  static const settingsLicenseStandardTagline =
+      'settings.license_standard_tagline';
+  static const settingsLicenseStandardFeatures =
+      'settings.license_standard_features';
+  static const settingsLicenseBuyStandard = 'settings.license_buy_standard';
+  static const settingsLicenseProTagline = 'settings.license_pro_tagline';
+  static const settingsLicenseProFeatures = 'settings.license_pro_features';
+  static const settingsLicenseBuyPro = 'settings.license_buy_pro';
+  static const workspaceLicense = 'workspace.license';
   static const settingsAbout = 'settings.about';
   static const settingsAboutVersion = 'settings.about_version';
   static const settingsAboutUpdates = 'settings.about_updates';
