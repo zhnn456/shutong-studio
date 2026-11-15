@@ -210,9 +210,9 @@ const List<BundledOfficialSkillSpec> bundledOfficialSkillSpecs = [
     ],
     version: 5,
     contentHash:
-        'afb6d7f8bb687c2a5128a663b63a2832698c0887ba77c1c6880e6b1fb408b865',
+        '90056046064c8dfd11a8632a4de834ce5ddea7744f90634fca037975d7eb4986',
     sortOrder: 12,
-    updatedAt: '2026-11-12T13:53:54+08:00',
+    updatedAt: '2026-11-15T15:19:54+08:00',
   ),
 ];
 
