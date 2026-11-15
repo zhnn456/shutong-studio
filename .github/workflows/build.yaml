@@ -237,6 +237,18 @@ jobs:
         run: |
           ./third/depth-native/prepare-product-windows.ps1
           fastforge release --name release --jobs windows-exe --skip-clean
+      # 打包产物核对：dist 里没有 exe 直接失败，避免出现"流水线成功但 Release 没有安装包"。
+      - name: Verify installer output
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path dist -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
+          $exe = Get-ChildItem -Path dist -Recurse -Filter *.exe
+          if (-not $exe) { throw 'No installer produced in dist/' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/**/*.exe
+          if-no-files-found: error
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
