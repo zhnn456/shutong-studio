@@ -14,6 +14,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../localization/ai_run_failure_localization.dart';
 import '../../localization/locale_keys.dart';
 import '../../models/video/task_result.dart' show VideoException;
 import 'package:http/http.dart' as http;
@@ -809,6 +810,20 @@ class AiImageGenerationService {
             PluginExecutionError() => error.code,
             _ => null,
           };
+          final rawMessage = switch (error) {
+            ProviderFailure(:final message) => message,
+            PluginExecutionError(:final code, :final message)
+                when !code.startsWith('plugin_') && code != 'user_cancelled' =>
+              message,
+            _ => null,
+          };
+          final resolved = resolveProviderFailureMessage(
+            code: code,
+            message: rawMessage,
+          );
+          final resolvedMessage = resolved.messageKey != null
+              ? tr(resolved.messageKey!)
+              : resolved.providerMessage;
           if (const {
             'configuration_required',
             'invalid_request',
@@ -817,18 +832,22 @@ class AiImageGenerationService {
             'unavailable',
           }.contains(code)) {
             throw AiImageGenerationException(
-              tr(LocaleKeys.aiImageGenerationFailed),
+              resolvedMessage ?? tr(LocaleKeys.aiImageGenerationFailed),
               debugMessage: '$error',
+              code: classifyAiImageError(
+                resolved.providerMessage ?? rawMessage,
+              ),
             );
           }
           throw AiImageSubmissionException(
-            tr(
-              code == 'rejected'
-                  ? LocaleKeys.aiImageGenerationFailed
-                  : LocaleKeys.aiImageSubmissionUnknown,
-            ),
+            code == 'rejected'
+                ? (resolvedMessage ?? tr(LocaleKeys.aiImageGenerationFailed))
+                : tr(LocaleKeys.aiImageSubmissionUnknown),
             failureCode: code == 'rejected' ? 'rejected' : 'submission_unknown',
             debugMessage: '$error',
+            code: code == 'rejected'
+                ? classifyAiImageError(resolved.providerMessage ?? rawMessage)
+                : null,
           );
         }
         switch (submission) {
