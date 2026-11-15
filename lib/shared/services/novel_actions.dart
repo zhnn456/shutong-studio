@@ -16,7 +16,6 @@ import '../database/app_database.dart';
 import '../database/novel_content_database.dart';
 import '../models/content_kind.dart';
 import '../models/novel_type.dart';
-import '../models/production/default_style.dart';
 import '../logger/app_logger.dart';
 import '../utils/short_entity_id.dart';
 import '../utils/storage_paths.dart';
@@ -105,8 +104,6 @@ class NovelActionsService {
       await _initializeContentDatabase(
         contentDatabasePath: contentDatabasePath,
         contentKind: contentKind,
-        category: category,
-        tags: tags,
         plannedEpisodeCount: plannedEpisodeCount,
         setNovelOnboardingEligible: setNovelOnboardingEligible,
         populateContent: populateContent,
@@ -174,8 +171,6 @@ class NovelActionsService {
   Future<void> _initializeContentDatabase({
     required String contentDatabasePath,
     required String contentKind,
-    required String? category,
-    required List<String>? tags,
     required int? plannedEpisodeCount,
     required bool setNovelOnboardingEligible,
     required Future<void> Function(NovelContentDatabase content)?
@@ -185,22 +180,13 @@ class NovelActionsService {
     Object? operationError;
     try {
       if (contentKind == contentKindCanvas) {
-        await ScreenplayService(contentDatabase).createCanvasStructure(
-          style: initialProductionStyle(
-            category: category,
-            tags: tags ?? const [],
-          ),
-        );
+        await ScreenplayService(contentDatabase).createCanvasStructure();
       } else if (contentKind == contentKindScreenplay) {
         final seedScreenplay = _seedScreenplayWorkspace;
         if (seedScreenplay == null) {
-          await ScreenplayService(contentDatabase).createInitialStructure(
-            plannedEpisodeCount: plannedEpisodeCount,
-            style: initialProductionStyle(
-              category: category,
-              tags: tags ?? const [],
-            ),
-          );
+          await ScreenplayService(
+            contentDatabase,
+          ).createInitialStructure(plannedEpisodeCount: plannedEpisodeCount);
         } else {
           await seedScreenplay(contentDatabase, plannedEpisodeCount);
         }
