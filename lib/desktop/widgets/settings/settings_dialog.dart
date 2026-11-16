@@ -29,7 +29,6 @@ import '../../../shared/localization/app_localization.dart';
 import '../../../shared/localization/locale_keys.dart';
 import '../../../shared/providers/settings_providers.dart';
 import '../../../shared/theme/theme.dart';
-import '../license/license_pricing_view.dart';
 import '../../../shared/widgets/settings/about_settings_section.dart';
 import '../../../shared/widgets/settings/appearance_settings_section.dart';
 import '../../../shared/widgets/settings/debug_settings_section.dart';
@@ -55,7 +54,6 @@ part 'settings_backup_section.dart';
 part 'settings_trash_section.dart';
 part 'settings_about_section.dart';
 part 'settings_debug_section.dart';
-part 'settings_license_section.dart';
 
 /// 打开设置对话框并定位到「套餐」页 — 各功能门禁升级引导的统一跳转目标。
 
@@ -123,11 +121,6 @@ class SettingsDialog extends HookConsumerWidget {
       id: 'backup',
       labelKey: LocaleKeys.settingsBackup,
       icon: RevericIcons.archive_outlined,
-    ),
-    _SettingsNavItem(
-      id: 'license',
-      labelKey: LocaleKeys.settingsLicense,
-      icon: RevericIcons.crown,
     ),
     _SettingsNavItem(
       id: 'trash',
@@ -387,7 +380,6 @@ class SettingsDialog extends HookConsumerWidget {
       'reading' => const _ReadingSettingsSection(),
       'storage' => const StorageSettingsSection(),
       'backup' => const _BackupSettingsSection(),
-      'license' => const _LicenseSettingsSection(),
       'trash' => const _TrashSettingsSection(),
       'about' => const _AboutSettingsSection(),
       'debug' => _DebugSettingsSection(onClose: onCloseDebugSection),

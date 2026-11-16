@@ -92,9 +92,9 @@ import '../widgets/settings/settings_dialog.dart';
 import '../../shared/widgets/support/customer_service_feedback_dialog.dart';
 import '../widgets/agent_management/subagent_edit_panel.dart';
 import '../widgets/agent_management/subagent_prompt_edit_panel.dart';
-import '../widgets/community_row.dart';
 import '../widgets/user_profile_bar.dart';
 import '../widgets/update_entry.dart';
+import 'license_page.dart' as license_page;
 import 'home_management_lists.dart';
 import '../features/reading/reading_page.dart';
 import 'workspace_editor_page.dart';
@@ -1403,6 +1403,18 @@ class NovelHomePage extends HookConsumerWidget {
                 ),
                 _buildLeafNavItem(
                   context,
+                  icon: RevericIcons.crown,
+                  title: context.t(LocaleKeys.settingsLicense),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const license_page.LicensePage(),
+                      ),
+                    );
+                  },
+                ),
+                _buildLeafNavItem(
+                  context,
                   icon: RevericIcons.settings_outlined,
                   title: context.t(LocaleKeys.librarySettings),
                   onTap: onOpenSettings,
@@ -1430,16 +1442,6 @@ class NovelHomePage extends HookConsumerWidget {
             ),
           ),
           const DesktopUpdateEntry(),
-          Divider(height: 1, thickness: 1, color: colors.border),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(
-              RevericSpacing.x2l,
-              RevericSpacing.md,
-              RevericSpacing.x2l,
-              0,
-            ),
-            child: CommunityRow(),
-          ),
           const UserProfileBar(),
         ],
       ),

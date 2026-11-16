@@ -66,11 +66,6 @@ final class _RailAgentTarget extends _RailTarget {
   final _AgentItem item;
 }
 
-/// 授权与商业方案页：独立整页入口，不改变中栏 section、不参与高亮判定。
-final class _RailLicenseTarget extends _RailTarget {
-  const _RailLicenseTarget();
-}
-
 /// 图鉴：势力 / 生物 / 物品 / 技能四类共用一个入口，中栏按类型分组。
 /// 四类中任一 section 激活时都算选中；落点是上次查看的类型。
 final class _RailCompendiumTarget extends _RailTarget {
@@ -107,11 +102,6 @@ class _RailGroup {
 const _RailGroup _systemGroup = _RailGroup(
   headerKey: LocaleKeys.workspaceSidebarGroupSystem,
   entries: <_RailEntry>[
-    _RailEntry(
-      icon: _iconCrown,
-      labelKey: LocaleKeys.workspaceLicense,
-      target: _RailLicenseTarget(),
-    ),
     _RailEntry(
       icon: _iconGridNine,
       labelKey: LocaleKeys.workspaceOverview,
@@ -344,7 +334,6 @@ extension _LeftSidebarRail on _LeftSidebarState {
         widget.isAiChatExpandedActive ||
             (!hasExclusiveMain && _panelMode == _PanelMode.aiChats),
       _RailAgentTarget(:final item) => _activeAgentItem == item,
-      _RailLicenseTarget() => false,
     };
   }
 
@@ -370,12 +359,6 @@ extension _LeftSidebarRail on _LeftSidebarState {
         _activatePanel(_PanelMode.aiChats);
       case _RailAgentTarget(:final item):
         _activateAgentItem(item);
-      case _RailLicenseTarget():
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const license_page.LicensePage(),
-          ),
-        );
     }
   }
 
