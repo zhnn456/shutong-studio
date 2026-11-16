@@ -32,9 +32,29 @@ const String kKeygatePublicKeyHex = String.fromEnvironment(
       '5c345f515036ee78a1e4efe749edee4705a277acafe5e488c48bf042954e787b',
 );
 
+/// 备用接入地址（国内中转域名等）。留空时只走主地址。
+/// 主地址网络不可达 / 5xx 时按顺序自动切换，业务错误（授权无效、名额满）不切换。
+const List<String> kKeygateFallbackBaseUrls = <String>[];
+
+/// 实际请求候选地址序列：主地址在前，去掉空值与重复项。
+List<String> keygateEndpointCandidates() {
+  final ordered = <String>[kKeygateBaseUrl, ...kKeygateFallbackBaseUrls];
+  final unique = <String>[];
+  for (final raw in ordered) {
+    final candidate = raw.trim().replaceAll(RegExp(r'/+$'), '');
+    if (candidate.isEmpty || unique.contains(candidate)) {
+      continue;
+    }
+    unique.add(candidate);
+  }
+  return unique;
+}
+
 /// 离线宽限：token 的 check-in 时间过期后，仍允许离线使用的天数。
 /// 超过宽限且无法联网刷新时判定为未授权。
-const int kKeygateOfflineGraceDays = 3;
+/// 取值偏宽：国内访问境外授权服务器偶有跨境抖动，宁可多给几天，
+/// 也不要让正版用户在连续几次网络失败后被误降级成免费版。
+const int kKeygateOfflineGraceDays = 7;
 
 /// 购买/升级落地入口。当前没有独立商城，走邮件下单：
 /// 客户发邮件说明要买的套餐 → 回授权码。有商城页后只需替换这一行的 URL。

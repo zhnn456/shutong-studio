@@ -23,6 +23,7 @@ import 'package:reveric/shared/database/app_database.dart';
 import 'package:reveric/shared/database/novel_content_database.dart';
 import 'package:reveric/shared/models/license.dart';
 import 'package:reveric/shared/services/demo_novel.dart';
+import 'package:reveric/shared/services/device_id_service.dart';
 import 'package:reveric/shared/services/keygate/keygate_token.dart';
 import 'package:reveric/shared/services/license_service.dart';
 import 'package:reveric/shared/services/novel_actions.dart';
@@ -268,6 +269,22 @@ void main() {
       );
       // 1 部在额度内，不抛。
       await NovelQuotaGate.ensureIncomingWithinLimit(1);
+    });
+
+    test('设备标识与当前机器不同源时判为不一致（配置目录不能整包搬走）', () async {
+      DeviceIdService.resetHardwareMatchCacheForTesting();
+      SharedPreferences.setMockInitialValues({
+        'device_id': 'a' * 64,
+      });
+      expect(await DeviceIdService().matchesCurrentHardware(), isFalse);
+    });
+
+    test('随机 UUID 形态的设备标识不参与同源判定（读不到硬件指纹的环境不误伤）', () async {
+      DeviceIdService.resetHardwareMatchCacheForTesting();
+      SharedPreferences.setMockInitialValues({
+        'device_id': 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      });
+      expect(await DeviceIdService().matchesCurrentHardware(), isTrue);
     });
   });
 

@@ -69,6 +69,9 @@ class LicenseService {
     if (token == null || licenseKey == null) {
       return const LicenseState.free();
     }
+    if (!await DeviceIdService().matchesCurrentHardware()) {
+      return const LicenseState.free();
+    }
     final deviceId = state.deviceId ?? await DeviceIdService().getOrCreate();
     final claims = await KeygateToken.verify(
       token: token,
@@ -105,18 +108,17 @@ class LicenseService {
       );
     }
 
+    if (!await DeviceIdService().matchesCurrentHardware()) {
+      await DeviceIdService().refreshForCurrentHardware();
+    }
     final deviceId = await DeviceIdService().getOrCreate();
-    final client = KeygateClient(baseUrl: kKeygateBaseUrl);
-    KeygateResult result;
-    try {
-      result = await client.activate(
+    final result = await _withFailover(
+      (client) => client.activate(
         licenseKey: trimmed,
         identifier: deviceId,
         label: _deviceLabel(),
-      );
-    } finally {
-      client.dispose();
-    }
+      ),
+    );
     if (!result.success) {
       return LicenseActivationResult.failure(
         _messageKeyOf(result),
@@ -171,16 +173,9 @@ class LicenseService {
     if (licenseKey == null || deviceId == null) {
       return current;
     }
-    final client = KeygateClient(baseUrl: kKeygateBaseUrl);
-    KeygateResult result;
-    try {
-      result = await client.verify(
-        licenseKey: licenseKey,
-        identifier: deviceId,
-      );
-    } finally {
-      client.dispose();
-    }
+    final result = await _withFailover(
+      (client) => client.verify(licenseKey: licenseKey, identifier: deviceId),
+    );
 
     if (!result.success) {
       // 404 = 授权已失效（吊销/过期/换机）；网络与服务端错误保留本地状态走宽限。
@@ -214,18 +209,45 @@ class LicenseService {
     final licenseKey = current.licenseKey;
     final deviceId = current.deviceId;
     if (licenseKey != null && deviceId != null && kKeygateBaseUrl.isNotEmpty) {
-      final client = KeygateClient(baseUrl: kKeygateBaseUrl);
-      try {
-        await client.deactivate(licenseKey: licenseKey, identifier: deviceId);
-      } finally {
-        client.dispose();
-      }
+      await _withFailover(
+        (client) =>
+            client.deactivate(licenseKey: licenseKey, identifier: deviceId),
+      );
     }
     await clear();
     return true;
   }
 
   // ---------------- 内部 ----------------
+
+  /// 依次尝试候选接入地址（主地址 + 备用中转域名）。
+  /// 只在「网络不可达 / 服务端 5xx」时换下一个；业务类错误
+  /// （授权无效、名额已满、被锁）立即返回，避免同一授权码被重复打到别的节点。
+  static Future<KeygateResult> _withFailover(
+    Future<KeygateResult> Function(KeygateClient client) call,
+  ) async {
+    final candidates = keygateEndpointCandidates();
+    KeygateResult? lastFailure;
+    for (final baseUrl in candidates) {
+      final client = KeygateClient(baseUrl: baseUrl);
+      try {
+        final result = await call(client);
+        if (result.success) {
+          return result;
+        }
+        lastFailure = result;
+        final code = result.errorCode;
+        if (code != KeygateErrorCode.network &&
+            code != KeygateErrorCode.serverError) {
+          return result;
+        }
+      } finally {
+        client.dispose();
+      }
+    }
+    return lastFailure ??
+        const KeygateResult.failure(KeygateErrorCode.notConfigured);
+  }
 
   static LicenseState _stateFromClaims(
     LicenseState base,

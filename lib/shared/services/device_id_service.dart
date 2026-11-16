@@ -36,9 +36,55 @@ class DeviceIdService {
     return id;
   }
 
+  static bool? _hardwareMatchCache;
+
+  static void resetHardwareMatchCacheForTesting() {
+    _hardwareMatchCache = null;
+  }
+
+  Future<bool> matchesCurrentHardware() async {
+    final cached = _hardwareMatchCache;
+    if (cached != null) {
+      return cached;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(_key);
+    if (existing == null || existing.isEmpty) {
+      return false;
+    }
+    if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(existing)) {
+      _hardwareMatchCache = true;
+      return true;
+    }
+    final derived = await deriveFromHardware();
+    if (derived == null) {
+      _hardwareMatchCache = true;
+      return true;
+    }
+    final match = derived == existing;
+    _hardwareMatchCache = match;
+    return match;
+  }
+
+  Future<String?> deriveFromHardware() async {
+    final fingerprint = await _readHardwareFingerprint();
+    if (fingerprint == null || fingerprint.isEmpty) {
+      return null;
+    }
+    return sha256.convert(utf8.encode(fingerprint)).toString();
+  }
+
+  Future<String> refreshForCurrentHardware() async {
+    final prefs = await SharedPreferences.getInstance();
+    final derived = await deriveFromHardware();
+    final id = derived ?? _uuid.v4();
+    await prefs.setString(_key, id);
+    _hardwareMatchCache = true;
+    return id;
+  }
+
   /// 生成新的随机 device_id 并立即覆盖当前持久化值。
-  ///
-  /// 仅用于调试：重新读取硬件指纹会得到相同的稳定 ID，
+  ///  /// 仅用于调试：重新读取硬件指纹会得到相同的稳定 ID，
   /// 因此此操作刻意使用随机 UUID。
   Future<String> regenerate() async {
     final id = _uuid.v4();
