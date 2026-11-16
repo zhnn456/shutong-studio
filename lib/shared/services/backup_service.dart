@@ -1645,6 +1645,27 @@ String _extractZipSafely({
         try {
           stage = 'decompress';
           entry.writeContent(output);
+          // archive 版本差异会让损坏的 DEFLATE 块静默解出脏数据而不是抛错，
+          // 这里按条目 CRC 复核落盘内容，避免坏包被当作有效备份恢复。
+          final expectedCrc = entry.crc32;
+          if (expectedCrc != 0) {
+            var actualCrc = 0;
+            final written = File(outputPath).openSync();
+            try {
+              var chunk = written.readSync(1 << 16);
+              while (chunk.isNotEmpty) {
+                actualCrc = getCrc32(chunk, actualCrc);
+                chunk = written.readSync(1 << 16);
+              }
+            } finally {
+              written.closeSync();
+            }
+            if (actualCrc != expectedCrc) {
+              throw FormatException(
+                'ZIP entry CRC mismatch computed=$actualCrc expected=$expectedCrc',
+              );
+            }
+          }
           stage = 'output_close';
         } finally {
           output.closeSync();

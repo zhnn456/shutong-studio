@@ -128,7 +128,8 @@ void main() {
       expect(log, contains('stage=decompress'));
       expect(log, contains('entry="avatars/broken.bin"'));
       expect(log, contains('expectedCrc32='));
-      expect(log, contains('Filter error, bad data'));
+      // 本地 archive 版本对损坏 DEFLATE 块不抛错，改由解压后 CRC 复核拒绝。
+      expect(log, contains('CRC mismatch'));
       expect(tempDir.listSync(), isEmpty);
     },
   );
