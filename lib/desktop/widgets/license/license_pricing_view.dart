@@ -1,24 +1,41 @@
 // 职责: 授权与商业版本页 — 展示免费版 / 标准版 / 专业版三档权益与价格、
-//   当前授权状态、授权码激活入口与购买入口。被左侧栏「升级授权」一级入口
-//   与设置页「授权」分区共用。
+//   当前授权状态、授权码激活入口，右侧常驻「购买与咨询」板块（二维码 + 邮件 + 反馈）。
 // 关联文件:
 //   lib/shared/models/license.dart
 //   lib/shared/services/license_service.dart
 //   lib/desktop/pages/license_page.dart
-//   lib/desktop/widgets/settings/settings_license_section.dart
+//   lib/shared/components/reveric_button.dart
+//   lib/shared/components/reveric_text_field.dart
+//   lib/shared/components/reveric_dialog.dart
+//   lib/shared/widgets/support/customer_service_feedback_dialog.dart
+//   assets/images/customer_service_qr.jpg
 //   assets/translations/zh-CN/settings.json
 //   assets/translations/en/settings.json
+// 遵循的 Rules:
+//   .agents/rules/design-system.md
+//   .agents/rules/icons.md
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../../shared/app_config.dart';
+import '../../../shared/components/reveric_button.dart';
+import '../../../shared/components/reveric_dialog.dart';
+import '../../../shared/components/reveric_icon_button.dart';
+import '../../../shared/components/reveric_text_field.dart';
 import '../../../shared/localization/app_localization.dart';
 import '../../../shared/localization/locale_keys.dart';
 import '../../../shared/models/license.dart';
 import '../../../shared/services/license_service.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/support/customer_service_feedback_dialog.dart';
 
-/// 三档商业方案页。宽屏三列横排，窄屏纵向堆叠，卡片等高。
+/// 官方客服二维码资源路径。
+const String _customerServiceQrAsset = 'assets/images/customer_service_qr.jpg';
+
+/// 宽屏下三档卡片的统一高度，保证三个购买按钮落在同一条水平线上。
+const double _planCardHeight = 356;
+
+/// 三档商业方案页：左列方案与激活，右列购买与咨询。
 class LicensePricingView extends StatefulWidget {
   const LicensePricingView({super.key});
 
@@ -119,29 +136,47 @@ class _LicensePricingViewState extends State<LicensePricingView> {
     );
   }
 
-  Future<void> _openPurchase() async {
-    final uri = Uri.tryParse(kPurchasePageUrl);
-    if (uri == null) {
-      return;
-    }
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (launched) {
-        return;
-      }
-    } catch (_) {
-      // 打不开外部浏览器时退化为复制链接。
-    }
-    await Clipboard.setData(const ClipboardData(text: kPurchasePageUrl));
+  /// 购买入口不再离开应用，统一引导到客服二维码，避免指向无效的外链。
+  Future<void> _showPurchaseDialog() {
+    return showRevericDialog<void>(
+      context: context,
+      builder: (_) => RevericDialog(
+        title: context.t(LocaleKeys.settingsLicensePurchaseTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _QrImage(size: 200),
+            const SizedBox(height: RevericSpacing.x2l),
+            Text(
+              context.t(LocaleKeys.settingsLicensePurchaseBody),
+              style: RevericTheme.typographyOf(
+                context,
+              ).ui.copyWith(color: RevericTheme.colorsOf(context).textSecondary),
+            ),
+            const SizedBox(height: RevericSpacing.lg),
+            _ContactSteps(),
+            const SizedBox(height: RevericSpacing.x2l),
+            _EmailRow(onCopy: _copyEmail),
+          ],
+        ),
+        actions: [
+          RevericButton.secondary(
+            label: context.t(LocaleKeys.commonClose),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _copyEmail() async {
+    await Clipboard.setData(const ClipboardData(text: revericFeedbackEmail));
     if (!mounted) {
       return;
     }
-    messenger.showSnackBar(
-      SnackBar(content: Text(context.t(LocaleKeys.settingsLicenseCopyLinkDone))),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.t(LocaleKeys.commonCopied))),
     );
   }
 
@@ -183,15 +218,117 @@ class _LicensePricingViewState extends State<LicensePricingView> {
     final colors = RevericTheme.colorsOf(context);
     final typo = RevericTheme.typographyOf(context);
 
-    final cards = <Widget>[
+    final main = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.t(LocaleKeys.settingsLicensePricingTitle),
+          style: typo.heading2.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(height: RevericSpacing.xs),
+        Text(
+          context.t(LocaleKeys.settingsLicensePricingSubtitle),
+          style: typo.ui.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: RevericSpacing.x2l),
+        _StatusBar(
+          loading: _loading,
+          title: _loading
+              ? context.t(LocaleKeys.settingsLicenseLoading)
+              : context.t(
+                  LocaleKeys.settingsLicenseCurrentTier,
+                  namedArgs: <String, String>{'tier': _tierLabel(context)},
+                ),
+          expiryText: _expiryText(context),
+          deviceText: _state.isActivated
+              ? context.t(
+                  LocaleKeys.settingsLicenseDeviceBound,
+                  namedArgs: <String, String>{'device': _deviceLabel()},
+                )
+              : null,
+          onDeactivate: _state.isActivated && !_activating ? _deactivate : null,
+        ),
+        const SizedBox(height: RevericSpacing.x2l),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 720;
+            final cards = _buildCards(context, fillHeight: wide);
+            if (wide) {
+              return SizedBox(
+                height: _planCardHeight,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < cards.length; i++) ...[
+                      if (i > 0) const SizedBox(width: RevericSpacing.lg),
+                      Expanded(child: cards[i]),
+                    ],
+                  ],
+                ),
+              );
+            }
+            return Column(
+              children: [
+                for (var i = 0; i < cards.length; i++) ...[
+                  if (i > 0) const SizedBox(height: RevericSpacing.md),
+                  cards[i],
+                ],
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: RevericSpacing.x2l),
+        _ActivateCard(
+          controller: _codeController,
+          activating: _activating,
+          onActivate: _activate,
+        ),
+      ],
+    );
+
+    final side = _ContactCard(onCopyEmail: _copyEmail);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 1040;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(RevericSpacing.x4l),
+          child: wide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: main),
+                    const SizedBox(width: RevericSpacing.x4l),
+                    SizedBox(width: 296, child: side),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    main,
+                    const SizedBox(height: RevericSpacing.x2l),
+                    side,
+                  ],
+                ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildCards(BuildContext context, {required bool fillHeight}) {
+    final currentLabel = context.t(LocaleKeys.settingsLicenseCurrentBadge);
+    return [
       _PlanCard(
         title: context.t(LocaleKeys.settingsLicenseTierFree),
         tagline: context.t(LocaleKeys.settingsLicenseFreeTagline),
         price: context.t(LocaleKeys.settingsLicenseFreePrice),
         features: context.t(LocaleKeys.settingsLicenseFreeFeatures),
         isCurrent: _state.tier == LicenseTier.free,
-        actionLabel: context.t(LocaleKeys.settingsLicenseFreeCta),
-        onAction: null,
+        actionLabel: _state.tier == LicenseTier.free
+            ? currentLabel
+            : context.t(LocaleKeys.settingsLicenseFreeCta),
+        onPressed: null,
+        fillHeight: fillHeight,
       ),
       _PlanCard(
         title: context.t(LocaleKeys.settingsLicenseTierStandard),
@@ -199,9 +336,14 @@ class _LicensePricingViewState extends State<LicensePricingView> {
         price: context.t(LocaleKeys.settingsLicenseStandardPrice),
         features: context.t(LocaleKeys.settingsLicenseStandardFeatures),
         isCurrent: _state.tier == LicenseTier.standard,
-        actionLabel: context.t(LocaleKeys.settingsLicenseBuyStandard),
-        onAction: _openPurchase,
+        actionLabel: _state.tier == LicenseTier.standard
+            ? currentLabel
+            : context.t(LocaleKeys.settingsLicenseBuyStandard),
+        onPressed: _state.tier == LicenseTier.standard
+            ? null
+            : _showPurchaseDialog,
         highlighted: true,
+        fillHeight: fillHeight,
       ),
       _PlanCard(
         title: context.t(LocaleKeys.settingsLicenseTierPro),
@@ -209,150 +351,88 @@ class _LicensePricingViewState extends State<LicensePricingView> {
         price: context.t(LocaleKeys.settingsLicenseProPrice),
         features: context.t(LocaleKeys.settingsLicenseProFeatures),
         isCurrent: _state.tier == LicenseTier.pro,
-        actionLabel: context.t(LocaleKeys.settingsLicenseBuyPro),
-        onAction: _openPurchase,
+        actionLabel: _state.tier == LicenseTier.pro
+            ? currentLabel
+            : context.t(LocaleKeys.settingsLicenseBuyPro),
+        onPressed: _state.tier == LicenseTier.pro ? null : _showPurchaseDialog,
+        fillHeight: fillHeight,
       ),
     ];
+  }
+}
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(RevericSpacing.x4l),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+/// 顶部当前授权状态条：档位、到期时间、绑定设备与解绑入口。
+class _StatusBar extends StatelessWidget {
+  const _StatusBar({
+    required this.loading,
+    required this.title,
+    required this.expiryText,
+    required this.deviceText,
+    required this.onDeactivate,
+  });
+
+  final bool loading;
+  final String title;
+  final String? expiryText;
+  final String? deviceText;
+  final VoidCallback? onDeactivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: RevericSpacing.x3l,
+        vertical: RevericSpacing.lg,
+      ),
+      decoration: BoxDecoration(
+        color: colors.surfaceDim,
+        borderRadius: BorderRadius.circular(RevericRadius.medium),
+        border: Border.all(color: colors.borderSubtle),
+      ),
+      child: Row(
         children: [
-          Text(
-            context.t(LocaleKeys.settingsLicensePricingTitle),
-            style: typo.heading2.copyWith(color: colors.textPrimary),
+          RevericIcon(
+            RevericIcons.crown,
+            size: 16,
+            color: colors.accent,
           ),
-          const SizedBox(height: RevericSpacing.sm),
-          Text(
-            context.t(LocaleKeys.settingsLicensePricingSubtitle),
-            style: typo.ui.copyWith(color: colors.textSecondary),
-          ),
-          const SizedBox(height: RevericSpacing.lg),
-          // 当前状态条
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(RevericSpacing.md),
-            decoration: BoxDecoration(
-              color: colors.surfaceDim,
-              borderRadius: BorderRadius.circular(RevericRadius.medium),
-            ),
-            child: _loading
-                ? Text(
-                    context.t(LocaleKeys.settingsLicenseLoading),
-                    style: typo.ui.copyWith(color: colors.textSecondary),
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              context.t(
-                                LocaleKeys.settingsLicenseCurrentTier,
-                                namedArgs: <String, String>{
-                                  'tier': _tierLabel(context),
-                                },
-                              ),
-                              style: typo.uiSemibold.copyWith(
-                                color: colors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          if (_expiryText(context) != null)
-                            Text(
-                              _expiryText(context)!,
-                              style: typo.ui.copyWith(color: colors.textSecondary),
-                            ),
-                        ],
-                      ),
-                      if (_state.isActivated) ...[
-                        const SizedBox(height: RevericSpacing.sm),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                context.t(
-                                  LocaleKeys.settingsLicenseDeviceBound,
-                                  namedArgs: <String, String>{
-                                    'device': _deviceLabel(),
-                                  },
-                                ),
-                                style: typo.ui.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: _activating ? null : _deactivate,
-                              child: Text(
-                                context.t(LocaleKeys.settingsLicenseDeactivate),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-          ),
-          const SizedBox(height: RevericSpacing.x2l),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 880;
-              if (isWide) {
-                return IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (var i = 0; i < cards.length; i++) ...[
-                        if (i > 0) const SizedBox(width: RevericSpacing.lg),
-                        Expanded(child: cards[i]),
-                      ],
-                    ],
-                  ),
-                );
-              }
-              return Column(
-                children: [
-                  for (var i = 0; i < cards.length; i++) ...[
-                    if (i > 0) const SizedBox(height: RevericSpacing.md),
-                    cards[i],
-                  ],
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: RevericSpacing.x4l),
-          Text(
-            context.t(LocaleKeys.settingsLicenseCodeLabel),
-            style: typo.uiSemibold.copyWith(color: colors.textPrimary),
-          ),
-          const SizedBox(height: RevericSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _codeController,
-                  decoration: InputDecoration(
-                    hintText: context.t(LocaleKeys.settingsLicenseCodeHint),
-                    border: const OutlineInputBorder(),
-                    isDense: true,
+          const SizedBox(width: RevericSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: typo.uiSemibold.copyWith(
+                    color: loading ? colors.textSecondary : colors.textPrimary,
                   ),
                 ),
-              ),
-              const SizedBox(width: RevericSpacing.md),
-              ElevatedButton(
-                onPressed: _activating ? null : _activate,
-                child: Text(context.t(LocaleKeys.settingsLicenseActivate)),
-              ),
-            ],
+                if (deviceText != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    deviceText!,
+                    style: typo.uiSmall.copyWith(color: colors.textMuted),
+                  ),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: RevericSpacing.sm),
-          Text(
-            context.t(LocaleKeys.settingsLicenseDescription),
-            style: typo.ui.copyWith(color: colors.textMuted),
-          ),
+          if (expiryText != null)
+            Text(
+              expiryText!,
+              style: typo.uiSmall.copyWith(color: colors.textSecondary),
+            ),
+          if (onDeactivate != null) ...[
+            const SizedBox(width: RevericSpacing.sm),
+            RevericButton.text(
+              label: context.t(LocaleKeys.settingsLicenseDeactivate),
+              onPressed: onDeactivate,
+              size: RevericButtonSize.compact,
+            ),
+          ],
         ],
       ),
     );
@@ -368,8 +448,9 @@ class _PlanCard extends StatelessWidget {
     required this.features,
     required this.actionLabel,
     required this.isCurrent,
-    this.onAction,
+    this.onPressed,
     this.highlighted = false,
+    this.fillHeight = false,
   });
 
   final String title;
@@ -378,28 +459,66 @@ class _PlanCard extends StatelessWidget {
   final String features;
   final String actionLabel;
   final bool isCurrent;
-  final VoidCallback? onAction;
   final bool highlighted;
+  final VoidCallback? onPressed;
+  final bool fillHeight;
 
   @override
   Widget build(BuildContext context) {
     final colors = RevericTheme.colorsOf(context);
     final typo = RevericTheme.typographyOf(context);
-    final borderColor = isCurrent || highlighted ? colors.accent : colors.border;
     final featureLines = features
         .split('\n')
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
         .toList();
+    final borderColor = highlighted ? colors.accent : colors.borderSubtle;
+    final actionButton = onPressed == null
+        ? RevericButton.secondary(label: actionLabel, onPressed: null)
+        : highlighted
+        ? RevericButton.primary(label: actionLabel, onPressed: onPressed)
+        : RevericButton.secondary(label: actionLabel, onPressed: onPressed);
+    final featureList = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final line in featureLines)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Container(
+                    width: 4,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: RevericSpacing.sm),
+                Expanded(
+                  child: Text(
+                    line,
+                    style: typo.ui.copyWith(color: colors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
 
     return Container(
-      padding: const EdgeInsets.all(RevericSpacing.lg),
+      padding: const EdgeInsets.all(RevericSpacing.x3l),
       decoration: BoxDecoration(
-        color: colors.surfaceDim,
-        borderRadius: BorderRadius.circular(RevericRadius.medium),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(RevericRadius.card),
         border: Border.all(
           color: borderColor,
-          width: isCurrent || highlighted ? 1.5 : 1,
+          width: highlighted ? 1.5 : 1,
         ),
       ),
       child: Column(
@@ -414,79 +533,269 @@ class _PlanCard extends StatelessWidget {
                 ),
               ),
               if (isCurrent)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: RevericSpacing.sm,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.accent,
-                    borderRadius: BorderRadius.circular(RevericRadius.small),
-                  ),
-                  child: Text(
-                    context.t(LocaleKeys.settingsLicenseCurrentBadge),
-                    style: typo.uiSmall.copyWith(color: colors.onAccent),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: RevericSpacing.sm,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.accent,
+                      borderRadius: BorderRadius.circular(RevericRadius.small),
+                    ),
+                    child: Text(
+                      context.t(LocaleKeys.settingsLicenseCurrentBadge),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: typo.uiSmall.copyWith(color: colors.onAccent),
+                    ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: RevericSpacing.sm),
+          const SizedBox(height: RevericSpacing.md),
           Text(
             price,
-            style: typo.heading2.copyWith(
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 26,
-            ),
+            style: typo.display.copyWith(color: colors.textPrimary),
           ),
           const SizedBox(height: 2),
           Text(
             tagline,
             style: typo.uiSmall.copyWith(color: colors.textSecondary),
           ),
-          const SizedBox(height: RevericSpacing.md),
-          for (final line in featureLines)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Container(
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: colors.accent,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: RevericSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      line,
-                      style: typo.ui.copyWith(color: colors.textSecondary),
-                    ),
-                  ),
-                ],
+          const SizedBox(height: RevericSpacing.x2l),
+          if (fillHeight)
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child: featureList,
               ),
-            ),
-          const SizedBox(height: RevericSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: onAction == null
-                ? OutlinedButton(
-                    onPressed: null,
-                    child: Text(actionLabel),
-                  )
-                : ElevatedButton(
-                    onPressed: onAction,
-                    child: Text(actionLabel),
-                  ),
+            )
+          else
+            featureList,
+          const SizedBox(height: RevericSpacing.lg),
+          SizedBox(width: double.infinity, child: actionButton),
+        ],
+      ),
+    );
+  }
+}
+
+/// 授权码激活区：独立卡片，和方案卡片保持同一视觉层级。
+class _ActivateCard extends StatelessWidget {
+  const _ActivateCard({
+    required this.controller,
+    required this.activating,
+    required this.onActivate,
+  });
+
+  final TextEditingController controller;
+  final bool activating;
+  final VoidCallback onActivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(RevericSpacing.x3l),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(RevericRadius.card),
+        border: Border.all(color: colors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.t(LocaleKeys.settingsLicenseActivateTitle),
+            style: typo.uiSemibold.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            context.t(LocaleKeys.settingsLicenseDescription),
+            style: typo.uiSmall.copyWith(color: colors.textMuted),
+          ),
+          const SizedBox(height: RevericSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: RevericTextField(
+                  controller: controller,
+                  hintText: context.t(LocaleKeys.settingsLicenseCodeHint),
+                  onSubmitted: (_) => onActivate(),
+                ),
+              ),
+              const SizedBox(width: RevericSpacing.lg),
+              RevericButton.primary(
+                label: context.t(LocaleKeys.settingsLicenseActivate),
+                loading: activating,
+                onPressed: onActivate,
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 右列购买与咨询板块：客服二维码 + 购买步骤 + 邮件与反馈入口。
+class _ContactCard extends StatelessWidget {
+  const _ContactCard({required this.onCopyEmail});
+
+  final VoidCallback onCopyEmail;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    return Container(
+      padding: const EdgeInsets.all(RevericSpacing.x3l),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(RevericRadius.card),
+        border: Border.all(color: colors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              RevericIcon(
+                RevericIcons.crown,
+                size: 16,
+                color: colors.accent,
+              ),
+              const SizedBox(width: RevericSpacing.sm),
+              Expanded(
+                child: Text(
+                  context.t(LocaleKeys.settingsLicenseContactTitle),
+                  style: typo.uiSemibold.copyWith(color: colors.textPrimary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: RevericSpacing.lg),
+          _QrImage(size: 216),
+          const SizedBox(height: RevericSpacing.lg),
+          Text(
+            context.t(LocaleKeys.settingsLicenseContactHint),
+            style: typo.uiSmall.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: RevericSpacing.x2l),
+          _ContactSteps(),
+          const SizedBox(height: RevericSpacing.x2l),
+          Container(height: 1, color: colors.borderSubtle),
+          const SizedBox(height: RevericSpacing.lg),
+          _EmailRow(onCopy: onCopyEmail),
+          const SizedBox(height: RevericSpacing.lg),
+          RevericButton.secondary(
+            label: context.t(LocaleKeys.homeNavCustomerService),
+            icon: RevericIcons.chat_rounded,
+            onPressed: () =>
+                showCustomerServiceFeedbackDialog(context: context),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 二维码图片：浅色描边卡内居中，避免直接压在底色上显得脏。
+class _QrImage extends StatelessWidget {
+  const _QrImage({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(RevericSpacing.sm),
+        decoration: BoxDecoration(
+          color: colors.canvas,
+          borderRadius: BorderRadius.circular(RevericRadius.medium),
+          border: Border.all(color: colors.borderSubtle),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(RevericRadius.small),
+          child: Image.asset(
+            _customerServiceQrAsset,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            gaplessPlayback: true,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 购买三步说明，购买弹窗与右侧板块共用。
+class _ContactSteps extends StatelessWidget {
+  const _ContactSteps();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final steps = [
+      context.t(LocaleKeys.settingsLicenseStepBuy),
+      context.t(LocaleKeys.settingsLicenseStepPay),
+      context.t(LocaleKeys.settingsLicenseStepCode),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final step in steps)
+          Padding(
+            padding: const EdgeInsets.only(bottom: RevericSpacing.xxs),
+            child: Text(
+              step,
+              style: typo.uiSmall.copyWith(color: colors.textSecondary),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// 邮件咨询行：地址常显 + 复制按钮。
+class _EmailRow extends StatelessWidget {
+  const _EmailRow({required this.onCopy});
+
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    return Row(
+      children: [
+        RevericIcon(
+          RevericIcons.envelope,
+          size: RevericSizes.buttonIconSize,
+          color: colors.textMuted,
+        ),
+        const SizedBox(width: RevericSpacing.sm),
+        Expanded(
+          child: Text(
+            revericFeedbackEmail,
+            style: typo.uiSmall.copyWith(color: colors.textPrimary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        RevericIconButton(
+          icon: RevericIcons.copy,
+          tooltip: context.t(LocaleKeys.commonCopy),
+          onPressed: onCopy,
+        ),
+      ],
     );
   }
 }

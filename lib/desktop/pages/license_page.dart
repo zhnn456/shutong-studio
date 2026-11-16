@@ -3,11 +3,12 @@
 // 关联文件:
 //   lib/desktop/widgets/license/license_pricing_view.dart
 //   lib/desktop/pages/home.dart
-//   lib/shared/localization/locale_keys.dart
+//   lib/shared/theme/reveric_icons.dart
 import 'package:flutter/material.dart';
 
 import '../../shared/localization/app_localization.dart';
 import '../../shared/localization/locale_keys.dart';
+import '../../shared/theme/theme.dart';
 import '../widgets/license/license_pricing_view.dart';
 
 /// 授权与商业方案页。
@@ -16,10 +17,36 @@ class LicensePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
     return Scaffold(
+      backgroundColor: colors.canvas,
       appBar: AppBar(
-        title: Text(context.t(LocaleKeys.settingsLicense)),
+        backgroundColor: colors.canvas,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        leadingWidth: RevericSizes.iconButtonSize + RevericSpacing.x2l,
+        leading: Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: RevericSpacing.sm),
+            child: IconButton(
+              tooltip: context.t(LocaleKeys.settingsLicenseBack),
+              icon: RevericIcon(
+                RevericIcons.arrow_back,
+                size: RevericSizes.buttonIconSize,
+                color: colors.textPrimary,
+              ),
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+          ),
+        ),
+        titleSpacing: 0,
+        title: Text(
+          context.t(LocaleKeys.settingsLicense),
+          style: typo.uiSemibold.copyWith(color: colors.textPrimary),
+        ),
       ),
       body: const LicensePricingView(),
     );

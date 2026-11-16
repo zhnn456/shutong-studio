@@ -4801,6 +4801,16 @@ abstract final class LocaleKeys {
   static const settingsLicenseProTagline = 'settings.license_pro_tagline';
   static const settingsLicenseProFeatures = 'settings.license_pro_features';
   static const settingsLicenseBuyPro = 'settings.license_buy_pro';
+  static const settingsLicenseContactTitle = 'settings.license_contact_title';
+  static const settingsLicenseContactHint = 'settings.license_contact_hint';
+  static const settingsLicenseContactEmail = 'settings.license_contact_email';
+  static const settingsLicensePurchaseTitle = 'settings.license_purchase_title';
+  static const settingsLicensePurchaseBody = 'settings.license_purchase_body';
+  static const settingsLicenseBack = 'settings.license_back';
+  static const settingsLicenseActivateTitle = 'settings.license_activate_title';
+  static const settingsLicenseStepBuy = 'settings.license_step_buy';
+  static const settingsLicenseStepPay = 'settings.license_step_pay';
+  static const settingsLicenseStepCode = 'settings.license_step_code';
   static const workspaceLicense = 'workspace.license';
   static const settingsAbout = 'settings.about';
   static const settingsAboutVersion = 'settings.about_version';
