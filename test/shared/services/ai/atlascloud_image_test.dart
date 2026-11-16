@@ -54,6 +54,51 @@ void main() {
     await support.delete(recursive: true);
   });
 
+  test(
+    'unknown model preserves its ID for reference edits and sends chosen pixels',
+    () async {
+      const model = 'custom/image/edit';
+      final custom = provider.copyWith(imageModels: [model]);
+      final caps = ProductionImageCapabilities(custom, model);
+      caps.validate(
+        prompt: 'edit',
+        ratio: '16:9',
+        resolution: '2K',
+        references: 2,
+      );
+      await http.runWithClient(
+        () async {
+          await AiImageGenerationService(custom, model: model).editImages(
+            'edit',
+            imageData: [_image, _image],
+            size: caps.size('16:9', '2K'),
+            aspectRatio: '16:9',
+            resolution: '2K',
+          );
+        },
+        () => MockClient((r) async {
+          expect(jsonDecode(r.body), {
+            'model': model,
+            'prompt': 'edit',
+            'size': '2048x1152',
+            'images': [_image, _image],
+          });
+          return http.Response(
+            jsonEncode({
+              'code': 200,
+              'data': {
+                'id': 'custom-result',
+                'status': 'completed',
+                'outputs': [_image],
+              },
+            }),
+            200,
+          );
+        }),
+      );
+    },
+  );
+
   final samples = [
     (
       'bytedance/seedream-v5.0-pro/text-to-image',
@@ -90,14 +135,15 @@ void main() {
       '3:2',
       {'size': '1536x1024'},
     ),
-    for (final variant in ['sunburst', 'flare'])
-      (
-        'openai/gpt-image-2.5-$variant/text-to-image',
-        'openai/gpt-image-2.5-$variant/edit',
-        '4K',
-        '16:9',
-        {'size': '3840x2160', 'output_format': 'png'},
-      ),
+    for (final version in ['2.6', '2.5'])
+      for (final variant in ['sunburst', 'flare'])
+        (
+          'openai/gpt-image-$version-$variant/text-to-image',
+          'openai/gpt-image-$version-$variant/edit',
+          '4K',
+          '16:9',
+          {'size': '3840x2160', 'output_format': 'png'},
+        ),
   ];
   for (final (model, editModel, resolution, ratio, parameters) in samples) {
     test(

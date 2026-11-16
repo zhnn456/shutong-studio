@@ -128,6 +128,8 @@ void main() {
         'o4-mini',
         'claude-opus-4-6',
         'claude-haiku-4-5-20251001',
+        'gemini-4-carbon',
+        'gemini-4-argon',
         'gemini-flash-latest',
         'qwen3.8-max',
         'qwen3.6-plus',
@@ -138,6 +140,7 @@ void main() {
         'grok-4.7',
         'doubao-seed-2-1-pro-260915',
         'minimax-m3',
+        'MiniMax-M3',
         'mimo-v2.6-pro',
       ]) {
         expect(lookupCatalogImageInput(model), isTrue, reason: model);
@@ -148,6 +151,7 @@ void main() {
         'kimi-k2-thinking',
         'glm-5.2',
         'minimax-m2.7',
+        'MiniMax-M2.7-highspeed',
         'mimo-v2.5-pro',
       ]) {
         expect(lookupCatalogImageInput(model), isFalse, reason: model);
@@ -397,6 +401,8 @@ void main() {
         128000,
         ['low', 'medium', 'high', 'xhigh', 'max'],
       ),
+      ('gemini-4-carbon', 1000000, 64000, ['low', 'medium', 'high']),
+      ('gemini-4-argon-preview', 1000000, 64000, ['low', 'medium', 'high']),
     ];
     for (final (id, context, output, efforts) in cases) {
       expect(lookupCatalogLimit(id)?.context, context, reason: id);

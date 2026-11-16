@@ -2,7 +2,6 @@
 // 关联文件:
 //   lib/shared/services/storyboard/edit_orchestrator.dart
 //   lib/shared/services/ai/tools.dart
-//   lib/shared/services/storyboard/export.dart
 import 'package:drift/native.dart';
 import 'package:reveric/shared/models/novel.dart';
 import 'package:reveric/shared/models/screenplay_element.dart';
@@ -18,7 +17,6 @@ import 'package:reveric/shared/services/novel_content.dart';
 import 'package:reveric/shared/services/screenplay_service.dart';
 import 'package:reveric/shared/services/storyboard/service.dart';
 import 'package:reveric/shared/services/storyboard/edit_orchestrator.dart';
-import 'package:reveric/shared/services/storyboard/export.dart';
 import 'package:reveric/shared/services/working_overlay.dart';
 
 void main() {
@@ -856,10 +854,11 @@ void main() {
       expect(change.resourcePath, 'clips/$id');
       await overlay.rejectWorkingChange(change.id);
       expect(await service.getShot(id), isNull);
+      // 场次节点随场次保留，片段节点随片段撤回。
       expect(
-        await db.canvasDao.getNodesByCanvas(
+        (await db.canvasDao.getNodesByCanvas(
           (await db.screenplayDao.getEpisode(episodeId))!.canvasId!,
-        ),
+        )).where((node) => node.sceneId == null),
         isEmpty,
       );
     },
@@ -1012,6 +1011,81 @@ void main() {
   );
 
   test(
+    'screenplay defaults support writes and edits without changing existing clips',
+    () async {
+      final oldClip = await service.create(sceneId);
+      for (final name in ['Create', 'Write']) {
+        final result = await tools.executeTool(
+          name: name,
+          input: {
+            'path': 'screenplay',
+            'fields': {'ratio': '9:16', 'resolution': '1080p'},
+          },
+        );
+        expect(result['ok'], isTrue, reason: '$result');
+      }
+      final read = await tools.executeTool(
+        name: 'Read',
+        input: {'path': 'screenplay'},
+      );
+      expect(read['ratio'], '9:16');
+      expect(read['resolution'], '1080p');
+      expect(read['width'], 1080);
+      expect(read['height'], 1920);
+      final unchanged = (await service.getShot(oldClip.id))!;
+      expect(unchanged.ratio, oldClip.ratio);
+      expect(unchanged.resolution, oldClip.resolution);
+      final newClip = await service.create(sceneId);
+      expect(newClip.ratio, '9:16');
+      expect(newClip.resolution, '1080p');
+      final image = await service.createImage(episodeId);
+      expect(image.ratio, '1:1');
+      expect(image.resolution, '1K');
+      for (final entry in {
+        'ratio': ('9:16', '4:3'),
+        'resolution': ('1080p', '720p'),
+      }.entries) {
+        final edited = await tools.executeTool(
+          name: 'Edit',
+          input: {
+            'path': 'screenplay/${entry.key}',
+            'old_text': entry.value.$1,
+            'new_text': entry.value.$2,
+          },
+        );
+        expect(edited['ok'], isTrue, reason: '$edited');
+        final written = await tools.executeTool(
+          name: 'Write',
+          input: {'path': 'screenplay/${entry.key}', 'value': entry.value.$1},
+        );
+        expect(written['ok'], isTrue, reason: '$written');
+      }
+      final original = await service.requireSettings();
+      for (final input in [
+        {
+          'path': 'screenplay',
+          'fields': {'ratio': '16:9', 'resolution': '1K'},
+        },
+        {'path': 'screenplay/width', 'value': 400},
+      ]) {
+        final result = await tools.executeTool(name: 'Write', input: input);
+        expect(result['ok'], isFalse, reason: '$result');
+        expect(await service.requireSettings(), original);
+      }
+      final invalidEdit = await tools.executeTool(
+        name: 'Edit',
+        input: {
+          'path': 'screenplay/ratio',
+          'old_text': '9:16',
+          'new_text': 'invalid',
+        },
+      );
+      expect(invalidEdit['ok'], isFalse);
+      expect(await service.requireSettings(), original);
+    },
+  );
+
+  test(
     'screenplay defaults are readable and old episode settings paths are unavailable',
     () async {
       final missing = await tools.executeTool(
@@ -1031,44 +1105,11 @@ void main() {
         input: {'path': 'screenplay/resolution'},
       );
       expect(resolution['value'], '720p');
-      final original = await service.requireSettings();
-      for (final path in [
-        'screenplay',
-        'screenplay/ratio',
-        'screenplay/resolution',
-      ]) {
-        for (final tool in ['Create', 'Write', 'Edit', 'Remove']) {
-          final denied = await tools.executeTool(
-            name: tool,
-            input: {
-              'path': path,
-              if (tool == 'Create' || tool == 'Write')
-                if (path == 'screenplay')
-                  'fields': {'ratio': '9:16', 'resolution': '1080p'}
-                else
-                  'value': path.endsWith('/ratio') ? '9:16' : '1080p',
-              if (tool == 'Edit') ...{
-                'old_text': path.endsWith('/ratio') ? '16:9' : '720p',
-                'new_text': path.endsWith('/ratio') ? '9:16' : '1080p',
-              },
-            },
-          );
-          if (path == 'screenplay' && (tool == 'Create' || tool == 'Write')) {
-            expect(denied['updated'], isFalse, reason: '$tool $path: $denied');
-            expect(
-              denied['ignored_fields'],
-              containsAll(['ratio', 'resolution']),
-            );
-          } else {
-            expect(denied['ok'], isFalse, reason: '$tool $path: $denied');
-            expect(
-              denied['error_code'],
-              anyOf('invalid_argument', 'permission_denied'),
-            );
-          }
-        }
-      }
-      expect(await service.requireSettings(), original);
+      final denied = await tools.executeTool(
+        name: 'Remove',
+        input: {'path': 'screenplay'},
+      );
+      expect(denied['ok'], isFalse);
       expect(await overlay.getWorkingChanges(), isEmpty);
       expect(await service.hasSettingsPrompted(), isFalse);
       final glob = await tools.executeTool(
@@ -1090,36 +1131,4 @@ void main() {
       expect(grep.toString(), contains(shot.id));
     },
   );
-
-  test('text export retains readable labels and resource identities', () async {
-    final shot = await edits.create(
-      service: service,
-      overlay: overlay,
-      sceneId: sceneId,
-      values: {
-        'title': '镜头,"A"',
-        'prompt': '看 <ref input_id="image_1" label="角色" />\n转身',
-      },
-    );
-    final rows = [StoryboardExportRow(scene: '夜雨', number: '1.1', shot: shot)];
-    final headings = ['场', '镜', '标题', '提示词', '状态', '规格', '资源'];
-    final csv = exportStoryboard(
-      rows,
-      csv: true,
-      headings: headings,
-      statusLabel: (s) => s,
-    );
-    expect(csv, contains('"镜头,""A"""'));
-    expect(csv, contains('角色 [image_1]'));
-    expect(csv, isNot(contains('<ref')));
-    expect(
-      exportStoryboard(
-        rows,
-        csv: false,
-        headings: headings,
-        statusLabel: (s) => s,
-      ),
-      contains('角色<br>转身'),
-    );
-  });
 }

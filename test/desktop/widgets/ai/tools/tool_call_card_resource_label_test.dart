@@ -25,6 +25,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reveric/shared/app_config.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:reveric/shared/widgets/ai/tools/tool_card_descriptor.dart';
 import 'package:reveric/shared/widgets/ai/tools/tool_resource_resolver.dart';
@@ -57,6 +58,82 @@ void main() {
   tearDown(() async {
     await db.close();
   });
+
+  test('chapter collection labels do not subscribe to the tree', () async {
+    var treeReads = 0;
+    final container = ProviderContainer.test(
+      overrides: [
+        chapterTreeProvider('labels').overrideWith((ref) {
+          treeReads++;
+          return Stream.value(<Chapter>[]);
+        }),
+        novelContentServiceProvider('labels').overrideWithValue(contentService),
+      ],
+    );
+    for (final path in ['chapters', 'volumes']) {
+      final provider = toolResolvedResourceProvider((
+        novelId: 'work',
+        databasePath: 'labels',
+        path: path,
+      ));
+      final subscription = container.listen(provider, (_, _) {});
+      final label = await container.read(provider.future);
+      expect(label!.collection, path);
+      subscription.close();
+    }
+    expect(treeReads, 0);
+  });
+
+  test(
+    'chapter labels ignore body changes but follow rename and numbering',
+    () async {
+      final stream = StreamController<List<Chapter>>();
+      addTearDown(stream.close);
+      final container = ProviderContainer.test(
+        overrides: [
+          chapterTreeProvider('labels').overrideWith((ref) => stream.stream),
+          novelContentServiceProvider(
+            'labels',
+          ).overrideWithValue(contentService),
+        ],
+      );
+      final provider = toolResolvedResourceProvider((
+        novelId: 'work',
+        databasePath: 'labels',
+        path: 'chapters/chapter',
+      ));
+      var changes = 0;
+      container.listen(provider, (_, _) {
+        changes++;
+      });
+      Chapter node(String title, int number, int words) => Chapter.fromViewRow({
+        'id': 'chapter',
+        'type': nodeTypeChapter,
+        'sibling_order': number,
+        'chapter_num': number,
+        'title': title,
+        'word_count': words,
+      });
+      stream.add([node('Before', 1, 10)]);
+      expect((await container.read(provider.future))!.resourceTitle, 'Before');
+      final initialChanges = changes;
+      stream.add([node('Before', 1, 20)]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await container.pump();
+      expect(changes, initialChanges);
+      stream.add([node('After', 2, 20)]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await container.pump();
+      final updated = await container.read(provider.future);
+      expect(updated!.resourceTitle, 'After');
+      expect(updated.chapterNum, 2);
+      expect(changes, greaterThan(initialChanges));
+      stream.add([]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await container.pump();
+      expect((await container.read(provider.future))!.resourceTitle, 'chapter');
+    },
+  );
 
   for (final entry in const {
     'skills': 'skill',
@@ -227,13 +304,16 @@ void main() {
       final otherContext = await container.read(otherContextProvider.future);
       expect(otherContext!.workTitle, '当前作品');
       expect(otherContext.resourceTitle, isEmpty);
-      final canvas = (await resolve(
-        '/works/current-work/canvas/主线/nodes/node_1/content',
-      ))!;
-      final localCanvas = (await resolve('canvas/主线/nodes/node_1/content'))!;
-      expect(canvas.resourceTitle, localCanvas.resourceTitle);
-      expect(canvas.subCollection, localCanvas.subCollection);
-      expect(canvas.field, localCanvas.field);
+      // 构思画布默认关闭，路径只在开启时可解析。
+      if (ideationCanvasEnabled) {
+        final canvas = (await resolve(
+          '/works/current-work/canvas/主线/nodes/node_1/content',
+        ))!;
+        final localCanvas = (await resolve('canvas/主线/nodes/node_1/content'))!;
+        expect(canvas.resourceTitle, localCanvas.resourceTitle);
+        expect(canvas.subCollection, localCanvas.subCollection);
+        expect(canvas.field, localCanvas.field);
+      }
     },
   );
 
@@ -600,6 +680,131 @@ void main() {
       }),
     );
     await tester.pumpAndSettle();
+  }, skip: !ideationCanvasEnabled);
+
+  testWidgets('production paths localize canvas, clips and settings', (
+    tester,
+  ) async {
+    const databasePath = 'production-path-labels';
+    final initial = await ScreenplayService(db).createInitialStructure();
+    final container = ProviderContainer(
+      overrides: [
+        novelContentDatabaseProvider(databasePath).overrideWithValue(db),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    Future<AiToolResolvedResource?> readPath(String path) async {
+      final provider = toolResolvedResourceProvider((
+        novelId: 'current-work',
+        databasePath: databasePath,
+        path: path,
+      ));
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
+      return container.read(provider.future);
+    }
+
+    final canvas = await readPath('/production/canvas');
+    final settings = await readPath('/production/settings/style_id');
+    final episode = await readPath(
+      '/episodes/${initial.episodeId}/production/canvas/nodes/node_1/title',
+    );
+    expect(canvas?.labelPath, 'production/canvas');
+    expect(settings?.labelPath, 'production/settings/style_id');
+    expect(episode?.subCollection, 'production/canvas/nodes');
+    expect(episode?.field, 'title');
+
+    final labels = {
+      const Locale('zh', 'CN'): const {
+        '/production': '画布制作',
+        '/production/canvas': '画布制作 · 画布',
+        '/production/clips': '画布制作 · 片段',
+        '/production/settings': '画布制作 · 默认设置',
+        '/production/settings/style_id': '画布制作 · 默认设置 · 风格',
+        '/production/canvas/nodes/node_1': '画布制作 · 画布 · 节点',
+        '/production/canvas/nodes/node_1/title': '画布制作 · 画布 · 节点 · 标题',
+        '/production/clips/clip_1/generations/task_1/status':
+            '画布制作 · 片段 · 生成记录 · 状态',
+        '/episodes/episode_1/production/canvas': '分集 · 制片 · 画布',
+        '/works/work_1/production/clips': '作品 · 画布制作 · 片段',
+        '/production/canvas/**': '/画布制作/画布/**',
+      },
+      const Locale('en'): const {
+        '/production': 'Canvas production',
+        '/production/canvas': 'Canvas production · Canvas',
+        '/production/clips': 'Canvas production · Clips',
+        '/production/settings': 'Canvas production · Defaults',
+        '/production/settings/style_id': 'Canvas production · Defaults · Style',
+        '/production/canvas/nodes/node_1': 'Canvas production · Canvas · Nodes',
+        '/production/canvas/nodes/node_1/title':
+            'Canvas production · Canvas · Nodes · Title',
+        '/production/clips/clip_1/generations/task_1/status':
+            'Canvas production · Clips · Generations · Status',
+        '/episodes/episode_1/production/canvas':
+            'Episodes · Production · Canvas',
+        '/works/work_1/production/clips': 'Novel · Canvas production · Clips',
+        '/production/canvas/**': '/Canvas production/Canvas/**',
+      },
+    };
+
+    for (final entry in labels.entries) {
+      final chinese = entry.key.languageCode == 'zh';
+      await tester.pumpWidget(
+        _wrapDescriptorAssertions((context) {
+          for (final path in entry.value.entries) {
+            final label = path.key.endsWith('**')
+                ? localizeGlobPattern(context, path.key)
+                : localizedToolPathLabel(context, path.key);
+            expect(label, path.value, reason: path.key);
+          }
+          final block = AiToolCallBlock(
+            id: 'read_canvas',
+            callId: 'read_canvas',
+            toolName: 'Read',
+            arguments: {'path': '/production/canvas'},
+            status: AiToolCallStatus.success,
+          );
+          expect(
+            localizedToolCallTitle(context, block),
+            chinese ? '读取' : 'Read',
+          );
+          expect(
+            toolRowTarget(context, block, null),
+            chinese ? '画布制作 · 画布' : 'Canvas production · Canvas',
+          );
+          expect(
+            canvas!.displayLabel(context),
+            toolRowTarget(context, block, null),
+          );
+          expect(
+            settings!.displayLabel(context),
+            chinese
+                ? '画布制作 · 默认设置 · 风格'
+                : 'Canvas production · Defaults · Style',
+          );
+          final write = AiToolCallBlock(
+            id: 'write_settings',
+            callId: 'write_settings',
+            toolName: 'Write',
+            arguments: {'path': '/production/settings/style_id'},
+            status: AiToolCallStatus.success,
+          );
+          expect(
+            toolRowTarget(context, write, settings),
+            settings.displayLabel(context),
+          );
+          expect(
+            episode!.displayLabel(context),
+            chinese
+                ? '第 1 季 · 第 1 集 · 制片 · 画布 · 节点 · 标题'
+                : 'Season 1 · Episode 1 · Production · Canvas · Nodes · Title',
+          );
+          expect(episode.displayLabel(context), isNot(contains('node_1')));
+        }, locale: entry.key),
+      );
+      await tester.pumpAndSettle();
+    }
   });
 
   test(
@@ -640,6 +845,7 @@ void main() {
         }
       }
     },
+    skip: !ideationCanvasEnabled,
   );
 
   testWidgets('canvas 操作走通用工具，行标题用画布路径标签', (tester) async {
@@ -668,7 +874,7 @@ void main() {
       }),
     );
     await tester.pumpAndSettle();
-  });
+  }, skip: !ideationCanvasEnabled);
 
   testWidgets('screenplay and cross-work targets localize nested paths', (
     tester,
@@ -761,12 +967,6 @@ void main() {
         screenplayId: root.id,
         episodeId: initial.episodeId,
       );
-      final beatId = await service.createBeat(
-        screenplayId: root.id,
-        episodeId: initial.episodeId,
-        actNumber: 1,
-        title: '转折',
-      );
       final container = ProviderContainer(
         overrides: [
           novelContentDatabaseProvider(databasePath).overrideWithValue(db),
@@ -774,8 +974,6 @@ void main() {
       );
       addTearDown(container.dispose);
       for (final path in [
-        '/beats/$beatId',
-        '/scenes?beat_id=$beatId',
         '/scenes/$sceneId',
         'scenes/$sceneId/elements',
         '/scenes/$sceneId/elements/element_unknown/text',
@@ -1320,6 +1518,8 @@ Widget _wrapDescriptorAssertions(
   Locale locale = const Locale('zh', 'CN'),
 }) {
   return EasyLocalization(
+    // 换语言时重建：EasyLocalization 只在首次挂载时读 startLocale。
+    key: ValueKey(locale),
     supportedLocales: [locale],
     saveLocale: false,
     path: 'assets/translations',

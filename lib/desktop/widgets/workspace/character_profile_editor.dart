@@ -301,19 +301,15 @@ class CharacterProfileEditorTarget {
 class CharacterProfileFormSession {
   const CharacterProfileFormSession({
     required this.form,
-    required Map<CharacterProfileEditFields, TextEditingController> controllers,
-    required Map<CharacterProfileEditFields, FocusNode> focusNodes,
+    required this._controllers,
+    required this._focusNodes,
     required this.aliases,
     required this.tags,
     required this.behaviorTags,
-    required ValueChanged<List<String>> onAliasesChanged,
-    required ValueChanged<List<String>> onTagsChanged,
-    required ValueChanged<List<CharacterBehaviorTag>> onBehaviorTagsChanged,
-  }) : _controllers = controllers,
-       _focusNodes = focusNodes,
-       _onAliasesChanged = onAliasesChanged,
-       _onTagsChanged = onTagsChanged,
-       _onBehaviorTagsChanged = onBehaviorTagsChanged;
+    required this._onAliasesChanged,
+    required this._onTagsChanged,
+    required this._onBehaviorTagsChanged,
+  });
 
   final FormFieldsController<CharacterProfileEditFields> form;
   final Map<CharacterProfileEditFields, TextEditingController> _controllers;
@@ -702,7 +698,7 @@ class CharacterProfileEditor extends HookConsumerWidget {
     _showCharacterImageStyleDialog(
       context: context,
       title: context.t(LocaleKeys.workspaceCharacterGenerateAvatar),
-      confirmLabel: context.t(LocaleKeys.aiToolNameGenerateAvatar),
+      confirmLabel: context.t(LocaleKeys.toolNameGenerateAvatar),
     ).then((stylePrompt) {
       if (stylePrompt == null ||
           stylePrompt.isEmpty ||
@@ -725,7 +721,7 @@ class CharacterProfileEditor extends HookConsumerWidget {
     _showCharacterImageStyleDialog(
       context: context,
       title: context.t(LocaleKeys.workspaceCharacterGeneratePhoto),
-      confirmLabel: context.t(LocaleKeys.aiToolNameGeneratePhoto),
+      confirmLabel: context.t(LocaleKeys.toolNameGeneratePhoto),
     ).then((stylePrompt) {
       if (stylePrompt == null ||
           stylePrompt.isEmpty ||

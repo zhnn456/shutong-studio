@@ -11,6 +11,7 @@ import 'speech.dart';
 import 'atlascloud.dart';
 
 enum AudioProtocol {
+  moss_audio,
   seed_audio,
   minimax_music,
   openrouter_speech,
@@ -31,11 +32,10 @@ class AudioProtocolOptions {
 class AudioChannelModel {
   const AudioChannelModel({
     required this.catalogId,
-    AudioModelCapabilities capabilities = const AudioModelCapabilities(),
-    AudioRequestDefaults requestDefaults = const AudioRequestDefaults(),
+    this._capabilities = const AudioModelCapabilities(),
+    this._requestDefaults = const AudioRequestDefaults(),
     this.protocolOptions = const AudioProtocolOptions(),
-  }) : _capabilities = capabilities,
-       _requestDefaults = requestDefaults;
+  });
   final String catalogId;
   final AudioModelCapabilities _capabilities;
   final AudioRequestDefaults _requestDefaults;
@@ -48,6 +48,14 @@ class AudioChannelModel {
 }
 
 final audioChannelModels = <AudioProtocol, Map<String, AudioChannelModel>>{
+  AudioProtocol.moss_audio: {
+    for (final id in [
+      'moss-tts-1.5-flash',
+      'moss-tts-1.0-pro',
+      'moss-voice-generator-1.0',
+    ])
+      id: AudioChannelModel(catalogId: id),
+  },
   AudioProtocol.new_api_speech: {
     for (final id in ['tts-1', 'tts-1-hd', 'gpt-4o-mini-tts'])
       id: AudioChannelModel(catalogId: id),
@@ -98,7 +106,13 @@ final audioChannelModels = <AudioProtocol, Map<String, AudioChannelModel>>{
     'music-2.6': AudioChannelModel(catalogId: 'music-2.6'),
   },
   AudioProtocol.openrouter_speech: {
-    for (final id in speechModels.keys) id: AudioChannelModel(catalogId: id),
+    for (final id in speechModels.keys)
+      id: AudioChannelModel(
+        catalogId: id,
+        requestDefaults: id == 'heygen/heygen-voice-1-turbo:free'
+            ? const AudioRequestDefaults(responseFormat: ConfigValue('pcm'))
+            : const AudioRequestDefaults(),
+      ),
     'bytedance-seed/seed-audio-1-0': AudioChannelModel(
       catalogId: 'seed-audio-1.0',
       capabilities: AudioModelCapabilities(

@@ -1,6 +1,9 @@
 // 职责: 统一的 AI 模型选择器 — compact（chat composer）与 field（表单）两种形态共用同一下拉菜单。
 // 关联文件:
 //   lib/shared/models/ai_provider.dart
+//   lib/shared/components/reveric_search_field.dart
+//   assets/translations/en/common.json
+//   assets/translations/zh-CN/common.json
 //   lib/desktop/widgets/ai/chat/composer.dart
 //   lib/desktop/widgets/agent_management/subagent_edit_panel.dart
 //   lib/shared/localization/locale_keys.dart
@@ -9,18 +12,20 @@
 // 遵循的 Rules:
 //   .agents/rules/icons.md
 //   .agents/rules/design-system.md
+//   .agents/rules/search-debounce.md
 import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../shared/components/reveric_search_field.dart';
 import '../../../../shared/models/ai_provider.dart';
 import '../../../../shared/theme/theme.dart';
 import '../../../../shared/localization/app_localization.dart';
 import '../../../../shared/localization/locale_keys.dart';
 import '../../../../shared/widgets/ai/reasoning_effort_bars.dart';
 import '../../../../shared/widgets/ai/provider_model_icon.dart';
-import '../../settings/settings_dialog.dart';
+import '../../agent_management/ai_providers_page.dart';
 
 /// 模型选择回调类型
 typedef SelectModelCallback = void Function(AiModelOption option);
@@ -47,8 +52,14 @@ double _estimateModelMenuHeight({
   final listHeight = rowCount > maxVisibleItems
       ? maxVisibleItems * itemHeight
       : rowCount * itemHeight;
-  return listHeight + listPadding + (showAddModel ? footerHeight : 0);
+  return _modelMenuSearchHeight +
+      listHeight +
+      listPadding +
+      (showAddModel ? footerHeight : 0);
 }
+
+/// 菜单顶部搜索框占用的高度（含上方留白）。
+const _modelMenuSearchHeight = RevericSizes.fieldHeightSm + RevericSpacing.sm;
 
 /// 统一模型选择器。
 ///
@@ -81,7 +92,7 @@ class ModelSelector extends StatefulWidget {
     required this.modelName,
     required this.resolvedId,
     required this.availableModels,
-    required SelectModelCallback onSelect,
+    required this._onSelect,
     this.colors,
     this.typo,
     this.disabledModelIds = const {},
@@ -90,11 +101,9 @@ class ModelSelector extends StatefulWidget {
     this.onMenuVisibilityChanged,
     this.selectedEffort,
     this.compactMaxWidth,
-    SelectModelWithEffortCallback? onSelectWithEffort,
+    this._onSelectWithEffort,
     this.showAddModel = true,
   }) : _variant = _ModelSelectorVariant.compact,
-       _onSelect = onSelect,
-       _onSelectWithEffort = onSelectWithEffort,
        _onChanged = null,
        selectedId = resolvedId,
        unsetLabel = null,
@@ -111,7 +120,7 @@ class ModelSelector extends StatefulWidget {
     super.key,
     required this.availableModels,
     required this.selectedId,
-    required ValueChanged<String?> onChanged,
+    required this._onChanged,
     this.unsetLabel,
     this.placeholder,
     this.emptyMessage,
@@ -121,11 +130,9 @@ class ModelSelector extends StatefulWidget {
 
     this.showAddModel = false,
     this.selectedEffort,
-    SelectModelWithEffortCallback? onSelectWithEffort,
+    this._onSelectWithEffort,
   }) : _variant = _ModelSelectorVariant.field,
-       _onChanged = onChanged,
        _onSelect = null,
-       _onSelectWithEffort = onSelectWithEffort,
        colors = null,
        typo = null,
        modelName = '',
@@ -294,13 +301,16 @@ class _ModelSelectorState extends State<ModelSelector> {
   ) {
     final modelName = Text(
       widget.modelName,
-      style: typo.uiSmall.copyWith(color: colors.textMuted),
+      style: typo.uiSmall.copyWith(color: colors.textPrimary),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
+    // 与制片输入栏的参数下拉同一套触发器：前置模型图标 + 模型名 + 小箭头。
     final trigger = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        RevericIcon(RevericIcons.auto_awesome, size: 15, color: colors.accent),
+        const SizedBox(width: RevericSpacing.sm),
         if (widget.compactMaxWidth == null)
           modelName
         else
@@ -309,11 +319,11 @@ class _ModelSelectorState extends State<ModelSelector> {
           const SizedBox(width: 4),
           effortPill,
         ],
-        const SizedBox(width: 2),
+        const SizedBox(width: RevericSpacing.xxs),
         RevericIcon(
-          RevericIcons.expand_more_rounded,
-          size: 16,
-          color: colors.textMuted,
+          RevericIcons.expand_more,
+          size: 11,
+          color: colors.textSubtle,
         ),
       ],
     );
@@ -503,6 +513,8 @@ class _ModelSelectorState extends State<ModelSelector> {
         modelMenuPanelRight: panelRight,
         hostMenuEntry: _menuEntry,
         tapRegionGroupId: this,
+        // 自动弹出时输入焦点还在聊天输入框，不抢。
+        autofocusSearch: !_openedByAuto,
         onSelect: (option) {
           _hideMenu();
           widget._emit(option);
@@ -516,10 +528,7 @@ class _ModelSelectorState extends State<ModelSelector> {
 
         onAddModel: () {
           _hideMenu();
-          showDialog(
-            context: context,
-            builder: (_) => const SettingsDialog(initialNavId: 'providers'),
-          );
+          showAiProviderSettingsDialog(context);
         },
       );
     }
@@ -619,7 +628,7 @@ class _ModelSelectorState extends State<ModelSelector> {
   }
 }
 
-class _ModelMenuContent extends StatelessWidget {
+class _ModelMenuContent extends StatefulWidget {
   const _ModelMenuContent({
     required this.colors,
     required this.typo,
@@ -639,7 +648,11 @@ class _ModelMenuContent extends StatelessWidget {
     this.modelMenuPanelRight,
     this.hostMenuEntry,
     this.tapRegionGroupId,
+    this.autofocusSearch = true,
   });
+
+  /// 打开菜单时是否把焦点放进搜索框。
+  final bool autofocusSearch;
 
   final RevericColors colors;
   final RevericTypography typo;
@@ -672,20 +685,44 @@ class _ModelMenuContent extends StatelessWidget {
   final Object? tapRegionGroupId;
 
   @override
+  State<_ModelMenuContent> createState() => _ModelMenuContentState();
+}
+
+class _ModelMenuContentState extends State<_ModelMenuContent> {
+  /// 已 debounce、trim 并转小写的搜索词。
+  String _query = '';
+
+  bool _matches(AiModelOption option) =>
+      _query.isEmpty ||
+      option.displayModelName.toLowerCase().contains(_query) ||
+      option.model.toLowerCase().contains(_query) ||
+      option.providerDisplayName.toLowerCase().contains(_query);
+
+  @override
   Widget build(BuildContext context) {
+    final colors = widget.colors;
+    final typo = widget.typo;
+    final resolvedId = widget.resolvedId;
+    final unsetLabel = widget.unsetLabel;
+    final showAddModel = widget.showAddModel;
+    final maxHeight = widget.maxHeight;
+    final onSelect = widget.onSelect;
+    final availableModels = widget.availableModels.where(_matches).toList();
     const itemHeight = 56.0;
     const footerHeight = 45.0;
-    final hasUnset = unsetLabel != null;
+    // 搜索时只留匹配的模型，「未设置」项不参与。
+    final hasUnset = unsetLabel != null && _query.isEmpty;
     final selectedIsUnset = hasUnset && (resolvedId.isEmpty);
 
+    // 高度按完整列表估算，搜索过滤时面板不跳动。
     final desiredHeight = _estimateModelMenuHeight(
-      modelCount: availableModels.length,
-      hasUnset: hasUnset,
+      modelCount: widget.availableModels.length,
+      hasUnset: unsetLabel != null,
       showAddModel: showAddModel,
     );
     final height = maxHeight == null
         ? desiredHeight
-        : math.min(desiredHeight, maxHeight!);
+        : math.min(desiredHeight, maxHeight);
 
     return Material(
       color: colors.canvas,
@@ -698,6 +735,24 @@ class _ModelMenuContent extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                RevericSpacing.sm,
+                RevericSpacing.sm,
+                RevericSpacing.sm,
+                0,
+              ),
+              child: RevericDebouncedSearchField(
+                hint: context.t(LocaleKeys.commonSearch),
+                autofocus: widget.autofocusSearch,
+                height: RevericSizes.fieldHeightSm,
+                onDebouncedChanged: (query) {
+                  if (mounted) {
+                    setState(() => _query = query);
+                  }
+                },
+              ),
+            ),
             Expanded(
               child: ListView(
                 primary: false,
@@ -711,7 +766,7 @@ class _ModelMenuContent extends StatelessWidget {
                       child: _UnsetRow(
                         colors: colors,
                         typo: typo,
-                        label: unsetLabel!,
+                        label: unsetLabel,
                         selected: selectedIsUnset,
                         onTap: () => onSelect(null),
                       ),
@@ -724,19 +779,19 @@ class _ModelMenuContent extends StatelessWidget {
                         typo: typo,
                         option: option,
                         selected: option.id == resolvedId,
-                        disabled: disabledModelIds.contains(option.id),
+                        disabled: widget.disabledModelIds.contains(option.id),
 
                         onTap: () => onSelect(option),
                         selectedEffort: _displayEffortFor(
                           option: option,
                           selected: option.id == resolvedId,
-                          selectedEffort: selectedEffort,
+                          selectedEffort: widget.selectedEffort,
                         ),
-                        onSelectWithEffort: onSelectWithEffort,
-                        panelLeft: modelMenuPanelLeft,
-                        panelRight: modelMenuPanelRight,
-                        hostMenuEntry: hostMenuEntry,
-                        tapRegionGroupId: tapRegionGroupId,
+                        onSelectWithEffort: widget.onSelectWithEffort,
+                        panelLeft: widget.modelMenuPanelLeft,
+                        panelRight: widget.modelMenuPanelRight,
+                        hostMenuEntry: widget.hostMenuEntry,
+                        tapRegionGroupId: widget.tapRegionGroupId,
                       ),
                     ),
                 ],
@@ -745,7 +800,7 @@ class _ModelMenuContent extends StatelessWidget {
             if (showAddModel) ...[
               Divider(height: 1, color: colors.border),
               InkWell(
-                onTap: onAddModel,
+                onTap: widget.onAddModel,
                 child: SizedBox(
                   height: footerHeight - 1,
                   child: Center(

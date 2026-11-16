@@ -34,7 +34,7 @@
   "home.filter_category_all": "全部分类",
   "home.filter_uncategorized": "未分类",
   "home.filter_and_sort": "筛选与排序",
-  "home.create_card_title": "新建作品",
+  "home.create_card_title": "新建小说",
   "home.create_card_subtitle": "从一个想法开始\n你的新故事",
   "home.create_screenplay_card_title": "新建剧本",
   "home.create_screenplay_card_subtitle": "从第一季第一集开始",
@@ -42,12 +42,16 @@
   "home.today_stats_title": "今日概览",
   "home.today_active_works": "创作中",
   "home.section_works": "创作",
-  "home.section_ai": "AI",
+  "home.section_model": "模型",
+  "home.section_agent": "智能体",
+  "home.section_chat": "对话",
   "home.section_settings": "设置",
   "home.nav_works": "作品",
   "home.nav_customer_service": "客服反馈",
   "home.resume_eyebrow": "继续写",
   "home.resume_recent": "最近",
   "home.resume_last_written": "上次写于 {time}",
-  "home.create_work_card_subtitle": "小说或剧本\n从一个想法开始"
+  "home.resume_eyebrow_canvas": "继续制作",
+  "home.resume_open_canvas": "打开画布",
+  "home.resume_last_edited": "上次编辑于 {time}"
 }

@@ -1,4 +1,4 @@
-// 职责: 查询 New API 模型协议并为通用部署和品牌渠道装配四类生成客户端。
+// 职责: 获取 New API 模型目录，并按模型名路由聊天协议、装配各类生成客户端。
 // 关联文件:
 //   lib/shared/models/new_api.dart
 //   lib/shared/services/ai/provider_initializer.dart
@@ -18,8 +18,10 @@ import '../../models/ai_provider.dart';
 import '../../models/new_api.dart';
 import '../../models/models_catalog.dart';
 import '../../models/audio/channels.dart';
+import '../../models/audio/catalog.dart';
 import '../../models/image/channels.dart';
 import '../../models/video/channels.dart';
+import '../../models/video/catalog.dart';
 import 'media_diagnostics.dart';
 import 'image/new_api.dart';
 import 'audio/client.dart';
@@ -52,6 +54,11 @@ class NewApiClient {
       final response = await (() async => http.Response.fromStream(
         await transport.send(request),
       ))().timeout(const Duration(seconds: 30));
+      if (_log.isDebugEnabled) {
+        _log.debug(
+          'GET $uri status=${response.statusCode} body=${response.body}',
+        );
+      }
       if (response.statusCode != 200) {
         throw StateError(
           'GET ${uri.origin}${uri.path}: HTTP ${response.statusCode} '
@@ -85,7 +92,8 @@ class NewApiClient {
           return switch (kind) {
             AiModelKind.image =>
               image &&
-                  (model.endpointTypes.contains('image-generation') ||
+                  (model.id == 'mj_imagine' ||
+                      model.endpointTypes.contains('image-generation') ||
                       model.endpointTypes.contains('gemini')),
             AiModelKind.audio =>
               audio &&
@@ -103,17 +111,22 @@ class NewApiClient {
               !image &&
                   !audio &&
                   !video &&
+                  lookupImageModel(model.id) == null &&
+                  lookupAudioModel(model.id) == null &&
+                  !audioChannelModels[AudioProtocol.new_api_speech]!
+                      .containsKey(model.id) &&
+                  lookupVideoModel(model.id) == null &&
                   !model.endpointTypes.contains('image-generation') &&
                   !model.endpointTypes.contains('openai-video') &&
-                  model.endpointTypes.any(
-                    {
-                      'openai',
-                      'openai-response',
-                      'anthropic',
-                      'gemini',
-                    }.contains,
-                  ),
-            AiModelKind.embedding => false,
+                  (model.endpointTypes.isEmpty ||
+                      model.endpointTypes.any(
+                        {
+                          'openai',
+                          'openai-response',
+                          'anthropic',
+                          'gemini',
+                        }.contains,
+                      )),
           };
         })
         .map((model) => model.id)
@@ -129,15 +142,8 @@ class NewApiClient {
     TraceHeadersProvider? traceHeadersProvider,
     String? cacheKeyUserId,
   }) async {
-    final catalog = await models(httpClient: httpClient);
-    final metadata = catalog.where((entry) => entry.id == model).firstOrNull;
-    if (metadata == null) {
-      throw StateError(
-        'New API model is not available to this API key: $model',
-      );
-    }
     final root = config.effectiveBaseUrl.replaceFirst(RegExp(r'/v1$'), '');
-    return switch (metadata.chatProtocol) {
+    return switch (NewApiChatProtocol.forModel(model)) {
       NewApiChatProtocol.responses => OpenAIResponsesClient(
         apiKey: config.effectiveApiKey,
         baseUrl: config.effectiveBaseUrl,

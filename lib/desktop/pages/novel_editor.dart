@@ -18,7 +18,9 @@
 //   lib/shared/providers/ai_shortcut_action_providers.dart
 //   lib/shared/localization/locale_keys.dart
 //   assets/translations/en/ai.json
+//   assets/translations/en/tool.json
 //   assets/translations/zh-CN/ai.json
+//   assets/translations/zh-CN/tool.json
 //   assets/translations/en/common.json
 //   assets/translations/zh-CN/common.json
 //   assets/translations/en/library.json
@@ -260,6 +262,7 @@ class NovelEditorPage extends HookConsumerWidget {
     required this.novelId,
     this.initialSessionId,
     this.initialChatKickoffPrompt,
+    this.initialChatKickoffTitle,
     this.openChatOnEntry = false,
   });
 
@@ -269,6 +272,9 @@ class NovelEditorPage extends HookConsumerWidget {
   /// 快速开书时携带的开场提示词：非空则进入后展开沉浸聊天并
   /// 自动发送该消息，触发创作向导引导用户完善设定。
   final String? initialChatKickoffPrompt;
+
+  /// 开场会话标题，缺省为「快速开书」。
+  final String? initialChatKickoffTitle;
 
   /// 新建小说进入时直接展开聊天，等待用户输入，不自动发送消息。
   final bool openChatOnEntry;
@@ -873,7 +879,6 @@ class NovelEditorPage extends HookConsumerWidget {
           case NovelWorkspaceSection.canvas:
           case NovelWorkspaceSection.screenplay_script:
           case NovelWorkspaceSection.screenplay_outline:
-          case NovelWorkspaceSection.screenplay_beats:
           case NovelWorkspaceSection.storyboard:
           case NovelWorkspaceSection.screenplay_scenes:
             return null;
@@ -1319,7 +1324,6 @@ class NovelEditorPage extends HookConsumerWidget {
         case NovelWorkspaceSection.canvas:
         case NovelWorkspaceSection.screenplay_script:
         case NovelWorkspaceSection.screenplay_outline:
-        case NovelWorkspaceSection.screenplay_beats:
         case NovelWorkspaceSection.storyboard:
         case NovelWorkspaceSection.screenplay_scenes:
           return context.t(sectionLocaleKey(selection.value.section));
@@ -2815,9 +2819,9 @@ class NovelEditorPage extends HookConsumerWidget {
       aiPanelCollapsed.value = false;
       pendingHandoffDraft.value = AiChatHandoffDraft(
         id: 'item_photo_${DateTime.now().microsecondsSinceEpoch}',
-        label: context.t(LocaleKeys.aiToolNameGeneratePhoto),
+        label: context.t(LocaleKeys.toolNameGeneratePhoto),
         content: text,
-        title: context.t(LocaleKeys.aiToolNameGeneratePhoto),
+        title: context.t(LocaleKeys.toolNameGeneratePhoto),
         autoSend: true,
         references: [
           AiContextReference(
@@ -2882,7 +2886,6 @@ class NovelEditorPage extends HookConsumerWidget {
         case NovelWorkspaceSection.canvas:
         case NovelWorkspaceSection.screenplay_script:
         case NovelWorkspaceSection.screenplay_outline:
-        case NovelWorkspaceSection.screenplay_beats:
         case NovelWorkspaceSection.storyboard:
         case NovelWorkspaceSection.screenplay_scenes:
           return null;
@@ -2982,9 +2985,9 @@ class NovelEditorPage extends HookConsumerWidget {
       aiPanelCollapsed.value = false;
       pendingHandoffDraft.value = AiChatHandoffDraft(
         id: 'char_avatar_${DateTime.now().microsecondsSinceEpoch}',
-        label: context.t(LocaleKeys.aiToolNameGenerateAvatar),
+        label: context.t(LocaleKeys.toolNameGenerateAvatar),
         content: prompt,
-        title: context.t(LocaleKeys.aiToolNameGenerateAvatar),
+        title: context.t(LocaleKeys.toolNameGenerateAvatar),
         autoSend: true,
         references: [
           AiContextReference(
@@ -3004,9 +3007,9 @@ class NovelEditorPage extends HookConsumerWidget {
       aiPanelCollapsed.value = false;
       pendingHandoffDraft.value = AiChatHandoffDraft(
         id: 'char_photo_${DateTime.now().microsecondsSinceEpoch}',
-        label: context.t(LocaleKeys.aiToolNameGeneratePhoto),
+        label: context.t(LocaleKeys.toolNameGeneratePhoto),
         content: prompt,
-        title: context.t(LocaleKeys.aiToolNameGeneratePhoto),
+        title: context.t(LocaleKeys.toolNameGeneratePhoto),
         autoSend: true,
         references: [
           AiContextReference(
@@ -3597,7 +3600,7 @@ class NovelEditorPage extends HookConsumerWidget {
     final kickoffPrompt = initialChatKickoffPrompt?.trim();
     final hasKickoff = kickoffPrompt != null && kickoffPrompt.isNotEmpty;
     final kickoffLabel = hasKickoff
-        ? context.t(LocaleKeys.libraryQuickStart)
+        ? initialChatKickoffTitle ?? context.t(LocaleKeys.libraryQuickStart)
         : '';
     final kickoffTitle = kickoffLabel;
     useEffect(() {
@@ -4419,32 +4422,57 @@ class NovelEditorPage extends HookConsumerWidget {
                   },
                   novel: novel,
                   selection: selection.value,
-                  onProductionPrompt: (prompt, {files = const []}) {
-                    if (isChatFloating) {
-                      productionChatNotifier.setOpen(true);
-                    } else {
-                      aiPanelCollapsed.value = false;
-                    }
-                    if (files.isEmpty) {
-                      pendingShortcutDraft.value = AiChatShortcutDraft(
-                        id: 'production_${DateTime.now().microsecondsSinceEpoch}',
-                        text: prompt,
-                        autoSend: false,
-                      );
-                      return;
-                    }
-                    // 带图的请求来自导演台识图：新开会话并直接发送，不打断正在进行的对话。
-                    final title = context.t(LocaleKeys.directorRecognizeTitle);
-                    pendingHandoffDraft.value = AiChatHandoffDraft(
-                      id: 'scene_recognition_${DateTime.now().microsecondsSinceEpoch}',
-                      label: title,
-                      title: title,
-                      content: prompt,
-                      initialText: prompt,
-                      autoSend: true,
-                      files: files,
-                    );
-                  },
+                  onProductionPrompt:
+                      (
+                        prompt, {
+                        files = const [],
+                        send = false,
+                        model,
+                        effort,
+                      }) {
+                        if (isChatFloating) {
+                          productionChatNotifier.setOpen(true);
+                        } else {
+                          aiPanelCollapsed.value = false;
+                        }
+                        // 文本节点输入框选了模型：用它新开对话并直接发送。
+                        if (model != null) {
+                          pendingHandoffDraft.value = AiChatHandoffDraft(
+                            id: 'production_text_${DateTime.now().microsecondsSinceEpoch}',
+                            label: '',
+                            title: '',
+                            content: prompt,
+                            initialText: prompt,
+                            providerId: model.providerId,
+                            model: model.model,
+                            reasoningEffort: effort,
+                            autoSend: true,
+                            files: files,
+                          );
+                          return;
+                        }
+                        if (files.isEmpty) {
+                          pendingShortcutDraft.value = AiChatShortcutDraft(
+                            id: 'production_${DateTime.now().microsecondsSinceEpoch}',
+                            text: prompt,
+                            autoSend: send,
+                          );
+                          return;
+                        }
+                        // 带图的请求来自导演台识图：新开会话并直接发送，不打断正在进行的对话。
+                        final title = context.t(
+                          LocaleKeys.directorRecognizeTitle,
+                        );
+                        pendingHandoffDraft.value = AiChatHandoffDraft(
+                          id: 'scene_recognition_${DateTime.now().microsecondsSinceEpoch}',
+                          label: title,
+                          title: title,
+                          content: prompt,
+                          initialText: prompt,
+                          autoSend: true,
+                          files: files,
+                        );
+                      },
                   onRegisterScreenplaySceneFlush: (flush) {
                     screenplaySceneFlush.value = flush;
                   },

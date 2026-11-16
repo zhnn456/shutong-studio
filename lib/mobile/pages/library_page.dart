@@ -1,4 +1,4 @@
-// 职责: 移动端作品页 — 问候与新建入口固定在顶，继续写、最近和按类型筛选的作品库同屏滚动。
+// 职责: 移动端小说 / 剧本作品页 — 问候与新建入口固定在顶，本类型的继续写、最近和作品库同屏滚动。
 // 关联文件:
 //   lib/shared/widgets/confirm_dialog.dart
 //   lib/mobile/features/library/filters.dart
@@ -36,10 +36,10 @@ import '../../shared/components/reveric_icon_button.dart';
 import '../../shared/localization/app_localization.dart';
 import '../../shared/localization/locale_keys.dart';
 import '../../shared/widgets/quick_start_idea.dart';
+import '../../shared/services/screenplay_import.dart';
+import '../../shared/widgets/screenplay/import_dialog.dart';
 import '../../shared/models/content_status.dart';
 import '../../shared/models/content_kind.dart';
-import '../../shared/models/novel_form_prefill.dart';
-import '../widgets/segmented_tabs.dart';
 import '../features/library/filters.dart';
 import '../features/library/resume.dart';
 import '../features/library/shelf_options_sheet.dart';
@@ -66,29 +66,14 @@ import '../../shared/widgets/collections/location.dart';
 import '../../shared/widgets/collections/empty.dart';
 import '../../shared/widgets/collections/work_menu.dart';
 import '../../shared/components/reveric_search_field.dart';
+import '../../shared/logger/app_logger.dart';
+
+final _log = AppLogger.forModule('Library');
 
 void _openCreate(BuildContext context, String contentKind) {
   Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => MobileNovelCreatePage(contentKind: contentKind),
-    ),
-  );
-}
-
-/// 从一本小说出发新建改编剧本：类型、来源与原著信息预填，其余交给用户确认。
-void _openAdapt(BuildContext context, Novel novel) {
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => MobileNovelCreatePage(
-        contentKind: contentKindScreenplay,
-        prefill: NovelFormPrefill.adaptationOf(
-          novel,
-          title: context.t(
-            LocaleKeys.libraryAdaptationTitle,
-            namedArgs: {'title': novel.title},
-          ),
-        ),
-      ),
     ),
   );
 }
@@ -122,7 +107,14 @@ void _openReader(BuildContext context, Novel novel) {
 }
 
 class MobileLibraryPage extends HookConsumerWidget {
-  const MobileLibraryPage({super.key, this.collectionId});
+  const MobileLibraryPage({
+    super.key,
+    required this.contentKind,
+    this.collectionId,
+  });
+
+  /// 本页呈现的作品类型（[contentKindNovel] / [contentKindScreenplay]），小说和剧本各占一个底部 Tab。
+  final String contentKind;
 
   /// 旧的集合路由落到书架并选中该集合。
   final String? collectionId;
@@ -139,27 +131,9 @@ class MobileLibraryPage extends HookConsumerWidget {
     final effectiveQuery = rawQuery.trim().isEmpty
         ? ''
         : (debounced ?? '').trim().toLowerCase();
-    // 作品区的类型筛选，null 为小说与剧本混排。
-    final contentKind = useState<String?>(null);
     final selectedCategory = useState<String?>(null);
     final sortOrder = useState(LibrarySortOrder.updated);
-    const typeTabs = [null, contentKindNovel, contentKindScreenplay];
-    void selectType(int index) {
-      final next = typeTabs[index];
-      if (next == contentKind.value) {
-        return;
-      }
-      // 换类型时分类可能不再存在，清掉；离开小说时字数排序失效，回到最近编辑。
-      // 集合和搜索保留，继续在新类型里用。
-      selectedCategory.value = null;
-      if (!librarySortOrdersFor(next).contains(sortOrder.value)) {
-        sortOrder.value = LibrarySortOrder.updated;
-      }
-      contentKind.value = next;
-    }
-
-    final shelfKind = contentKind.value;
-    final isScreenplay = shelfKind == contentKindScreenplay;
+    final isScreenplay = contentKind == contentKindScreenplay;
     final isDeleting = useState(false);
 
     Future<void> deleteNovel(Novel novel) async {
@@ -229,9 +203,11 @@ class MobileLibraryPage extends HookConsumerWidget {
           if (!context.mounted) {
             return;
           }
+          // 提示里带了章节标题的格式要求，多留些时间读完。
           messenger.showSnackBar(
             SnackBar(
               content: Text(context.t(LocaleKeys.libraryImportTxtEmpty)),
+              duration: const Duration(seconds: 8),
             ),
           );
           return;
@@ -295,9 +271,11 @@ class MobileLibraryPage extends HookConsumerWidget {
       if (!context.mounted || novel == null) {
         return;
       }
+
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => MobileWorkspaceEditorPage(novel: novel),
+          builder: (_) =>
+              MobileWorkspaceEditorPage(novel: novel, openChatOnEntry: true),
         ),
       );
     }
@@ -347,6 +325,67 @@ class MobileLibraryPage extends HookConsumerWidget {
       }
     }
 
+    // 导入剧本：以文件名建剧本并把原文存为资料，进编辑器后由 AI 按提示词分段读取改编。
+    Future<void> importScreenplay() async {
+      final request = await showScreenplayImport(context, mobile: true);
+      if (!context.mounted || request == null) {
+        return;
+      }
+      final actions = ref.read(novelActionsProvider);
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context);
+      final kickoffTitle = context.t(LocaleKeys.libraryImportScreenplay);
+      final untitled = context.t(LocaleKeys.libraryUntitledNovel);
+      try {
+        final title = request.source.title.isEmpty
+            ? untitled
+            : request.source.title;
+        final id = await actions.createImportedScreenplay(
+          title: title,
+          sourceContent: request.source.content,
+        );
+        final created = await actions.getNovel(id);
+        if (!context.mounted) {
+          return;
+        }
+        if (created == null) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(context.t(LocaleKeys.libraryCreateNovelFailed)),
+            ),
+          );
+          return;
+        }
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => MobileWorkspaceEditorPage(
+              novel: created,
+              initialChatKickoffPrompt: buildScreenplayImportKickoffPrompt(
+                prompt: request.prompt,
+                materialTitle: title,
+                lineCount: request.source.lineCount,
+              ),
+              initialChatKickoffTitle: kickoffTitle,
+            ),
+          ),
+        );
+      } catch (error, stackTrace) {
+        _log.error(
+          'importScreenplay failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        if (!context.mounted) {
+          return;
+        }
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(context.t(LocaleKeys.libraryCreateNovelFailed)),
+          ),
+        );
+      }
+    }
+
     Future<void> updateStatus(Novel novel, String status) async {
       final actions = ref.read(novelActionsProvider);
       final messenger = ScaffoldMessenger.of(context);
@@ -374,7 +413,7 @@ class MobileLibraryPage extends HookConsumerWidget {
         novel: novel,
         onRead: () => _openReader(context, novel),
         onEdit: () => openEditNovel(novel),
-        onAdapt: () => _openAdapt(context, novel),
+        onAdapt: () => openNovelAdaptation(context, novel),
         onUpdateStatus: (status) => updateStatus(novel, status),
         onDelete: () => deleteNovel(novel),
       );
@@ -398,11 +437,18 @@ class MobileLibraryPage extends HookConsumerWidget {
       );
     }
 
+    // 快速开书只落在小说库；剧本库导入走 AI 改编。
     void showCreateSheet() => _showCreateSheet(
       context: context,
-      onCreate: () => _openCreate(context, shelfKind ?? contentKindNovel),
-      onQuickStart: quickStart,
-      onImport: openImportNovel,
+      createLabelKey: isScreenplay
+          ? LocaleKeys.libraryCreateScreenplay
+          : LocaleKeys.libraryCreateNovel,
+      onCreate: () => _openCreate(context, contentKind),
+      onQuickStart: isScreenplay ? null : quickStart,
+      importLabelKey: isScreenplay
+          ? LocaleKeys.libraryImportScreenplay
+          : LocaleKeys.libraryImportTxt,
+      onImport: isScreenplay ? importScreenplay : openImportNovel,
     );
 
     return Scaffold(
@@ -414,8 +460,15 @@ class MobileLibraryPage extends HookConsumerWidget {
           error: (error, _) => Center(
             child: Text(context.t(LocaleKeys.libraryDatabaseLoadFailed)),
           ),
-          data: (allNovels) {
-            // 继续写和最近不受类型筛选影响；搜索时收起，结果直接顶到搜索框下面。
+          data: (everything) {
+            final allNovels = everything
+                .where(
+                  (n) =>
+                      n.contentKind != contentKindCanvas &&
+                      n.contentKind == contentKind,
+                )
+                .toList();
+            // 搜索时收起继续写和最近，结果直接顶到搜索框下面。
             final recent = allNovels.shelfVisible.sortedForShelf(
               LibrarySortOrder.updated,
             );
@@ -427,7 +480,8 @@ class MobileLibraryPage extends HookConsumerWidget {
                   onOpenDrafts: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const MobileLibraryDraftsPage(),
+                        builder: (_) =>
+                            MobileLibraryDraftsPage(contentKind: contentKind),
                       ),
                     );
                   },
@@ -435,7 +489,7 @@ class MobileLibraryPage extends HookConsumerWidget {
                 ),
                 Expanded(
                   child: LibraryCollectionRegion(
-                    contentKind: shelfKind,
+                    contentKind: contentKind,
                     mobile: true,
                     initialCollectionId: collectionId,
                     // 切集合清掉分类筛选，搜索和排序沿用。
@@ -474,7 +528,7 @@ class MobileLibraryPage extends HookConsumerWidget {
                       return CurrentCollectionScope(
                         collection: location.current,
                         child: CustomScrollView(
-                          key: const PageStorageKey('mobile-library'),
+                          key: PageStorageKey('mobile-library-$contentKind'),
                           primary: false,
                           slivers: [
                             // 收起顶部时靠 key 对齐，搜索框不会被重建而丢焦点。
@@ -497,52 +551,24 @@ class MobileLibraryPage extends HookConsumerWidget {
                               ),
                             SliverToBoxAdapter(
                               key: const ValueKey('library-filters'),
-                              child: Column(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      RevericSpacing.x3l,
-                                      RevericSpacing.xs,
-                                      RevericSpacing.x3l,
-                                      RevericSpacing.md,
-                                    ),
-                                    child: MobileSegmentedTabs(
-                                      tabs: [
-                                        context.t(LocaleKeys.commonFilterAll),
-                                        context.t(
-                                          LocaleKeys.libraryContentKindNovel,
-                                        ),
-                                        context.t(
-                                          LocaleKeys
-                                              .libraryContentKindScreenplay,
-                                        ),
-                                      ],
-                                      selectedIndex: typeTabs.indexOf(
-                                        shelfKind,
-                                      ),
-                                      onSelected: selectType,
-                                    ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  RevericSpacing.x3l,
+                                  RevericSpacing.xs,
+                                  RevericSpacing.x3l,
+                                  RevericSpacing.xs,
+                                ),
+                                child: RevericSearchField(
+                                  controller: searchController,
+                                  hint: context.t(
+                                    LocaleKeys.librarySearchPlaceholder,
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      RevericSpacing.x3l,
-                                      0,
-                                      RevericSpacing.x3l,
-                                      RevericSpacing.xs,
-                                    ),
-                                    child: RevericSearchField(
-                                      controller: searchController,
-                                      hint: context.t(
-                                        LocaleKeys.librarySearchPlaceholder,
-                                      ),
-                                      // 触摸目标保持原高度，组件默认的 36 在手机上偏小。
-                                      height: RevericSizes.buttonHeight,
-                                      radius: RevericRadius.pill,
-                                      fillColor: colors.surface,
-                                      highlightWhenFilled: true,
-                                    ),
-                                  ),
-                                ],
+                                  // 触摸目标保持原高度，组件默认的 36 在手机上偏小。
+                                  height: RevericSizes.buttonHeight,
+                                  radius: RevericRadius.pill,
+                                  fillColor: colors.surface,
+                                  highlightWhenFilled: true,
+                                ),
                               ),
                             ),
                             SliverPersistentHeader(
@@ -555,7 +581,7 @@ class MobileLibraryPage extends HookConsumerWidget {
                                 onOpenFilter: () => showMobileShelfOptionsSheet(
                                   context,
                                   novels: novels,
-                                  contentKind: shelfKind,
+                                  contentKind: contentKind,
                                   sortOrder: sortOrder.value,
                                   onSortChanged: (value) =>
                                       sortOrder.value = value,
@@ -703,8 +729,10 @@ class _SectionLabel extends StatelessWidget {
 
 void _showCreateSheet({
   required BuildContext context,
+  required String createLabelKey,
   required VoidCallback onCreate,
-  required VoidCallback onQuickStart,
+  required VoidCallback? onQuickStart,
+  required String importLabelKey,
   required VoidCallback onImport,
 }) {
   final colors = RevericTheme.colorsOf(context);
@@ -727,13 +755,14 @@ void _showCreateSheet({
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            item(RevericIcons.add, LocaleKeys.libraryCreateNovel, onCreate),
-            item(
-              RevericIcons.auto_awesome,
-              LocaleKeys.libraryQuickStart,
-              onQuickStart,
-            ),
-            item(RevericIcons.upload, LocaleKeys.libraryImportTxt, onImport),
+            item(RevericIcons.add, createLabelKey, onCreate),
+            if (onQuickStart != null)
+              item(
+                RevericIcons.auto_awesome,
+                LocaleKeys.libraryQuickStart,
+                onQuickStart,
+              ),
+            item(RevericIcons.upload, importLabelKey, onImport),
           ],
         ),
       );
@@ -1044,6 +1073,7 @@ void _showNovelActionsSheet({
   final colors = RevericTheme.colorsOf(context);
   final typo = RevericTheme.typographyOf(context);
 
+  final isCanvas = novel.contentKind == contentKindCanvas;
   final isFinished = novel.status == contentStatusFinished;
   final isAbandoned = novel.status == contentStatusAbandoned;
   final isArchived = novel.status == contentStatusArchived;
@@ -1123,15 +1153,16 @@ void _showNovelActionsSheet({
                 ),
                 Divider(height: 1, color: colors.borderSubtle),
                 if (isActive) ...[
-                  _SheetItem(
-                    icon: RevericIcons.check_circle_outline,
-                    iconColor: colors.accent,
-                    label: sheetContext.t(LocaleKeys.libraryActionFinish),
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      onUpdateStatus(contentStatusFinished);
-                    },
-                  ),
+                  if (!isCanvas)
+                    _SheetItem(
+                      icon: RevericIcons.check_circle_outline,
+                      iconColor: colors.accent,
+                      label: sheetContext.t(LocaleKeys.libraryActionFinish),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        onUpdateStatus(contentStatusFinished);
+                      },
+                    ),
                   _SheetItem(
                     icon: RevericIcons.archive_outlined,
                     iconColor: colors.accentAmber,

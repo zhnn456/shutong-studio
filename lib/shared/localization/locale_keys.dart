@@ -15,6 +15,10 @@
 //   反查某个 key 是否已存在时，优先 Grep value 的片段，不要猜常量名。
 // - 新增或修改 key 必须同步 en 与 zh-CN 两份 JSON，规则见 .agents/rules/i18n.md。
 abstract final class LocaleKeys {
+  static const productionImageCandidates =
+      'screenplay.production.imageCandidates';
+  static const productionImageCandidate =
+      'screenplay.production.imageCandidate';
   static const historyCommitMessagePluginUpdate =
       'history.commit_message.plugin_update';
 
@@ -315,31 +319,6 @@ abstract final class LocaleKeys {
   static const aiPermissionGenerationAudio = 'ai.permission_generation_audio';
   static const aiPermissionFilesRead = 'ai.permission_files_read';
   static const aiPermissionFilesRemove = 'ai.permission_files_remove';
-  static const aiToolRunFilesList = 'ai.tool_run_files_list';
-  static const aiToolRunFilesReadText = 'ai.tool_run_files_read_text';
-  static const aiToolRunViewImage = 'ai.tool_run_view_image';
-  static const aiToolRunFilesReadVideoMetadata =
-      'ai.tool_run_files_read_video_metadata';
-  static const aiToolRunFilesReadAudioMetadata =
-      'ai.tool_run_files_read_audio_metadata';
-  static const aiToolRunEditingList = 'ai.tool_run_editing_list';
-  static const aiToolRunEditingRead = 'ai.tool_run_editing_read';
-  static const aiToolRunEditingApply = 'ai.tool_run_editing_apply';
-  static const aiToolRunEditingPreview = 'ai.tool_run_editing_preview';
-  static const aiToolRunEditingExport = 'ai.tool_run_editing_export';
-  static const aiToolRunOperationsList = 'ai.tool_run_operations_list';
-  static const aiToolRunOperationsRead = 'ai.tool_run_operations_read';
-  static const aiToolRunOperationsWait = 'ai.tool_run_operations_wait';
-  static const aiToolRunFfmpegCapabilities = 'ai.tool_run_ffmpeg_capabilities';
-  static const aiToolRunFfmpegProbe = 'ai.tool_run_ffmpeg_probe';
-  static const aiToolRunProductionCapturePanorama =
-      'ai.tool_run_production_capture_panorama';
-  static const aiToolRunProductionDeriveView =
-      'ai.tool_run_production_derive_view';
-  static const aiToolRunProductionImagePreset =
-      'ai.tool_run_production_image_preset';
-  static const aiToolRunFfmpegFrames = 'ai.tool_run_ffmpeg_frames';
-  static const aiToolRunFfmpegExecute = 'ai.tool_run_ffmpeg_execute';
   static const aiOperationFileUnavailable = 'ai.operation_file_unavailable';
   static const aiOperationFailedHint = 'ai.operation_failed_hint';
   static const aiOperationWaitingApproval = 'ai.operation_waiting_approval';
@@ -382,6 +361,10 @@ abstract final class LocaleKeys {
   static const aiApprovalFactArgs = 'ai.approval_fact_args';
   static const aiApprovalItemCount = 'ai.approval_item_count';
   static const aiApprovalFactMode = 'ai.approval_fact_mode';
+  static const productionReferenceStorageInvalid =
+      'production.reference_storage_invalid';
+  static const productionReferenceUploadFailed =
+      'production.reference_upload_failed';
   static const productionReferenceStorageNotConnected =
       'production.reference_storage_not_connected';
   static const productionStorageRequiredTitle =
@@ -434,6 +417,8 @@ abstract final class LocaleKeys {
       'screenplay.production.speechVoiceIdHint';
   static const productionSpeechInstructions =
       'screenplay.production.speechInstructions';
+  static const productionSpeechInstructionsRequired =
+      'screenplay.production_speech_instructions_required';
   static const productionSpeechInstructionsHint =
       'screenplay.production.speechInstructionsHint';
   static const productionSpeechUsingReference =
@@ -473,8 +458,6 @@ abstract final class LocaleKeys {
   static const productionImportHint = 'screenplay.production.importHint';
   static const productionAddNode = 'screenplay.production.addNode';
   static const productionAddSegment = 'screenplay.production.addSegment';
-  static const productionAddSegmentHint =
-      'screenplay.production.addSegmentHint';
   static const productionAddVideoHint = 'screenplay.production.addVideoHint';
   static const productionAddImageHint = 'screenplay.production.addImageHint';
   static const productionAddAudioHint = 'screenplay.production.addAudioHint';
@@ -514,6 +497,7 @@ abstract final class LocaleKeys {
   static const productionUnlink = 'screenplay.production.unlink';
   static const productionUnlinkHint = 'screenplay.production.unlinkHint';
   static const productionReference = 'screenplay.production.reference';
+  static const productionMention = 'screenplay.production.mention';
 
   static const productionExportIncomplete =
       'screenplay.production.exportIncomplete';
@@ -521,6 +505,7 @@ abstract final class LocaleKeys {
 
   static const productionTitle = 'screenplay.production.title';
   static const productionCanvas = 'screenplay.production.canvas';
+  static const productionClips = 'screenplay.production.clips';
   static const productionDeleteNodeConfirm =
       'screenplay.production.deleteNodeConfirm';
   static const productionIndependentMedia =
@@ -605,6 +590,15 @@ abstract final class LocaleKeys {
   static const productionVideoFile = 'screenplay.production.videoFile';
   static const productionEmpty = 'screenplay.production.empty';
   static const productionResultPending = 'screenplay.production.resultPending';
+  static const productionMiddleFrame = 'screenplay.production.middleFrame';
+  static const productionMiddleFrameReference =
+      'screenplay.production.middleFrameReference';
+  static const productionMiddleFrameReferenceNumber =
+      'screenplay.production.middleFrameReferenceNumber';
+  static const productionMiddleFrameNumber =
+      'screenplay.production.middleFrameNumber';
+  static const productionGenerateMiddleFramesUnsupported =
+      'screenplay.production.generateMiddleFramesUnsupported';
   static const productionFirstFrame = 'screenplay.production.firstFrame';
   static const productionLastFrame = 'screenplay.production.lastFrame';
   static const productionFirstFrameReference =
@@ -679,17 +673,6 @@ abstract final class LocaleKeys {
   static const storyboardDown = 'screenplay.storyboard.down';
   static const storyboardChooseScene = 'screenplay.storyboard.choose_scene';
 
-  static const settingsProviderAudioModelsLabel =
-      'settings.provider_audio_models_label';
-  static const settingsProviderAssetSection = 'settings.provider_asset_section';
-  static const settingsProviderAssetAccessKeyLabel =
-      'settings.provider_asset_access_key_label';
-  static const settingsProviderAssetSecretKeyLabel =
-      'settings.provider_asset_secret_key_label';
-  static const settingsProviderAssetProjectLabel =
-      'settings.provider_asset_project_label';
-  static const settingsProviderAssetProjectHint =
-      'settings.provider_asset_project_hint';
   static const productionAudioReferenceInvalid =
       'screenplay.production.audioReferenceInvalid';
   static const productionAudioReferenceMixed =
@@ -715,17 +698,6 @@ abstract final class LocaleKeys {
       'screenplay.production.audioReferenceHint';
   static const productionAudioInterrupted =
       'screenplay.production.audioInterrupted';
-  static const settingsProviderTypeVolcengine =
-      'settings.provider_type_volcengine';
-  static const settingsProviderModelIdHint = 'settings.provider_model_id_hint';
-  static const settingsProviderVideoModelsLabel =
-      'settings.provider_video_models_label';
-  static const settingsProviderVideoHighlightMaxDuration =
-      'settings.provider_video_highlight_max_duration';
-  static const settingsProviderVideoHighlightPriority =
-      'settings.provider_video_highlight_priority';
-  static const settingsProviderVideoNoticePriorityBilling =
-      'settings.provider_video_notice_priority_billing';
   // ── a2ui ────────────────────────────────────────
   static const a2uiComponentUnavailable = 'a2ui.component_unavailable';
   static const a2uiSurfaceUnavailableTitle = 'a2ui.surface_unavailable_title';
@@ -1157,10 +1129,6 @@ abstract final class LocaleKeys {
   static const agentStudioWriter = 'agent_studio.writer';
   static const agentStudioWriterDescription = 'agent_studio.writer_description';
   // ── ai ────────────────────────────────────────
-  static const aiToolStoryState = 'ai.tool_story_state';
-  static const aiToolSchema = 'ai.tool_schema';
-  static const aiToolSchemaShared = 'ai.tool_schema_shared';
-  static const aiToolSchemaNovel = 'ai.tool_schema_novel';
   static const aiAccept = 'ai.accept';
   static const aiAddModel = 'ai.add_model';
   static const aiAgentQuickPlotStructure = 'ai.agent_quick_plot_structure';
@@ -1294,21 +1262,6 @@ abstract final class LocaleKeys {
   static const aiFeedbackTitle = 'ai.feedback_title';
   static const aiFeedbackDescription = 'ai.feedback_description';
   static const aiFeedbackPlaceholder = 'ai.feedback_placeholder';
-  static const aiFeedbackSubmitIssue = 'ai.feedback_submit_issue';
-  static const aiFeedbackIssueTitle = 'ai.feedback_issue_title';
-  static const aiFeedbackIssueBody = 'ai.feedback_issue_body';
-  static const aiFeedbackOpenIssueFailed = 'ai.feedback_open_issue_failed';
-  static const aiFeedbackDiagnosticsTitle = 'ai.feedback_diagnostics_title';
-  static const aiFeedbackDiagnosticsDescription =
-      'ai.feedback_diagnostics_description';
-  static const aiFeedbackExport = 'ai.feedback_export';
-  static const aiFeedbackExporting = 'ai.feedback_exporting';
-  static const aiFeedbackExportSaved = 'ai.feedback_export_saved';
-  static const aiFeedbackExportFailed = 'ai.feedback_export_failed';
-  static const aiFeedbackSendEmail = 'ai.feedback_send_email';
-  static const aiFeedbackEmailSubject = 'ai.feedback_email_subject';
-  static const aiFeedbackEmailBody = 'ai.feedback_email_body';
-  static const aiFeedbackOpenEmailFailed = 'ai.feedback_open_email_failed';
   static const aiFeedbackSession = 'ai.feedback_session';
   static const aiFeedbackModel = 'ai.feedback_model';
   static const aiFeedbackMessages = 'ai.feedback_messages';
@@ -1360,6 +1313,8 @@ abstract final class LocaleKeys {
   static const aiImageGenUnavailable = 'ai.image_gen_unavailable';
   static const aiImageGenerated = 'ai.image_generated';
   static const aiImageGenerating = 'ai.image_generating';
+  static const aiImageCandidatesFetchFailed =
+      'ai.image_candidates_fetch_failed';
   static const aiImageGenerationFailed = 'ai.image_generation_failed';
   static const aiCodexImageAuthFailed = 'ai.codex_image_auth_failed';
   static const aiCodexImageNeedsChatModel = 'ai.codex_image_needs_chat_model';
@@ -1528,32 +1483,6 @@ abstract final class LocaleKeys {
   static const aiSynopsisSaved = 'ai.synopsis_saved';
   static const aiThinking = 'ai.thinking';
   static const aiRetryingResponse = 'ai.retrying_response';
-  static const aiToolActionAsking = 'ai.tool_action_asking';
-  static const aiToolActionCreating = 'ai.tool_action_creating';
-  static const aiToolActionCreatingRelation =
-      'ai.tool_action_creating_relation';
-  static const aiToolActionForkingAgent = 'ai.tool_action_forking_agent';
-  static const aiToolActionGlobbing = 'ai.tool_action_globbing';
-  static const aiToolActionGrepping = 'ai.tool_action_grepping';
-  static const aiToolActionEditing = 'ai.tool_action_editing';
-  static const aiToolActionReplacing = 'ai.tool_action_replacing';
-  static const aiToolActionGeneratingAvatar =
-      'ai.tool_action_generating_avatar';
-  static const aiToolActionGeneratingPhoto = 'ai.tool_action_generating_photo';
-  static const aiToolActionInstalling = 'ai.tool_action_installing';
-  static const aiToolActionLoadingSkill = 'ai.tool_action_loading_skill';
-  static const aiToolActionReading = 'ai.tool_action_reading';
-  static const aiToolActionRemoving = 'ai.tool_action_removing';
-  static const aiToolActionSearching = 'ai.tool_action_searching';
-  static const aiToolActionAddingToLibrary = 'ai.tool_action_adding_to_library';
-  static const aiToolActionSpawningAgent = 'ai.tool_action_spawning_agent';
-  static const aiToolActionUpdatingTasks = 'ai.tool_action_updating_tasks';
-  static const aiToolActionWebFetching = 'ai.tool_action_web_fetching';
-  static const aiToolActionWebSearching = 'ai.tool_action_web_searching';
-  static const aiToolActionWriting = 'ai.tool_action_writing';
-  static const aiToolApproveHint = 'ai.tool_approve_hint';
-  static const aiToolCallsSection = 'ai.tool_calls_section';
-  static const aiCodemodeName = 'ai.tool_name_codemode';
   static const aiCodemodeRunning = 'ai.codemode_running';
   static const aiCodemodeDone = 'ai.codemode_done';
   static const aiCodemodeFailed = 'ai.codemode_failed';
@@ -1568,59 +1497,6 @@ abstract final class LocaleKeys {
   static const aiCodemodeErrorForbidden = 'ai.codemode_error_forbidden';
   static const aiCodemodeErrorBusy = 'ai.codemode_error_busy';
   static const aiCodemodeErrorRuntime = 'ai.codemode_error_runtime';
-  static const aiToolCancelled = 'ai.tool_cancelled';
-  static const aiToolCallIncomplete = 'ai.tool_call_incomplete';
-  static const aiToolCollectionLocations = 'ai.tool_collection_locations';
-  static const aiToolCollectionListFmt = 'ai.tool_collection_list_fmt';
-  static const aiToolError = 'ai.tool_error';
-  static const aiToolExecutionResult = 'ai.tool_execution_result';
-  static const aiToolAgentMessage = 'ai.tool_agent_message';
-  static const aiToolGrepModeCount = 'ai.tool_grep_mode_count';
-  static const aiToolGrepModeFiles = 'ai.tool_grep_mode_files';
-  static const aiToolBeatIndexFmt = 'ai.tool_beat_index_fmt';
-  static const aiToolBeatsCountFmt = 'ai.tool_beats_count_fmt';
-  static const aiToolChaptersCountFmt = 'ai.tool_chapters_count_fmt';
-  static const aiToolChapterTypeChapter = 'ai.tool_chapter_type_chapter';
-  static const aiToolDepthFmt = 'ai.tool_depth_fmt';
-  static const aiToolLineRange = 'ai.tool_line_range';
-  static const aiToolLineRangeFmt = 'ai.tool_line_range_fmt';
-  static const aiToolLayerDepthFmt = 'ai.tool_layer_depth_fmt';
-  static const aiToolMatches = 'ai.tool_matches';
-  static const aiToolMatchesCountFmt = 'ai.tool_matches_count_fmt';
-  static const aiToolQueryFilterFmt = 'ai.tool_query_filter_fmt';
-  static const aiToolQuerySourceType = 'ai.tool_query_source_type';
-  static const aiToolQueryTargetType = 'ai.tool_query_target_type';
-  static const aiToolQueryRelationType = 'ai.tool_query_relation_type';
-  static const aiToolQueryChapterId = 'ai.tool_query_chapter_id';
-  static const aiToolMoreResultsFmt = 'ai.tool_more_results_fmt';
-  static const aiToolOutlineBeats = 'ai.tool_outline_beats';
-  static const aiToolNameAskUser = 'ai.tool_name_ask_user';
-  static const aiToolNameCreate = 'ai.tool_name_create';
-  static const aiToolNameCreateChapter = 'ai.tool_name_create_chapter';
-  static const aiToolNameCreateCharacter = 'ai.tool_name_create_character';
-  static const aiToolNameCreateForeshadowing =
-      'ai.tool_name_create_foreshadowing';
-  static const aiToolNameCreateLocation = 'ai.tool_name_create_location';
-  static const aiToolNameCreateOutline = 'ai.tool_name_create_outline';
-  static const aiToolNameCreateBeat = 'ai.tool_name_create_beat';
-  static const aiToolNameCreateRelation = 'ai.tool_name_create_relation';
-  static const aiToolNameCreateVolume = 'ai.tool_name_create_volume';
-  static const aiToolNameEditRelation = 'ai.tool_name_edit_relation';
-  static const aiToolNameEdit = 'ai.tool_name_edit';
-  static const aiToolNameReplace = 'ai.tool_name_replace';
-  static const aiToolNameEditBeat = 'ai.tool_name_edit_beat';
-  static const aiToolNameEditOutline = 'ai.tool_name_edit_outline';
-  static const aiToolNameGenerateAvatar = 'ai.tool_name_generate_avatar';
-  static const aiToolNameGeneratePhoto = 'ai.tool_name_generate_photo';
-  static const aiToolNameGlob = 'ai.tool_name_glob';
-  static const aiToolNameGrep = 'ai.tool_name_grep';
-  static const aiToolNameRun = 'ai.tool_name_run';
-  static const aiToolNameRead = 'ai.tool_name_read';
-  static const aiToolNameRemove = 'ai.tool_name_remove';
-  static const aiToolNameSearch = 'ai.tool_name_search';
-  static const aiToolNameGraphSearch = 'ai.tool_name_graph_search';
-  static const aiToolNameSkill = 'ai.tool_name_skill';
-  static const aiToolNameSpawnAgent = 'ai.tool_name_spawn_agent';
   static const aiBackgroundAgents = 'ai.background_agents';
   static const aiBackgroundStopping = 'ai.background_stopping';
   static const aiBackgroundStopAll = 'ai.background_stop_all';
@@ -1630,159 +1506,8 @@ abstract final class LocaleKeys {
   static const aiBackgroundAllSettled = 'ai.background_all_settled';
   static const aiBackgroundDone = 'ai.background_done';
   static const aiBackgroundFailed = 'ai.background_failed';
-  static const aiToolNameSendAgentMessage = 'ai.tool_name_send_agent_message';
-  static const aiToolNameStopAgent = 'ai.tool_name_stop_agent';
-  static const aiToolNameForkAgent = 'ai.tool_name_fork_agent';
-  static const aiToolNameCreateTask = 'ai.tool_name_create_task';
-  static const aiToolNameListTasks = 'ai.tool_name_list_tasks';
-  static const aiToolNameTodoWrite = 'ai.tool_name_todo_write';
-  static const aiToolNameWebFetch = 'ai.tool_name_web_fetch';
-  static const aiToolNameWebSearch = 'ai.tool_name_web_search';
-  static const aiToolNameWrite = 'ai.tool_name_write';
-  static const aiToolNewText = 'ai.tool_new_text';
-  static const aiToolNoResults = 'ai.tool_no_results';
-  static const aiToolNotAllowedFmt = 'ai.tool_not_allowed_fmt';
-  static const aiToolOldText = 'ai.tool_old_text';
-  static const aiToolPathCanvasEdges = 'ai.tool_path_canvas_edges';
-  static const aiToolPathCanvasLayout = 'ai.tool_path_canvas_layout';
-  static const aiToolPathCanvasNodes = 'ai.tool_path_canvas_nodes';
-  static const aiToolPaths = 'ai.tool_paths';
-  static const aiToolPattern = 'ai.tool_pattern';
-  static const aiToolPending = 'ai.tool_pending';
-  static const aiToolPreview = 'ai.tool_preview';
-  static const aiToolProcessCountFmt = 'ai.tool_process_count_fmt';
-  static const aiToolProcessTitle = 'ai.tool_process_title';
-  static const aiToolQuestion = 'ai.tool_question';
-  static const aiToolRejected = 'ai.tool_rejected';
-  static const aiToolReplaceAll = 'ai.tool_replace_all';
-  static const aiToolResultCount = 'ai.tool_result_count';
-  static const aiToolResultCountFmt = 'ai.tool_result_count_fmt';
-  static const aiToolResultsTruncated = 'ai.tool_results_truncated';
-  static const aiToolRunAssets = 'ai.tool_run_assets';
-  static const aiToolRunAssetsList = 'ai.tool_run_assets_list';
-  static const aiToolRunAssetsRead = 'ai.tool_run_assets_read';
-  static const aiToolRunMcp = 'ai.tool_run_mcp';
-  static const aiToolRunMcpList = 'ai.tool_run_mcp_list';
-  static const aiToolRunMcpSearch = 'ai.tool_run_mcp_search';
-  static const aiToolRunMcpDescribe = 'ai.tool_run_mcp_describe';
-  static const aiToolRunMcpCall = 'ai.tool_run_mcp_call';
-  static const aiToolRunProviders = 'ai.tool_run_providers';
-  static const aiToolRunProvidersList = 'ai.tool_run_providers_list';
-  static const aiToolRunProvidersRead = 'ai.tool_run_providers_read';
-  static const aiToolRunProvidersModels = 'ai.tool_run_providers_models';
-  static const aiToolRunDirector = 'ai.tool_run_director';
-  static const aiToolRunDirectorSchema = 'ai.tool_run_director_schema';
-  static const aiToolRunDirectorPresets = 'ai.tool_run_director_presets';
-  static const aiToolRunDirectorSample = 'ai.tool_run_director_sample';
-  static const aiToolRunDirectorList = 'ai.tool_run_director_list';
-  static const aiToolRunDirectorRead = 'ai.tool_run_director_read';
-  static const aiToolRunDirectorCreate = 'ai.tool_run_director_create';
-  static const aiToolRunDirectorApply = 'ai.tool_run_director_apply';
-  static const aiToolRunDirectorRestore = 'ai.tool_run_director_restore';
-  static const aiToolRunDirectorRemove = 'ai.tool_run_director_remove';
-  static const aiToolRunDirectorPreview = 'ai.tool_run_director_preview';
-  static const aiToolRunDirectorOutput = 'ai.tool_run_director_output';
-  static const aiToolRunDirectorFrames = 'ai.tool_run_director_frames';
-  static const aiToolRunReadFmt = 'ai.tool_run_read_fmt';
-  static const aiToolRunSearchFmt = 'ai.tool_run_search_fmt';
-  static const aiToolRunWebFmt = 'ai.tool_run_web_fmt';
-  static const aiToolRunAgentSkillsList = 'ai.tool_run_agent_skills_list';
-  static const aiToolRunAgentSkillsCreate = 'ai.tool_run_agent_skills_create';
-  static const aiToolRunAgentSkillsUpdate = 'ai.tool_run_agent_skills_update';
-  static const aiToolRunAgentSkillsDelete = 'ai.tool_run_agent_skills_delete';
-  static const aiToolRunAgentSkillsSearch = 'ai.tool_run_agent_skills_search';
-  static const aiToolRunAgentSkillsGet = 'ai.tool_run_agent_skills_get';
-  static const aiToolRunAgentSkillsInstall = 'ai.tool_run_agent_skills_install';
-  static const aiToolRunAgentSkillsReferenceList =
-      'ai.tool_run_agent_skills_reference_list';
-  static const aiToolRunAgentSkillsReferenceGet =
-      'ai.tool_run_agent_skills_reference_get';
-  static const aiToolRunAgentSkillsReferenceCreate =
-      'ai.tool_run_agent_skills_reference_create';
-  static const aiToolRunAgentSkillsReferenceUpdate =
-      'ai.tool_run_agent_skills_reference_update';
-  static const aiToolRunAgentSkillsReferenceMove =
-      'ai.tool_run_agent_skills_reference_move';
-  static const aiToolRunAgentSkillsReferenceDelete =
-      'ai.tool_run_agent_skills_reference_delete';
-  static const aiToolRunThemes = 'ai.tool_run_themes';
-  static const aiToolRunThemesList = 'ai.tool_run_themes_list';
-  static const aiToolRunThemesRead = 'ai.tool_run_themes_read';
-  static const aiToolRunThemesCreate = 'ai.tool_run_themes_create';
-  static const aiToolRunThemesUpdate = 'ai.tool_run_themes_update';
-  static const aiToolRunThemesApply = 'ai.tool_run_themes_apply';
-  static const aiToolRunThemesDelete = 'ai.tool_run_themes_delete';
-  static const aiToolRunAgentRulesList = 'ai.tool_run_agent_rules_list';
-  static const aiToolRunAgentRulesRead = 'ai.tool_run_agent_rules_read';
-  static const aiToolRunAgentRulesCreate = 'ai.tool_run_agent_rules_create';
-  static const aiToolRunAgentRulesUpdate = 'ai.tool_run_agent_rules_update';
-  static const aiToolRunAgentRulesDelete = 'ai.tool_run_agent_rules_delete';
-  static const aiToolRunSubagentsList = 'ai.tool_run_subagents_list';
-  static const aiToolRunSubagentsCreate = 'ai.tool_run_subagents_create';
-  static const aiToolRunSubagentsUpdate = 'ai.tool_run_subagents_update';
-  static const aiToolRunSubagentsDelete = 'ai.tool_run_subagents_delete';
-  static const aiToolRunSessionsList = 'ai.tool_run_sessions_list';
-  static const aiToolRunSessionsRead = 'ai.tool_run_sessions_read';
-  static const aiToolRunSessionsSearch = 'ai.tool_run_sessions_search';
-  static const aiToolRunSessionsGet = 'ai.tool_run_sessions_get';
-  static const aiToolRunNovelAddToLibrary = 'ai.tool_run_novel_add_to_library';
-  static const aiToolRunMapDraft = 'ai.tool_run_map_draft';
-  static const aiToolRunNotifyQuestion = 'ai.tool_run_notify_question';
-  static const aiToolRunNotifyComplete = 'ai.tool_run_notify_complete';
-  static const aiToolRunNotifyError = 'ai.tool_run_notify_error';
-  static const aiToolRunImageCharacterAvatar =
-      'ai.tool_run_image_character_avatar';
-  static const aiToolRunImageCharacterPhoto =
-      'ai.tool_run_image_character_photo';
-  static const aiToolRunImageItemPhoto = 'ai.tool_run_image_item_photo';
-  static const aiToolRunViewHelp = 'ai.tool_run_view_help';
-  static const aiToolRunImage = 'ai.tool_run_image';
-  static const aiToolRunHelpCharacterImage = 'ai.tool_run_help_character_image';
-  static const aiToolRunHelpItemImage = 'ai.tool_run_help_item_image';
-  static const aiToolRunNotify = 'ai.tool_run_notify';
-  static const aiToolRunAgentSkills = 'ai.tool_run_agent_skills';
-  static const aiToolRunAgentRules = 'ai.tool_run_agent_rules';
-  static const aiToolRunSubagents = 'ai.tool_run_subagents';
-  static const aiToolRunSessions = 'ai.tool_run_sessions';
-  static const aiToolRunNovel = 'ai.tool_run_novel';
-  static const aiToolRunHelp = 'ai.tool_run_help';
-  static const aiToolRunMap = 'ai.tool_run_map';
-  static const aiToolRunMapSubmit = 'ai.tool_run_map_submit';
-  static const aiToolRunMapPrompt = 'ai.tool_run_map_prompt';
-  static const aiToolRunMapReady = 'ai.tool_run_map_ready';
-  static const aiToolRunMapStyleParchment = 'ai.tool_run_map_style_parchment';
-  static const aiToolRunMapStyleInkmap = 'ai.tool_run_map_style_inkmap';
-  static const aiToolRunMapStyleEngraving = 'ai.tool_run_map_style_engraving';
-  static const aiToolRunMapStyleRealistic = 'ai.tool_run_map_style_realistic';
-  static const aiToolRunMapStyleWoodcut = 'ai.tool_run_map_style_woodcut';
-  static const aiToolRunMapStyleWatercolor = 'ai.tool_run_map_style_watercolor';
-  static const aiToolRunMapStyleAtlas = 'ai.tool_run_map_style_atlas';
-  static const aiToolRunMapQualityLow = 'ai.tool_run_map_quality_low';
-  static const aiToolRunMapQualityMedium = 'ai.tool_run_map_quality_medium';
-  static const aiToolRunMapQualityHigh = 'ai.tool_run_map_quality_high';
-  static const aiToolRunNotifyProgress = 'ai.tool_run_notify_progress';
-  static const aiToolRunActionListing = 'ai.tool_run_action_listing';
-  static const aiToolRunSkillsCountFmt = 'ai.tool_run_skills_count_fmt';
-  static const aiToolRunSubagentsCountFmt = 'ai.tool_run_subagents_count_fmt';
-  static const aiToolRunRulesCountFmt = 'ai.tool_run_rules_count_fmt';
-  static const aiToolRunRulesAvailableFmt = 'ai.tool_run_rules_available_fmt';
-  static const aiToolRunRulesEmpty = 'ai.tool_run_rules_empty';
-  static const aiToolRunDeletedRule = 'ai.tool_run_deleted_rule';
-  static const aiToolRunRuleName = 'ai.tool_run_rule_name';
-  static const aiToolRunRuleNewName = 'ai.tool_run_rule_new_name';
-  static const aiToolRunRuleContent = 'ai.tool_run_rule_content';
-  static const aiToolRunScopeFmt = 'ai.tool_run_scope_fmt';
-  static const aiToolRunning = 'ai.tool_running';
   static const aiRunAwaitingSubcommand = 'ai.run_awaiting_subcommand';
   static const aiSlashExperts = 'ai.slash_experts';
-  static const aiToolScope = 'ai.tool_scope';
-  static const aiToolScopeRoot = 'ai.tool_scope_root';
-  static const aiToolSkippedFmt = 'ai.tool_skipped_fmt';
-  static const aiToolSuccess = 'ai.tool_success';
-  static const aiToolTarget = 'ai.tool_target';
-  static const aiToolTask = 'ai.tool_task';
-  static const aiToolUsingSkill = 'ai.tool_using_skill';
-  static const aiToolWorkUnavailable = 'ai.tool_work_unavailable';
   static const aiUntitledChapter = 'ai.untitled_chapter';
   static const aiUserPromptRewrite = 'ai.user_prompt_rewrite';
   static const aiUserPromptSynopsis = 'ai.user_prompt_synopsis';
@@ -2163,6 +1888,10 @@ abstract final class LocaleKeys {
   static const commonClose = 'common.close';
   static const commonCollapse = 'common.collapse';
   static const commonCollapseSidebar = 'common.collapse_sidebar';
+  static const commonComplexity = 'common.complexity';
+  static const commonComplexityLow = 'common.complexity_low';
+  static const commonComplexityMedium = 'common.complexity_medium';
+  static const commonComplexityHigh = 'common.complexity_high';
   static const commonConfirm = 'common.confirm';
   static const commonContent = 'common.content';
   static const commonContinue = 'common.continue';
@@ -2319,6 +2048,7 @@ abstract final class LocaleKeys {
   static const commonNone = 'common.none';
   static const commonSelectedCountFmt = 'common.selected_count_fmt';
   static const commonSelectImage = 'common.select_image';
+  static const commonSelectFile = 'common.select_file';
   static const commonSend = 'common.send';
   static const commonSetup = 'common.setup';
   static const commonStatus = 'common.status';
@@ -2437,7 +2167,6 @@ abstract final class LocaleKeys {
       'screenplay.production_style_screenplay_tag';
   static const productionStyleScreenplayHint =
       'screenplay.production_style_screenplay_hint';
-  static const productionStyleClear = 'screenplay.production_style_clear';
   static const productionStyleInheritHint =
       'screenplay.production_style_inherit_hint';
   static const productionStyleOwnHint = 'screenplay.production_style_own_hint';
@@ -3067,7 +2796,9 @@ abstract final class LocaleKeys {
       'home.greeting_personalized_simple';
   static const homeRecentSessions = 'home.recent_sessions';
   static const homeRecentWork = 'home.recent_work';
-  static const homeSectionAi = 'home.section_ai';
+  static const homeSectionAgent = 'home.section_agent';
+  static const homeSectionChat = 'home.section_chat';
+  static const homeSectionModel = 'home.section_model';
   static const homeSectionSettings = 'home.section_settings';
   static const homeSectionWorks = 'home.section_works';
   static const homeNavWorks = 'home.nav_works';
@@ -3075,7 +2806,9 @@ abstract final class LocaleKeys {
   static const homeResumeEyebrow = 'home.resume_eyebrow';
   static const homeResumeRecent = 'home.resume_recent';
   static const homeResumeLastWritten = 'home.resume_last_written';
-  static const homeCreateWorkCardSubtitle = 'home.create_work_card_subtitle';
+  static const homeResumeEyebrowCanvas = 'home.resume_eyebrow_canvas';
+  static const homeResumeOpenCanvas = 'home.resume_open_canvas';
+  static const homeResumeLastEdited = 'home.resume_last_edited';
   static const homeSortRecent = 'home.sort_recent';
   static const homeSortCreated = 'home.sort_created';
   static const homeSortTitle = 'home.sort_title';
@@ -3145,7 +2878,6 @@ abstract final class LocaleKeys {
   static const libraryCategoryFemale = 'library.category_female';
   static const libraryContentKindNovel = 'library.content_kind_novel';
   static const libraryContentKindScreenplay = 'library.content_kind_screenplay';
-  static const libraryContentKindAll = 'library.content_kind_all';
   static const libraryAuthorName = 'library.author_name';
   static const libraryCreateDemoNovel = 'library.create_demo_novel';
   static const libraryCreateDemoNovelDesc = 'library.create_demo_novel_desc';
@@ -3156,7 +2888,6 @@ abstract final class LocaleKeys {
   static const libraryCreateNovel = 'library.create_novel';
   static const libraryCreateNovelFailed = 'library.create_novel_failed';
   static const libraryCreateScreenplay = 'library.create_screenplay';
-  static const libraryCreateWork = 'library.create_work';
   static const libraryCreateWorkFailed = 'library.create_work_failed';
   static const libraryMoreInfo = 'library.more_info';
   static const libraryMoreInfoHint = 'library.more_info_hint';
@@ -3247,6 +2978,12 @@ abstract final class LocaleKeys {
   static const libraryImportTxtFailed = 'library.import_txt_failed';
   static const libraryImportTxtSuccess = 'library.import_txt_success';
   static const libraryImportTxtSummary = 'library.import_txt_summary';
+  static const libraryImportScreenplay = 'library.import_screenplay';
+  static const libraryImportScreenplayHelp = 'library.import_screenplay_help';
+  static const libraryImportScreenplayTooLarge =
+      'library.import_screenplay_too_large';
+  static const libraryImportScreenplayLineTooLong =
+      'library.import_screenplay_line_too_long';
   static const libraryQuickStartIdeaHint = 'library.quick_start_idea_hint';
   static const libraryQuickStartIdeaHelp = 'library.quick_start_idea_help';
   static const libraryQuickStartConfirm = 'library.quick_start_confirm';
@@ -3254,6 +2991,7 @@ abstract final class LocaleKeys {
   static const libraryQuickStartChatHint = 'library.quick_start_chat_hint';
   static const libraryAdaptBannerTitle = 'library.adapt_banner_title';
   static const libraryAdaptBannerHint = 'library.adapt_banner_hint';
+  static const libraryAdaptNoSourceNovels = 'library.adapt_no_source_novels';
   static const libraryQuickStartHint = 'library.quick_start_hint';
   static const libraryScreenplayWorkspacePreparing =
       'library.screenplay_workspace_preparing';
@@ -3277,6 +3015,7 @@ abstract final class LocaleKeys {
   static const librarySelectCover = 'library.select_cover';
   static const libraryStartImport = 'library.start_import';
   static const librarySettings = 'library.settings';
+  static const libraryStatusActive = 'library.status_active';
   static const libraryStatusAbandoned = 'library.status_abandoned';
   static const libraryStatusArchived = 'library.status_archived';
   static const libraryStatusFinished = 'library.status_finished';
@@ -3611,7 +3350,8 @@ abstract final class LocaleKeys {
   static const mobileAssistantPromptsTitle = 'mobile.assistant_prompts_title';
   static const mobileAssistantEnableHint = 'mobile.assistant_enable_hint';
   static const mobileTabAssistant = 'mobile.tab_assistant';
-  static const mobileTabLibrary = 'mobile.tab_library';
+  static const mobileTabNovels = 'mobile.tab_novels';
+  static const mobileTabScreenplays = 'mobile.tab_screenplays';
   static const mobileTabSettings = 'mobile.tab_settings';
   // ── monologue ────────────────────────────────────────
   static const monologueContinue = 'monologue.continue';
@@ -3822,6 +3562,169 @@ abstract final class LocaleKeys {
   static const readingFontPreview = 'reading.font_preview';
   static const readingMinuteShort = 'reading.minute_short';
   static const readingChapterShort = 'reading.chapter_short';
+
+  // ── provider ────────────────────────────────────────
+  static const providerInfistarCategory = 'provider.infistar_category';
+  static const providerInfistarTitle = 'provider.infistar_title';
+  static const providerInfistarSummary = 'provider.infistar_summary';
+  static const providerInfistarListTagline = 'provider.infistar_list_tagline';
+  static const providerInfistarModels = 'provider.infistar_models';
+  static const providerInfistarSetupTitle = 'provider.infistar_setup_title';
+  static const providerInfistarSetup = 'provider.infistar_setup';
+  static const providerInfistarLink = 'provider.infistar_link';
+  static const providerInfistarPricingLink = 'provider.infistar_pricing_link';
+  static const providerInfistarNote = 'provider.infistar_note';
+  static const providerDescriptionInfistar = 'provider.description_infistar';
+  static const providerTypeInfistar = 'provider.type_infistar';
+  static const providerApikeyCategory = 'provider.apikey_category';
+  static const providerApikeyTitle = 'provider.apikey_title';
+  static const providerApikeySummary = 'provider.apikey_summary';
+  static const providerApikeyListTagline = 'provider.apikey_list_tagline';
+  static const providerApikeyModels = 'provider.apikey_models';
+  static const providerApikeySetupTitle = 'provider.apikey_setup_title';
+  static const providerApikeySetup = 'provider.apikey_setup';
+  static const providerApikeyLink = 'provider.apikey_link';
+  static const providerApikeyPricingLink = 'provider.apikey_pricing_link';
+  static const providerApikeyNote = 'provider.apikey_note';
+  static const providerDescriptionApikey = 'provider.description_apikey';
+  static const providerApi88DeepseekDiscount =
+      'provider.api88_deepseek_discount';
+  static const providerApi88DeepseekDetail = 'provider.api88_deepseek_detail';
+  static const providerApi88Category = 'provider.api88_category';
+  static const providerApi88Title = 'provider.api88_title';
+  static const providerApi88Summary = 'provider.api88_summary';
+  static const providerApi88ListTagline = 'provider.api88_list_tagline';
+  static const providerApi88ImageDetail = 'provider.api88_image_detail';
+  static const providerApi88ImageUnit = 'provider.api88_image_unit';
+  static const providerApi88VideoDetail = 'provider.api88_video_detail';
+  static const providerApi88VideoUnit = 'provider.api88_video_unit';
+  static const providerApi88TokensUnit = 'provider.api88_tokens_unit';
+  static const providerApi88ChatModels = 'provider.api88_chat_models';
+  static const providerApi88VoiceModels = 'provider.api88_voice_models';
+  static const providerApi88Link = 'provider.api88_link';
+  static const providerApi88PricingNote = 'provider.api88_pricing_note';
+  static const providerSponsoredBadge = 'provider.sponsored_badge';
+  static const providerMetasoLink = 'provider.metaso_link';
+  static const providerMetasoCategory = 'provider.metaso_category';
+  static const providerMetasoTagline = 'provider.metaso_tagline';
+  static const providerMetasoSummary = 'provider.metaso_summary';
+  static const providerMetasoMaxDuration = 'provider.metaso_max_duration';
+  static const providerMetasoSeconds = 'provider.metaso_seconds';
+  static const providerMetasoPriceUnit = 'provider.metaso_price_unit';
+  static const providerMetasoHd = 'provider.metaso_hd';
+  static const providerMetasoNative2k = 'provider.metaso_native_2k';
+  static const providerMetasoResolutionTitle =
+      'provider.metaso_resolution_title';
+  static const providerMetasoResolutionDescription =
+      'provider.metaso_resolution_description';
+  static const providerMetasoAudioTitle = 'provider.metaso_audio_title';
+  static const providerMetasoAudioDescription =
+      'provider.metaso_audio_description';
+  static const providerMetasoOpenaiCompatible =
+      'provider.metaso_openai_compatible';
+  static const providerMetasoCanvas = 'provider.metaso_canvas';
+  static const providerMetasoNoGpu = 'provider.metaso_no_gpu';
+  static const providerMetasoPricingNote = 'provider.metaso_pricing_note';
+  static const providerMetasoListTagline = 'provider.metaso_list_tagline';
+  static const providerDescriptionMetaso = 'provider.description_metaso';
+  static const providerSearchHint = 'provider.search_hint';
+  static const providerTypeVolcengine = 'provider.type_volcengine';
+  static const providerModelIdHint = 'provider.model_id_hint';
+  static const providerVideoModelsLabel = 'provider.video_models_label';
+  static const providerVideoHighlightMaxDuration =
+      'provider.video_highlight_max_duration';
+  static const providerVideoHighlightPriority =
+      'provider.video_highlight_priority';
+  static const providerVideoNoticePriorityBilling =
+      'provider.video_notice_priority_billing';
+  static const providerTitle = 'provider.title';
+  static const providerSummary = 'provider.summary';
+  static const providerNameLabel = 'provider.name_label';
+  static const providerNameHint = 'provider.name_hint';
+  static const providerTypeLabel = 'provider.type_label';
+  static const providerDescriptionOpenai = 'provider.description_openai';
+  static const providerDescriptionCodex = 'provider.description_codex';
+  static const providerDescriptionOpenaiCompatible =
+      'provider.description_openai_compatible';
+  static const providerDescriptionApi88 = 'provider.description_api88';
+  static const providerDescriptionOoki = 'provider.description_ooki';
+  static const providerDescriptionOpenrouter =
+      'provider.description_openrouter';
+  static const providerDescriptionXai = 'provider.description_xai';
+  static const providerDescriptionAnthropic = 'provider.description_anthropic';
+  static const providerDescriptionQwen = 'provider.description_qwen';
+  static const providerDescriptionQwenTokenPlan =
+      'provider.description_qwen_token_plan';
+  static const providerDescriptionGemini = 'provider.description_gemini';
+  static const providerDescriptionDeepseek = 'provider.description_deepseek';
+  static const providerDescriptionMoonshot = 'provider.description_moonshot';
+  static const providerDescriptionZhipu = 'provider.description_zhipu';
+  static const providerDescriptionDoubao = 'provider.description_doubao';
+  static const providerDescriptionVolcengine =
+      'provider.description_volcengine';
+  static const providerDescriptionMinimax = 'provider.description_minimax';
+  static const providerDescriptionMoss = 'provider.description_moss';
+  static const providerDescriptionAgnes = 'provider.description_agnes';
+  static const providerDescriptionAtlascloud =
+      'provider.description_atlascloud';
+  static const providerUnsupportedBadge = 'provider.unsupported_badge';
+  static const providerTypeUnsupported = 'provider.type_unsupported';
+  static const providerChatModelsLabel = 'provider.chat_models_label';
+  static const providerChatModelsHint = 'provider.chat_models_hint';
+  static const providerImageModelsLabel = 'provider.image_models_label';
+  static const providerImageModelsHint = 'provider.image_models_hint';
+  static const providerConfigNeedApiKey = 'provider.config_need_api_key';
+  static const providerConfigNeedBaseUrl = 'provider.config_need_base_url';
+  static const providerConfigNeedModels = 'provider.config_need_models';
+  static const providerNoModelsYet = 'provider.no_models_yet';
+  static const providerFetchModels = 'provider.fetch_models';
+  static const providerBaseUrlEndpointHint = 'provider.base_url_endpoint_hint';
+  static const providerFetchModelsBadRequest =
+      'provider.fetch_models_bad_request';
+  static const providerFetchModelsAuthFailed =
+      'provider.fetch_models_auth_failed';
+  static const providerFetchModelsNotFound = 'provider.fetch_models_not_found';
+  static const providerFetchModelsRateLimited =
+      'provider.fetch_models_rate_limited';
+  static const providerFetchModelsServerError =
+      'provider.fetch_models_server_error';
+  static const providerFetchModelsSearchHint =
+      'provider.fetch_models_search_hint';
+  static const providerFetchModelsNoMatches =
+      'provider.fetch_models_no_matches';
+  static const providerProxyUrlLabel = 'provider.proxy_url_label';
+  static const providerProxyUrlHint = 'provider.proxy_url_hint';
+  static const providerProxyUsernameLabel = 'provider.proxy_username_label';
+  static const providerProxyUsernameHint = 'provider.proxy_username_hint';
+  static const providerProxyPasswordLabel = 'provider.proxy_password_label';
+  static const providerProxyPasswordHint = 'provider.proxy_password_hint';
+  static const providerProxySection = 'provider.proxy_section';
+  static const providerSelectPlaceholder = 'provider.select_placeholder';
+  static const providerTypePickerTitle = 'provider.type_picker_title';
+  static const providerTypePresets = 'provider.type_presets';
+  static const providerTypeProtocols = 'provider.type_protocols';
+  static const providerKindChat = 'provider.kind_chat';
+  static const providerKindImage = 'provider.kind_image';
+  static const providerKindVideo = 'provider.kind_video';
+  static const providerKindAudio = 'provider.kind_audio';
+  static const providerTypeNoteOpenaiCompatible =
+      'provider.type_note_openai_compatible';
+  static const providerTypeNoteMinimax = 'provider.type_note_minimax';
+  static const providerTypeNoteDoubao = 'provider.type_note_doubao';
+  static const providerDraftBadge = 'provider.draft_badge';
+  static const providerDraftTypeHint = 'provider.draft_type_hint';
+  static const providerNewTitle = 'provider.new_title';
+  static const providerTypeOpenaiCompatible = 'provider.type_openai_compatible';
+  static const providerAudioModelsLabel = 'provider.audio_models_label';
+  static const providerAssetSection = 'provider.asset_section';
+  static const providerAssetProjectLabel = 'provider.asset_project_label';
+  static const providerAssetProjectHint = 'provider.asset_project_hint';
+  static const providerAssetAccessKeyLabel = 'provider.asset_access_key_label';
+  static const providerAssetSecretKeyLabel = 'provider.asset_secret_key_label';
+  static const providerDescriptionPurefox = 'provider.description_purefox';
+  static const providerDescriptionPurefoxMedia =
+      'provider.description_purefox_media';
+
   // ── relation ────────────────────────────────────────
   static const relationCharacterAlterEgo = 'relation.character.alter_ego';
   static const relationCharacterColleague = 'relation.character.colleague';
@@ -4028,14 +3931,6 @@ abstract final class LocaleKeys {
   static const settingsMcpUnknown = 'settings.mcp_unknown';
   // ── settings ────────────────────────────────────────
   static const settingsAddCustomProvider = 'settings.add_custom_provider';
-  static const settingsAddCustomProviderNameHint =
-      'settings.add_custom_provider_name_hint';
-  static const settingsAddCustomProviderNameLabel =
-      'settings.add_custom_provider_name_label';
-  static const settingsAddCustomProviderTitle =
-      'settings.add_custom_provider_title';
-  static const settingsAddCustomProviderTypeLabel =
-      'settings.add_custom_provider_type_label';
   static const settingsAi = 'settings.ai';
   static const settingsAiAgentAvatar = 'settings.ai_agent_avatar';
   static const settingsAiAgentAvatarDescription =
@@ -4058,43 +3953,10 @@ abstract final class LocaleKeys {
   static const settingsAiApiKey = 'settings.ai_api_key';
   static const settingsBuiltinProviderMetaso =
       'settings.builtin_provider_metaso';
-  static const settingsProviderDescriptionMetaso =
-      'settings.provider_description_metaso';
-  static const settingsProviderSearchHint = 'settings.provider_search_hint';
-  static const settingsProviderSponsoredBadge =
-      'settings.provider_sponsored_badge';
-  static const settingsProviderMetasoLink = 'settings.provider_metaso_link';
-  static const settingsProviderMetasoCategory =
-      'settings.provider_metaso_category';
-  static const settingsProviderMetasoTagline =
-      'settings.provider_metaso_tagline';
-  static const settingsProviderMetasoSummary =
-      'settings.provider_metaso_summary';
-  static const settingsProviderMetasoMaxDuration =
-      'settings.provider_metaso_max_duration';
-  static const settingsProviderMetasoSeconds =
-      'settings.provider_metaso_seconds';
-  static const settingsProviderMetasoPriceUnit =
-      'settings.provider_metaso_price_unit';
-  static const settingsProviderMetasoHd = 'settings.provider_metaso_hd';
-  static const settingsProviderMetasoNative2k =
-      'settings.provider_metaso_native_2k';
-  static const settingsProviderMetasoResolutionTitle =
-      'settings.provider_metaso_resolution_title';
-  static const settingsProviderMetasoResolutionDescription =
-      'settings.provider_metaso_resolution_description';
-  static const settingsProviderMetasoAudioTitle =
-      'settings.provider_metaso_audio_title';
-  static const settingsProviderMetasoAudioDescription =
-      'settings.provider_metaso_audio_description';
-  static const settingsProviderMetasoOpenaiCompatible =
-      'settings.provider_metaso_openai_compatible';
-  static const settingsProviderMetasoCanvas = 'settings.provider_metaso_canvas';
-  static const settingsProviderMetasoNoGpu = 'settings.provider_metaso_no_gpu';
-  static const settingsProviderMetasoPricingNote =
-      'settings.provider_metaso_pricing_note';
-  static const settingsProviderMetasoListTagline =
-      'settings.provider_metaso_list_tagline';
+  static const settingsBuiltinProviderPurefox =
+      'settings.builtin_provider_purefox';
+  static const settingsBuiltinProviderPurefoxMedia =
+      'settings.builtin_provider_purefox_media';
   static const settingsAiGetApiKey = 'settings.ai_get_api_key';
   static const settingsAiOpenApiKeyFailed = 'settings.ai_open_api_key_failed';
   static const settingsCodexCheckLogin = 'settings.codex_check_login';
@@ -4314,14 +4176,11 @@ abstract final class LocaleKeys {
   static const narrationAuthentication = 'screenplay.narration.authentication';
   static const narrationRateLimited = 'screenplay.narration.rateLimited';
 
-  static const screenplayAddBeat = 'screenplay.add_beat';
   static const screenplayAddEpisode = 'screenplay.add_episode';
   static const screenplayAddScene = 'screenplay.add_scene';
   static const screenplayAddSeason = 'screenplay.add_season';
-  static const screenplayAct = 'screenplay.act';
   static const screenplayActNumber = 'screenplay.act_number';
   static const screenplayActualEpisodes = 'screenplay.actual_episodes';
-  static const screenplayAddAct = 'screenplay.add_act';
   static const screenplayAppearanceMatrix = 'screenplay.appearance_matrix';
   static const screenplayAtLeastOneSeason = 'screenplay.at_least_one_season';
   static const screenplayAutosaveOn = 'screenplay.autosave_on';
@@ -4406,7 +4265,6 @@ abstract final class LocaleKeys {
   static const screenplayLinesUnit = 'screenplay.lines_unit';
   static const screenplayLocations = 'screenplay.locations';
   static const screenplayPlaces = 'screenplay.places';
-  static const screenplayUnitBeats = 'screenplay.unit_beats';
   static const screenplayUnitEpisodes = 'screenplay.unit_episodes';
   static const screenplayUnitLines = 'screenplay.unit_lines';
   static const screenplayUnitPeople = 'screenplay.unit_people';
@@ -4418,16 +4276,13 @@ abstract final class LocaleKeys {
   static const screenplayMatrixHint = 'screenplay.matrix_hint';
   static const screenplayMoveDown = 'screenplay.move_down';
   static const screenplayMoveUp = 'screenplay.move_up';
-  static const screenplayNoBeats = 'screenplay.no_beats';
   static const screenplayNoCharacters = 'screenplay.no_characters';
   static const screenplayNoOutline = 'screenplay.no_outline';
   static const screenplayNoScenes = 'screenplay.no_scenes';
   static const screenplayNoScenesSub = 'screenplay.no_scenes_sub';
   static const screenplayNoScriptYet = 'screenplay.no_script_yet';
   static const screenplayNotePrefix = 'screenplay.note_prefix';
-  static const screenplayOpenBeatsBoard = 'screenplay.open_beats_board';
   static const screenplayOutline = 'screenplay.outline';
-  static const screenplayOutlineBeats = 'screenplay.outline_beats';
   static const screenplayOutlineHint = 'screenplay.outline_hint';
   static const screenplayWriteFromSynopsis = 'screenplay.write_from_synopsis';
   static const screenplayOverPlanned = 'screenplay.over_planned';
@@ -4474,7 +4329,6 @@ abstract final class LocaleKeys {
   static const screenplayTimeLater = 'screenplay.time_later';
   static const screenplayTimeSameTime = 'screenplay.time_same_time';
   static const screenplayTimeHint = 'screenplay.time_hint';
-  static const screenplayUntitledBeat = 'screenplay.untitled_beat';
   static const screenplayUntitledEpisode = 'screenplay.untitled_episode';
   static const screenplayUntitledScene = 'screenplay.untitled_scene';
   static const screenplayDeletedCharacter = 'screenplay.deleted_character';
@@ -4692,6 +4546,7 @@ abstract final class LocaleKeys {
   static const settingsEnglish = 'settings.english';
   static const settingsGeneral = 'settings.general';
   static const settingsGroupAi = 'settings.group_ai';
+  static const settingsGroupCommunity = 'settings.group_community';
   static const settingsGroupData = 'settings.group_data';
   static const settingsGroupPreferences = 'settings.group_preferences';
   static const settingsGroupSystem = 'settings.group_system';
@@ -4723,105 +4578,8 @@ abstract final class LocaleKeys {
   static const settingsAnonymousReportingDescription =
       'settings.anonymous_reporting_description';
   static const settingsModelDefaultsUnset = 'settings.model_defaults_unset';
-  static const settingsProviderChatModelsHint =
-      'settings.provider_chat_models_hint';
-  static const settingsProviderChatModelsLabel =
-      'settings.provider_chat_models_label';
-  static const settingsProviderConfigNeedApiKey =
-      'settings.provider_config_need_api_key';
-  static const settingsProviderConfigNeedBaseUrl =
-      'settings.provider_config_need_base_url';
-  static const settingsProviderConfigNeedModels =
-      'settings.provider_config_need_models';
-  static const settingsProviderFetchModels = 'settings.provider_fetch_models';
-  static const settingsProviderBaseUrlEndpointHint =
-      'settings.provider_base_url_endpoint_hint';
-  static const settingsProviderFetchModelsBadRequest =
-      'settings.provider_fetch_models_bad_request';
-  static const settingsProviderFetchModelsAuthFailed =
-      'settings.provider_fetch_models_auth_failed';
-  static const settingsProviderFetchModelsNotFound =
-      'settings.provider_fetch_models_not_found';
-  static const settingsProviderFetchModelsRateLimited =
-      'settings.provider_fetch_models_rate_limited';
-  static const settingsProviderFetchModelsServerError =
-      'settings.provider_fetch_models_server_error';
 
-  static const settingsProviderFetchModelsNoMatches =
-      'settings.provider_fetch_models_no_matches';
-  static const settingsProviderFetchModelsSearchHint =
-      'settings.provider_fetch_models_search_hint';
-  static const settingsProviderEmbeddingModelsHint =
-      'settings.provider_embedding_models_hint';
-  static const settingsProviderEmbeddingModelsLabel =
-      'settings.provider_embedding_models_label';
-  static const settingsProviderImageModelsHint =
-      'settings.provider_image_models_hint';
-  static const settingsProviderImageModelsLabel =
-      'settings.provider_image_models_label';
-  static const settingsProviderNameHint = 'settings.provider_name_hint';
-  static const settingsProviderNameLabel = 'settings.provider_name_label';
-  static const settingsProviderNoModelsYet = 'settings.provider_no_models_yet';
-  static const settingsProviderProxyPasswordHint =
-      'settings.provider_proxy_password_hint';
-  static const settingsProviderProxyPasswordLabel =
-      'settings.provider_proxy_password_label';
-  static const settingsProviderProxySection = 'settings.provider_proxy_section';
-  static const settingsProviderProxyUrlHint =
-      'settings.provider_proxy_url_hint';
-  static const settingsProviderProxyUrlLabel =
-      'settings.provider_proxy_url_label';
-  static const settingsProviderProxyUsernameHint =
-      'settings.provider_proxy_username_hint';
-  static const settingsProviderProxyUsernameLabel =
-      'settings.provider_proxy_username_label';
-  static const settingsProviderSelectPlaceholder =
-      'settings.provider_select_placeholder';
-  static const settingsProviderTypeLabel = 'settings.provider_type_label';
-  static const settingsProviderDescriptionOpenai =
-      'settings.provider_description_openai';
-  static const settingsProviderDescriptionCodex =
-      'settings.provider_description_codex';
-  static const settingsProviderDescriptionOpenaiCompatible =
-      'settings.provider_description_openai_compatible';
-  static const settingsProviderDescriptionApi88 =
-      'settings.provider_description_api88';
-  static const settingsProviderDescriptionOpenrouter =
-      'settings.provider_description_openrouter';
-  static const settingsProviderDescriptionXai =
-      'settings.provider_description_xai';
-  static const settingsProviderDescriptionAnthropic =
-      'settings.provider_description_anthropic';
-  static const settingsProviderDescriptionQwen =
-      'settings.provider_description_qwen';
-  static const settingsProviderDescriptionGemini =
-      'settings.provider_description_gemini';
-  static const settingsProviderDescriptionDeepseek =
-      'settings.provider_description_deepseek';
-  static const settingsProviderDescriptionMoonshot =
-      'settings.provider_description_moonshot';
-  static const settingsProviderDescriptionZhipu =
-      'settings.provider_description_zhipu';
-  static const settingsProviderDescriptionDoubao =
-      'settings.provider_description_doubao';
-  static const settingsProviderDescriptionVolcengine =
-      'settings.provider_description_volcengine';
-  static const settingsProviderDescriptionMinimax =
-      'settings.provider_description_minimax';
-  static const settingsProviderDescriptionAgnes =
-      'settings.provider_description_agnes';
-  static const settingsProviderDescriptionAtlascloud =
-      'settings.provider_description_atlascloud';
-
-  static const settingsProviderUnsupportedBadge =
-      'settings.provider_unsupported_badge';
-  static const settingsProviderTypeUnsupported =
-      'settings.provider_type_unsupported';
-  static const settingsProviderTypeOpenaiCompatible =
-      'settings.provider_type_openai_compatible';
   static const settingsProfileSubtitle = 'settings.profile_subtitle';
-  static const settingsProviders = 'settings.providers';
-  static const settingsProvidersSummary = 'settings.providers_summary';
   static const settingsReasoningEffort = 'settings.reasoning_effort';
   static const settingsReasoningEffortDefault =
       'settings.reasoning_effort_default';
@@ -4833,6 +4591,15 @@ abstract final class LocaleKeys {
   static const settingsStatusActive = 'settings.status_active';
   static const settingsStatusInactive = 'settings.status_inactive';
   static const settingsStorage = 'settings.storage';
+  static const settingsTrash = 'settings.trash';
+  static const settingsTrashDescription = 'settings.trash_description';
+  static const settingsTrashEmpty = 'settings.trash_empty';
+  static const settingsTrashLoadFailed = 'settings.trash_load_failed';
+  static const settingsTrashDeletedAt = 'settings.trash_deleted_at';
+  static const settingsTrashDaysLeft = 'settings.trash_days_left';
+  static const settingsTrashPurgeSoon = 'settings.trash_purge_soon';
+  static const settingsTrashRestoreSuccess = 'settings.trash_restore_success';
+  static const settingsTrashRestoreFailed = 'settings.trash_restore_failed';
   static const settingsFileWorkspaceDirectory =
       'settings.file_workspace_directory';
   static const settingsFileWorkspaceHint = 'settings.file_workspace_hint';
@@ -4861,6 +4628,13 @@ abstract final class LocaleKeys {
       'settings.file_workspace_use_default';
   static const settingsFileWorkspaceRecoveryHint =
       'settings.file_workspace_recovery_hint';
+  static const settingsObjectStorageClearTitle =
+      'settings.object_storage_clear_title';
+  static const settingsObjectStorageClearConfirm =
+      'settings.object_storage_clear_confirm';
+  static const settingsObjectStorageCleared = 'settings.object_storage_cleared';
+  static const settingsObjectStorageClearFailed =
+      'settings.object_storage_clear_failed';
   static const settingsObjectStorageTitle = 'settings.object_storage_title';
 
   static const settingsStorageDescription = 'settings.storage_description';
@@ -4868,10 +4642,6 @@ abstract final class LocaleKeys {
       'settings.backup_page_description';
   static const settingsObjectStorageProvider =
       'settings.object_storage_provider';
-  static const settingsObjectStorageProviderS3 =
-      'settings.object_storage_provider_s3';
-  static const settingsObjectStorageProviderS3Hint =
-      'settings.object_storage_provider_s3_hint';
   static const settingsObjectStorageEndpoint =
       'settings.object_storage_endpoint';
   static const settingsObjectStorageEndpointHint =
@@ -4914,6 +4684,32 @@ abstract final class LocaleKeys {
       'settings.object_storage_upload_failed';
   static const settingsObjectStorageReadFailed =
       'settings.object_storage_read_failed';
+  static const settingsObjectStorageVendorAliyun =
+      'settings.object_storage_vendor_aliyun';
+  static const settingsObjectStorageVendorTencent =
+      'settings.object_storage_vendor_tencent';
+  static const settingsObjectStorageVendorCloudflare =
+      'settings.object_storage_vendor_cloudflare';
+  static const settingsObjectStorageVendorAws =
+      'settings.object_storage_vendor_aws';
+  static const settingsObjectStorageVendorCustom =
+      'settings.object_storage_vendor_custom';
+  static const settingsObjectStorageVendorCustomHint =
+      'settings.object_storage_vendor_custom_hint';
+  static const settingsObjectStorageCreateBucket =
+      'settings.object_storage_create_bucket';
+  static const settingsObjectStorageAccountId =
+      'settings.object_storage_account_id';
+  static const settingsObjectStorageAccountIdHint =
+      'settings.object_storage_account_id_hint';
+  static const settingsObjectStorageRegionHintAliyun =
+      'settings.object_storage_region_hint_aliyun';
+  static const settingsObjectStorageRegionHintTencent =
+      'settings.object_storage_region_hint_tencent';
+  static const settingsObjectStorageBucketHintTencent =
+      'settings.object_storage_bucket_hint_tencent';
+  static const settingsObjectStorageInvalidIdentifier =
+      'settings.object_storage_invalid_identifier';
   static const settingsThemeClassic = 'settings.theme_classic';
   static const settingsThemeClassicDescription =
       'settings.theme_classic_description';
@@ -5054,6 +4850,13 @@ abstract final class LocaleKeys {
       'settings.about_open_logs_description';
   static const settingsAboutOpenStorageFailed =
       'settings.about_open_storage_failed';
+  static const settingsAboutFeedback = 'settings.about_feedback';
+  static const settingsAboutFeedbackDescription =
+      'settings.about_feedback_description';
+  static const settingsAboutJoinQqGroup = 'settings.about_join_qq_group';
+  static const settingsAboutGithubRepository =
+      'settings.about_github_repository';
+  static const settingsAboutQqOpenFailed = 'settings.about_qq_open_failed';
   static const settingsAboutOpenSource = 'settings.about_open_source';
   static const settingsAboutOpenSourceDescription =
       'settings.about_open_source_description';
@@ -5302,6 +5105,288 @@ abstract final class LocaleKeys {
   static const todoPanelTitle = 'todo.panel_title';
   static const todoToolCardTitle = 'todo.tool_card_title';
   static const todoRemaining = 'todo.remaining';
+
+  // ── tool ────────────────────────────────────────
+  static const toolRunProductionCapturePanorama =
+      'tool.run_production_capture_panorama';
+  static const toolRunProductionDeriveView = 'tool.run_production_derive_view';
+  static const toolRunProductionImagePreset =
+      'tool.run_production_image_preset';
+  static const toolRunAssets = 'tool.run_assets';
+  static const toolRunAssetsList = 'tool.run_assets_list';
+  static const toolRunAssetsRead = 'tool.run_assets_read';
+  static const toolRunMcp = 'tool.run_mcp';
+  static const toolRunMcpList = 'tool.run_mcp_list';
+  static const toolRunMcpSearch = 'tool.run_mcp_search';
+  static const toolRunMcpDescribe = 'tool.run_mcp_describe';
+  static const toolRunMcpCall = 'tool.run_mcp_call';
+  static const toolRunProviders = 'tool.run_providers';
+  static const toolRunProvidersList = 'tool.run_providers_list';
+  static const toolRunProvidersRead = 'tool.run_providers_read';
+  static const toolRunProvidersModels = 'tool.run_providers_models';
+  static const toolRunDirector = 'tool.run_director';
+  static const toolRunDirectorSchema = 'tool.run_director_schema';
+  static const toolRunDirectorPresets = 'tool.run_director_presets';
+  static const toolRunDirectorSample = 'tool.run_director_sample';
+  static const toolRunDirectorList = 'tool.run_director_list';
+  static const toolRunDirectorRead = 'tool.run_director_read';
+  static const toolRunDirectorCreate = 'tool.run_director_create';
+  static const toolRunDirectorApply = 'tool.run_director_apply';
+  static const toolRunDirectorRestore = 'tool.run_director_restore';
+  static const toolRunDirectorRemove = 'tool.run_director_remove';
+  static const toolRunDirectorPreview = 'tool.run_director_preview';
+  static const toolRunDirectorOutput = 'tool.run_director_output';
+  static const toolRunDirectorFrames = 'tool.run_director_frames';
+  static const toolRunFilesList = 'tool.run_files_list';
+  static const toolRunFilesReadText = 'tool.run_files_read_text';
+  static const toolRunViewImage = 'tool.run_view_image';
+  static const toolRunFilesReadVideoMetadata =
+      'tool.run_files_read_video_metadata';
+  static const toolRunFilesReadAudioMetadata =
+      'tool.run_files_read_audio_metadata';
+  static const toolNameCodemode = 'tool.name_codemode';
+  static const toolPending = 'tool.pending';
+  static const toolProcessTitle = 'tool.process_title';
+  static const toolProcessCountFmt = 'tool.process_count_fmt';
+  static const toolRunning = 'tool.running';
+  static const toolSuccess = 'tool.success';
+  static const toolError = 'tool.error';
+  static const toolRejected = 'tool.rejected';
+  static const toolCancelled = 'tool.cancelled';
+  static const toolCallIncomplete = 'tool.call_incomplete';
+  static const toolApproveHint = 'tool.approve_hint';
+  static const toolCollectionLocations = 'tool.collection_locations';
+  static const toolCollectionListFmt = 'tool.collection_list_fmt';
+  static const toolNameRead = 'tool.name_read';
+  static const toolNameWrite = 'tool.name_write';
+  static const toolNameEdit = 'tool.name_edit';
+  static const toolNameReplace = 'tool.name_replace';
+  static const toolNameEditOutline = 'tool.name_edit_outline';
+  static const toolNameSearch = 'tool.name_search';
+  static const toolNameGraphSearch = 'tool.name_graph_search';
+  static const toolNameCreate = 'tool.name_create';
+  static const toolNameCreateChapter = 'tool.name_create_chapter';
+  static const toolNameCreateCharacter = 'tool.name_create_character';
+  static const toolNameCreateForeshadowing = 'tool.name_create_foreshadowing';
+  static const toolNameCreateLocation = 'tool.name_create_location';
+  static const toolNameCreateOutline = 'tool.name_create_outline';
+  static const toolNameCreateRelation = 'tool.name_create_relation';
+  static const toolNameEditRelation = 'tool.name_edit_relation';
+  static const toolNameCreateVolume = 'tool.name_create_volume';
+  static const toolNameGenerateAvatar = 'tool.name_generate_avatar';
+  static const toolNameGeneratePhoto = 'tool.name_generate_photo';
+  static const toolNameGlob = 'tool.name_glob';
+  static const toolNameGrep = 'tool.name_grep';
+  static const toolNameRun = 'tool.name_run';
+  static const toolNameWebSearch = 'tool.name_web_search';
+  static const toolNameWebFetch = 'tool.name_web_fetch';
+  static const toolNameAskUser = 'tool.name_ask_user';
+  static const toolNameTodoWrite = 'tool.name_todo_write';
+  static const toolNameSkill = 'tool.name_skill';
+  static const toolNameSpawnAgent = 'tool.name_spawn_agent';
+  static const toolNameForkAgent = 'tool.name_fork_agent';
+  static const toolNameCreateTask = 'tool.name_create_task';
+  static const toolNameListTasks = 'tool.name_list_tasks';
+  static const toolNameRemove = 'tool.name_remove';
+  static const toolNameCreateBeat = 'tool.name_create_beat';
+  static const toolNameEditBeat = 'tool.name_edit_beat';
+  static const toolActionRemoving = 'tool.action_removing';
+  static const toolActionReading = 'tool.action_reading';
+  static const toolActionWriting = 'tool.action_writing';
+  static const toolActionEditing = 'tool.action_editing';
+  static const toolActionReplacing = 'tool.action_replacing';
+  static const toolActionSearching = 'tool.action_searching';
+  static const toolActionCreating = 'tool.action_creating';
+  static const toolActionWebSearching = 'tool.action_web_searching';
+  static const toolActionWebFetching = 'tool.action_web_fetching';
+  static const toolActionAsking = 'tool.action_asking';
+  static const toolPathCanvasEdges = 'tool.path_canvas_edges';
+  static const toolPathCanvasLayout = 'tool.path_canvas_layout';
+  static const toolPathCanvasNodes = 'tool.path_canvas_nodes';
+  static const toolPathProduction = 'tool.path_production';
+  static const toolPathEpisodeProduction = 'tool.path_episode_production';
+  static const toolPathProductionSettings = 'tool.path_production_settings';
+  static const toolPathProductionGenerations =
+      'tool.path_production_generations';
+  static const toolFieldRefType = 'tool.field_ref_type';
+  static const toolFieldRefId = 'tool.field_ref_id';
+  static const toolFieldPanorama = 'tool.field_panorama';
+  static const toolFieldImageMethod = 'tool.field_image_method';
+  static const toolFieldGroup = 'tool.field_group';
+  static const toolFieldX = 'tool.field_x';
+  static const toolFieldY = 'tool.field_y';
+  static const toolFieldStyle = 'tool.field_style';
+  static const toolFieldKind = 'tool.field_kind';
+  static const toolFieldInputs = 'tool.field_inputs';
+  static const toolFieldAdoptedAsset = 'tool.field_adopted_asset';
+  static const toolFieldProvider = 'tool.field_provider';
+  static const toolFieldGenerateAudio = 'tool.field_generate_audio';
+  static const toolFieldData = 'tool.field_data';
+  static const toolFieldPositions = 'tool.field_positions';
+  static const toolFieldRemoveTypes = 'tool.field_remove_types';
+  static const toolFieldCancelRequestedAt = 'tool.field_cancel_requested_at';
+  static const toolFieldResultAsset = 'tool.field_result_asset';
+  static const toolFieldResultFile = 'tool.field_result_file';
+  static const toolFieldResultApplied = 'tool.field_result_applied';
+  static const toolActionGeneratingAvatar = 'tool.action_generating_avatar';
+  static const toolActionGeneratingPhoto = 'tool.action_generating_photo';
+  static const toolActionUpdatingTasks = 'tool.action_updating_tasks';
+  static const toolActionInstalling = 'tool.action_installing';
+  static const toolActionLoadingSkill = 'tool.action_loading_skill';
+  static const toolActionAddingToLibrary = 'tool.action_adding_to_library';
+  static const toolActionSpawningAgent = 'tool.action_spawning_agent';
+  static const toolActionCreatingRelation = 'tool.action_creating_relation';
+  static const toolActionForkingAgent = 'tool.action_forking_agent';
+  static const toolActionGlobbing = 'tool.action_globbing';
+  static const toolActionGrepping = 'tool.action_grepping';
+  static const toolPreview = 'tool.preview';
+  static const toolResultCount = 'tool.result_count';
+  static const toolResultCountFmt = 'tool.result_count_fmt';
+  static const toolMatches = 'tool.matches';
+  static const toolMatchesCountFmt = 'tool.matches_count_fmt';
+  static const toolQueryFilterFmt = 'tool.query_filter_fmt';
+  static const toolQuerySourceType = 'tool.query_source_type';
+  static const toolQueryTargetType = 'tool.query_target_type';
+  static const toolQueryRelationType = 'tool.query_relation_type';
+  static const toolQueryChapterId = 'tool.query_chapter_id';
+  static const toolMoreResultsFmt = 'tool.more_results_fmt';
+  static const toolDepthFmt = 'tool.depth_fmt';
+  static const toolLayerDepthFmt = 'tool.layer_depth_fmt';
+  static const toolBeatIndexFmt = 'tool.beat_index_fmt';
+  static const toolBeatsCountFmt = 'tool.beats_count_fmt';
+  static const toolOutlineBeats = 'tool.outline_beats';
+  static const toolChaptersCountFmt = 'tool.chapters_count_fmt';
+  static const toolChapterTypeChapter = 'tool.chapter_type_chapter';
+  static const toolLineRange = 'tool.line_range';
+  static const toolLineRangeFmt = 'tool.line_range_fmt';
+  static const toolReplaceAll = 'tool.replace_all';
+  static const toolOldText = 'tool.old_text';
+  static const toolNewText = 'tool.new_text';
+  static const toolTarget = 'tool.target';
+  static const toolQuestion = 'tool.question';
+  static const toolTask = 'tool.task';
+  static const toolUsingSkill = 'tool.using_skill';
+  static const toolWorkUnavailable = 'tool.work_unavailable';
+  static const toolExecutionResult = 'tool.execution_result';
+  static const toolAgentMessage = 'tool.agent_message';
+  static const toolGrepModeCount = 'tool.grep_mode_count';
+  static const toolGrepModeFiles = 'tool.grep_mode_files';
+  static const toolNoResults = 'tool.no_results';
+  static const toolPaths = 'tool.paths';
+  static const toolPattern = 'tool.pattern';
+  static const toolResultsTruncated = 'tool.results_truncated';
+  static const toolScope = 'tool.scope';
+  static const toolScopeRoot = 'tool.scope_root';
+  static const toolCallsSection = 'tool.calls_section';
+  static const toolSkippedFmt = 'tool.skipped_fmt';
+  static const toolNotAllowedFmt = 'tool.not_allowed_fmt';
+  static const toolRunReadFmt = 'tool.run_read_fmt';
+  static const toolRunSearchFmt = 'tool.run_search_fmt';
+  static const toolRunWebFmt = 'tool.run_web_fmt';
+  static const toolRunAgentSkillsList = 'tool.run_agent_skills_list';
+  static const toolRunAgentSkillsCreate = 'tool.run_agent_skills_create';
+  static const toolRunAgentSkillsUpdate = 'tool.run_agent_skills_update';
+  static const toolRunAgentSkillsDelete = 'tool.run_agent_skills_delete';
+  static const toolRunAgentSkillsSearch = 'tool.run_agent_skills_search';
+  static const toolRunAgentSkillsGet = 'tool.run_agent_skills_get';
+  static const toolRunAgentSkillsInstall = 'tool.run_agent_skills_install';
+  static const toolRunAgentSkillsReferenceList =
+      'tool.run_agent_skills_reference_list';
+  static const toolRunAgentSkillsReferenceGet =
+      'tool.run_agent_skills_reference_get';
+  static const toolRunAgentSkillsReferenceCreate =
+      'tool.run_agent_skills_reference_create';
+  static const toolRunAgentSkillsReferenceUpdate =
+      'tool.run_agent_skills_reference_update';
+  static const toolRunAgentSkillsReferenceMove =
+      'tool.run_agent_skills_reference_move';
+  static const toolRunAgentSkillsReferenceDelete =
+      'tool.run_agent_skills_reference_delete';
+  static const toolRunThemes = 'tool.run_themes';
+  static const toolRunThemesList = 'tool.run_themes_list';
+  static const toolRunThemesRead = 'tool.run_themes_read';
+  static const toolRunThemesCreate = 'tool.run_themes_create';
+  static const toolRunThemesUpdate = 'tool.run_themes_update';
+  static const toolRunThemesApply = 'tool.run_themes_apply';
+  static const toolRunThemesDelete = 'tool.run_themes_delete';
+  static const toolRunAgentRulesList = 'tool.run_agent_rules_list';
+  static const toolRunAgentRulesRead = 'tool.run_agent_rules_read';
+  static const toolRunAgentRulesCreate = 'tool.run_agent_rules_create';
+  static const toolRunAgentRulesUpdate = 'tool.run_agent_rules_update';
+  static const toolRunAgentRulesDelete = 'tool.run_agent_rules_delete';
+  static const toolRunSubagentsList = 'tool.run_subagents_list';
+  static const toolRunSubagentsCreate = 'tool.run_subagents_create';
+  static const toolRunSubagentsUpdate = 'tool.run_subagents_update';
+  static const toolRunSubagentsDelete = 'tool.run_subagents_delete';
+  static const toolRunSessionsList = 'tool.run_sessions_list';
+  static const toolRunSessionsRead = 'tool.run_sessions_read';
+  static const toolRunSessionsSearch = 'tool.run_sessions_search';
+  static const toolRunSessionsGet = 'tool.run_sessions_get';
+  static const toolRunNovelAddToLibrary = 'tool.run_novel_add_to_library';
+  static const toolRunMapDraft = 'tool.run_map_draft';
+  static const toolRunNotifyQuestion = 'tool.run_notify_question';
+  static const toolRunNotifyComplete = 'tool.run_notify_complete';
+  static const toolRunNotifyError = 'tool.run_notify_error';
+  static const toolRunImageCharacterAvatar = 'tool.run_image_character_avatar';
+  static const toolRunImageCharacterPhoto = 'tool.run_image_character_photo';
+  static const toolRunImageItemPhoto = 'tool.run_image_item_photo';
+  static const toolRunViewHelp = 'tool.run_view_help';
+  static const toolRunImage = 'tool.run_image';
+  static const toolRunHelpCharacterImage = 'tool.run_help_character_image';
+  static const toolRunHelpItemImage = 'tool.run_help_item_image';
+  static const toolRunNotify = 'tool.run_notify';
+  static const toolRunAgentSkills = 'tool.run_agent_skills';
+  static const toolRunAgentRules = 'tool.run_agent_rules';
+  static const toolRunSubagents = 'tool.run_subagents';
+  static const toolRunSessions = 'tool.run_sessions';
+  static const toolRunNovel = 'tool.run_novel';
+  static const toolRunHelp = 'tool.run_help';
+  static const toolRunMap = 'tool.run_map';
+  static const toolRunMapSubmit = 'tool.run_map_submit';
+  static const toolRunMapPrompt = 'tool.run_map_prompt';
+  static const toolRunMapReady = 'tool.run_map_ready';
+  static const toolRunMapStyleParchment = 'tool.run_map_style_parchment';
+  static const toolRunMapStyleInkmap = 'tool.run_map_style_inkmap';
+  static const toolRunMapStyleEngraving = 'tool.run_map_style_engraving';
+  static const toolRunMapStyleRealistic = 'tool.run_map_style_realistic';
+  static const toolRunMapStyleWoodcut = 'tool.run_map_style_woodcut';
+  static const toolRunMapStyleWatercolor = 'tool.run_map_style_watercolor';
+  static const toolRunMapStyleAtlas = 'tool.run_map_style_atlas';
+  static const toolRunMapQualityLow = 'tool.run_map_quality_low';
+  static const toolRunMapQualityMedium = 'tool.run_map_quality_medium';
+  static const toolRunMapQualityHigh = 'tool.run_map_quality_high';
+  static const toolRunNotifyProgress = 'tool.run_notify_progress';
+  static const toolRunRulesCountFmt = 'tool.run_rules_count_fmt';
+  static const toolRunRulesAvailableFmt = 'tool.run_rules_available_fmt';
+  static const toolRunRulesEmpty = 'tool.run_rules_empty';
+  static const toolRunDeletedRule = 'tool.run_deleted_rule';
+  static const toolRunRuleName = 'tool.run_rule_name';
+  static const toolRunRuleNewName = 'tool.run_rule_new_name';
+  static const toolRunRuleContent = 'tool.run_rule_content';
+  static const toolRunActionListing = 'tool.run_action_listing';
+  static const toolRunSkillsCountFmt = 'tool.run_skills_count_fmt';
+  static const toolRunSubagentsCountFmt = 'tool.run_subagents_count_fmt';
+  static const toolRunScopeFmt = 'tool.run_scope_fmt';
+  static const toolStoryState = 'tool.story_state';
+  static const toolSchema = 'tool.schema';
+  static const toolSchemaShared = 'tool.schema_shared';
+  static const toolSchemaNovel = 'tool.schema_novel';
+  static const toolNameSendAgentMessage = 'tool.name_send_agent_message';
+  static const toolNameStopAgent = 'tool.name_stop_agent';
+  static const toolRunEditingList = 'tool.run_editing_list';
+  static const toolRunEditingRead = 'tool.run_editing_read';
+  static const toolRunEditingApply = 'tool.run_editing_apply';
+  static const toolRunEditingPreview = 'tool.run_editing_preview';
+  static const toolRunEditingFrames = 'tool.run_editing_frames';
+  static const toolRunEditingExport = 'tool.run_editing_export';
+  static const toolRunOperationsList = 'tool.run_operations_list';
+  static const toolRunOperationsRead = 'tool.run_operations_read';
+  static const toolRunOperationsWait = 'tool.run_operations_wait';
+  static const toolRunFfmpegCapabilities = 'tool.run_ffmpeg_capabilities';
+  static const toolRunFfmpegProbe = 'tool.run_ffmpeg_probe';
+  static const toolRunFfmpegFrames = 'tool.run_ffmpeg_frames';
+  static const toolRunFfmpegExecute = 'tool.run_ffmpeg_execute';
+
   // ── workspace ────────────────────────────────────────
   static const workspaceAddChapter = 'workspace.add_chapter';
   static const workspaceAddChapterOrVolume = 'workspace.add_chapter_or_volume';
@@ -5588,8 +5673,6 @@ abstract final class LocaleKeys {
       'workspace.foreshadowing_status_payoff';
   static const foreshadowingStatusAbandoned =
       'workspace.foreshadowing_status_abandoned';
-  static const workspaceIndexRebuildRequiredTitle =
-      'workspace.index_rebuild_required_title';
   static const workspaceItems = 'workspace.items';
   static const workspaceItemsHint = 'workspace.items_hint';
   static const workspaceItemGeneratePhoto = 'workspace.item_generate_photo';
@@ -5770,26 +5853,6 @@ abstract final class LocaleKeys {
   static const workspaceCoverSaveSuccess = 'workspace.cover_save_success';
   static const workspaceCoverSaveFailed = 'workspace.cover_save_failed';
   static const workspaceReadingTime = 'workspace.reading_time';
-  static const workspaceRebuildChapterIndexes =
-      'workspace.rebuild_chapter_indexes';
-  static const workspaceRebuildConfigDisabled =
-      'workspace.rebuild_config_disabled';
-  static const workspaceRebuildConfigMissing =
-      'workspace.rebuild_config_missing';
-  static const workspaceRebuildConfigModelNotSupported =
-      'workspace.rebuild_config_model_not_supported';
-  static const workspaceRebuildConfigNoApiKey =
-      'workspace.rebuild_config_no_api_key';
-  static const workspaceRebuildConfigNoBaseUrl =
-      'workspace.rebuild_config_no_base_url';
-  static const workspaceRebuildConfigNoModels =
-      'workspace.rebuild_config_no_models';
-  static const workspaceRebuildErrors = 'workspace.rebuild_errors';
-  static const workspaceRebuildFailed = 'workspace.rebuild_failed';
-  static const workspaceRebuildPause = 'workspace.rebuild_pause';
-  static const workspaceRebuildProgress = 'workspace.rebuild_progress';
-  static const workspaceRebuildResume = 'workspace.rebuild_resume';
-  static const workspaceRebuildStarted = 'workspace.rebuild_started';
   static const workspaceRollbackChange = 'workspace.rollback_change';
   static const workspaceRollbackAllChanges = 'workspace.rollback_all_changes';
   static const workspaceRollbackAllConfirmMessage =
@@ -5892,6 +5955,12 @@ abstract final class LocaleKeys {
       'workspace.sidebar_foreshadowing';
   static const workspaceSidebarMap = 'workspace.sidebar_map';
   static const workspaceSidebarAssets = 'workspace.sidebar_assets';
+  static const workspaceSidebarStoryProgress =
+      'workspace.sidebar_story_progress';
+  static const workspaceSidebarAgentRules = 'workspace.sidebar_agent_rules';
+  static const workspaceSidebarCouncil = 'workspace.sidebar_council';
+  static const workspaceSidebarTheater = 'workspace.sidebar_theater';
+  static const workspaceSidebarRoleplay = 'workspace.sidebar_roleplay';
 
   static const screenplaySceneShortTitle = 'screenplay.scene_short_title';
   static const screenplaySceneShortTitleHint =
@@ -5925,6 +5994,12 @@ abstract final class LocaleKeys {
   static const commonRestore = 'common.restore';
   static const commonIgnore = 'common.ignore';
   static const commonApply = 'common.apply';
+  static const productionBackToCanvas = 'production.back_to_canvas';
+  static const productionEditingMissing = 'production.editing_missing';
+  static const productionText = 'production.text';
+  static const productionHistoryConflict = 'production.history_conflict';
+  static const productionHistoryFailed = 'production.history_failed';
+
   static const commonUndo = 'common.undo';
   static const commonRedo = 'common.redo';
   static const directorUnsaved = 'director.unsaved';
@@ -6214,4 +6289,42 @@ abstract final class LocaleKeys {
   static const directorPresetLowAngle = 'director.preset_low_angle';
   static const directorPresetBird = 'director.preset_bird';
   static const directorPresetDutch = 'director.preset_dutch';
+  static const aiFeedbackUpload = 'ai.feedback_upload';
+  static const aiFeedbackUploading = 'ai.feedback_uploading';
+  static const aiFeedbackSuccess = 'ai.feedback_success';
+  static const aiFeedbackFailed = 'ai.feedback_failed';
+  static const settingsAboutUploadLogs = 'settings.about_upload_logs';
+  static const settingsAboutUploadLogsDescription =
+      'settings.about_upload_logs_description';
+  static const settingsAboutUploadingLogs = 'settings.about_uploading_logs';
+  static const settingsAboutUploadLogsConfirmTitle =
+      'settings.about_upload_logs_confirm_title';
+  static const settingsAboutUploadLogsConfirmDescription =
+      'settings.about_upload_logs_confirm_description';
+  static const settingsAboutUploadLogsSuccess =
+      'settings.about_upload_logs_success';
+  static const settingsAboutUploadLogsFailed =
+      'settings.about_upload_logs_failed';
+  static const productionAddEditingHint = 'production.add_editing_hint';
+  static const productionCanvasStart = 'production.canvas_start';
+  static const productionUploadScript = 'production.upload_script';
+  static const productionWritePrompt = 'production.write_prompt';
+  static const productionImportMedia = 'production.import_media';
+  static const productionCanvasStartHint = 'production.canvas_start_hint';
+  static const productionUploadScriptHint = 'production.upload_script_hint';
+  static const productionWritePromptHint = 'production.write_prompt_hint';
+  static const productionImportMediaHint = 'production.import_media_hint';
+  static const productionCanvasDesktopOnly = 'production.canvas_desktop_only';
+  static const libraryContentKindCanvas = 'library.content_kind_canvas';
+  static const libraryCreateCanvas = 'library.create_canvas';
+  static const libraryDefaultCanvasTitle = 'library.default_canvas_title';
+  static const homeCreateCanvasCardTitle = 'library.create_canvas_card_title';
+  static const homeCreateCanvasCardSubtitle =
+      'library.create_canvas_card_subtitle';
+  static const productionAddTextHint = 'production.add_text_hint';
+  static const productionTextAskHint = 'production.text_ask_hint';
+  static const productionTextTryWrite = 'production.text_try_write';
+  static const productionTextTryStoryboard = 'production.text_try_storyboard';
+  static const productionTextTrySetting = 'production.text_try_setting';
+  static const productionTextTryPolish = 'production.text_try_polish';
 }

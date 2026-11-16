@@ -6,6 +6,7 @@
 //   lib/shared/database/app_database.dart
 //   lib/shared/database/novel_content_database.dart
 
+import 'package:reveric/shared/app_config.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -17,6 +18,8 @@ import 'package:reveric/shared/models/content_kind.dart';
 import 'package:reveric/shared/models/novel_type.dart';
 import 'package:reveric/shared/services/ai/tools.dart';
 import 'package:reveric/shared/services/novel_actions.dart';
+import 'package:reveric/shared/services/screenplay_service.dart';
+import 'package:reveric/shared/services/storyboard/service.dart';
 import 'package:reveric/shared/services/novel_content.dart';
 import 'package:reveric/shared/services/working_overlay.dart';
 import 'package:reveric/shared/utils/short_entity_id.dart';
@@ -292,6 +295,45 @@ void main() {
           },
         );
         expect(denied['error_code'], 'permission_denied');
+      },
+    );
+
+    test(
+      'cross-work canvas uses target kind, paths and read-only boundary',
+      () async {
+        access.contentKind = contentKindCanvas;
+        await ScreenplayService(targetDatabase).createCanvasStructure();
+        final clips = StoryboardService(
+          targetDatabase,
+          contentKind: contentKindCanvas,
+        );
+        final clip = await clips.createVideo(
+          '',
+          values: {'title': 'Canvas target'},
+        );
+        final listing = await manager.executeTool(
+          name: 'Read',
+          input: {'path': '/works/work_target/production/clips'},
+        );
+        expect(listing['error'], isNull, reason: '$listing');
+        final entry = (listing['entries'] as List).single;
+        expect(entry['path'], '/works/work_target/production/clips/${clip.id}');
+        expect(entry['id'], clip.id);
+        expect(entry.containsKey('episode_id'), false);
+        final denied = await manager.executeTool(
+          name: 'Write',
+          input: {
+            'path': entry['path'],
+            'fields': {'title': 'Denied'},
+          },
+        );
+        expect(denied['error_code'], 'permission_denied');
+        final wrongKind = await manager.executeTool(
+          name: 'Read',
+          input: {'path': '/works/work_target/episodes'},
+        );
+        expect(wrongKind['error'], isNotNull);
+        expect((await clips.getShot(clip.id))!.title, 'Canvas target');
       },
     );
 
@@ -607,7 +649,11 @@ void main() {
           expect(result['error'], isNotNull, reason: '${sample.key}: $result');
           expect(
             result['hint'],
-            contains('Read /works/work_target/${sample.value}'),
+            contains(
+              !ideationCanvasEnabled && sample.key.startsWith('canvas/')
+                  ? 'Read /works/work_target and Read /_schema'
+                  : 'Read /works/work_target/${sample.value}',
+            ),
             reason: '$result',
           );
         }

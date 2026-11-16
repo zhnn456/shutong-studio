@@ -47,7 +47,7 @@ class NovelLibrarySliver extends StatelessWidget {
   const NovelLibrarySliver({
     super.key,
     required this.novels,
-    this.contentKind,
+    required this.contentKind,
     this.showCreateCard = true,
     required this.onCreateNovel,
     required this.onDeleteNovel,
@@ -60,9 +60,8 @@ class NovelLibrarySliver extends StatelessWidget {
 
   final List<Novel> novels;
 
-  /// 作品区的类型筛选，null 为小说与剧本混排 — 只用于新建卡片的文案，
-  /// 条目自己按 `novel.contentKind` 渲染。
-  final String? contentKind;
+  /// 当前库的作品类型 — 只用于新建卡片的文案，条目自己按 `novel.contentKind` 渲染。
+  final String contentKind;
   final bool showCreateCard;
   final VoidCallback onCreateNovel;
   final ValueSetter<Novel> onDeleteNovel;
@@ -82,12 +81,20 @@ class NovelLibrarySliver extends StatelessWidget {
         RevericSpacing.x4l,
       ),
       sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 180,
-          mainAxisSpacing: RevericSpacing.x2l,
-          crossAxisSpacing: RevericSpacing.x2l,
-          childAspectRatio: 0.51,
-        ),
+        // 画布库是横向画面，不沿用竖版书封的格子。
+        gridDelegate: contentKind == contentKindCanvas
+            ? const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: RevericSizes.canvasShelfCardWidth,
+                mainAxisSpacing: RevericSpacing.x2l,
+                crossAxisSpacing: RevericSpacing.x2l,
+                mainAxisExtent: RevericSizes.canvasShelfCardHeight,
+              )
+            : const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 180,
+                mainAxisSpacing: RevericSpacing.x2l,
+                crossAxisSpacing: RevericSpacing.x2l,
+                childAspectRatio: 0.51,
+              ),
         delegate: SliverChildBuilderDelegate((context, index) {
           if (showCreateCard && index == novels.length) {
             return _CreateNovelCard(
@@ -114,7 +121,7 @@ class NovelLibrarySliver extends StatelessWidget {
 class _CreateNovelCard extends StatelessWidget {
   const _CreateNovelCard({required this.onTap, required this.contentKind});
   final VoidCallback onTap;
-  final String? contentKind;
+  final String contentKind;
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +161,9 @@ class _CreateNovelCard extends StatelessWidget {
                   const SizedBox(height: RevericSpacing.lg),
                   Text(
                     context.t(
-                      contentKind == contentKindScreenplay
+                      contentKind == contentKindCanvas
+                          ? LocaleKeys.homeCreateCanvasCardTitle
+                          : contentKind == contentKindScreenplay
                           ? LocaleKeys.homeCreateScreenplayCardTitle
                           : LocaleKeys.homeCreateCardTitle,
                     ),
@@ -162,12 +171,13 @@ class _CreateNovelCard extends StatelessWidget {
                   ),
                   const SizedBox(height: RevericSpacing.xs),
                   Text(
-                    context.t(switch (contentKind) {
-                      contentKindScreenplay =>
-                        LocaleKeys.homeCreateScreenplayCardSubtitle,
-                      contentKindNovel => LocaleKeys.homeCreateCardSubtitle,
-                      _ => LocaleKeys.homeCreateWorkCardSubtitle,
-                    }),
+                    context.t(
+                      contentKind == contentKindCanvas
+                          ? LocaleKeys.homeCreateCanvasCardSubtitle
+                          : contentKind == contentKindScreenplay
+                          ? LocaleKeys.homeCreateScreenplayCardSubtitle
+                          : LocaleKeys.homeCreateCardSubtitle,
+                    ),
                     textAlign: TextAlign.center,
                     style: typo.uiSmall.copyWith(color: colors.textMuted),
                   ),
@@ -193,6 +203,7 @@ void _showNovelActionsMenu({
 }) {
   final colors = RevericTheme.colorsOf(context);
 
+  final isCanvas = novel.contentKind == contentKindCanvas;
   final isFinished = novel.status == contentStatusFinished;
   final isAbandoned = novel.status == contentStatusAbandoned;
   final isArchived = novel.status == contentStatusArchived;
@@ -236,13 +247,14 @@ void _showNovelActionsMenu({
       ...collectionWorkMenuItems(context, novel, position: position),
       const RevericMenuDivider(),
       if (isActive) ...[
-        RevericMenuItem(
-          icon: RevericIcons.check_circle_outline,
-          iconColor: colors.accent,
-          labelColor: colors.textSecondary,
-          label: context.t(LocaleKeys.libraryActionFinish),
-          onTap: () => onUpdateStatus(contentStatusFinished),
-        ),
+        if (!isCanvas)
+          RevericMenuItem(
+            icon: RevericIcons.check_circle_outline,
+            iconColor: colors.accent,
+            labelColor: colors.textSecondary,
+            label: context.t(LocaleKeys.libraryActionFinish),
+            onTap: () => onUpdateStatus(contentStatusFinished),
+          ),
         RevericMenuItem(
           icon: RevericIcons.archive_outlined,
           iconColor: colors.accentAmber,
@@ -365,7 +377,7 @@ class _NovelCard extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = RevericTheme.colorsOf(context);
     final typo = RevericTheme.typographyOf(context);
-    final resolvedCoverPath = watchMediaAssetFile(ref, novel.coverAssetId);
+    final resolvedCoverPath = watchWorkCoverFile(ref, novel);
     final coverFile = resolvedCoverPath == null
         ? null
         : File(resolvedCoverPath);
@@ -377,6 +389,7 @@ class _NovelCard extends HookConsumerWidget {
     final isHovering = useState(false);
     // 剧本不显示字数：季 / 集 / 场才是它的计量单位，而那些数在作品自己的 content DB 里。
     final isScreenplay = novel.contentKind == contentKindScreenplay;
+    final isCanvas = novel.contentKind == contentKindCanvas;
 
     return MouseRegion(
       onEnter: (_) => isHovering.value = true,
@@ -416,8 +429,11 @@ class _NovelCard extends HookConsumerWidget {
                                 )
                               : null,
                         ),
+                        clipBehavior: isCanvas ? Clip.antiAlias : Clip.none,
                         child: hasCover
                             ? null
+                            : isCanvas
+                            ? const HomeCanvasPlaceholder()
                             : Center(
                                 child: RevericIcon(
                                   isScreenplay
@@ -446,23 +462,41 @@ class _NovelCard extends HookConsumerWidget {
                             borderRadius: BorderRadius.circular(
                               RevericRadius.small,
                             ),
-                            child: RevericIconButton(
-                              icon: RevericIcons.more_horiz,
-                              tooltip: context.t(LocaleKeys.commonMoreActions),
-                              onPressed: () {
-                                final renderBox =
-                                    context.findRenderObject() as RenderBox;
-                                final position = renderBox.localToGlobal(
-                                  Offset.zero,
-                                );
-                                _showMoreActionsMenu(
-                                  context,
-                                  Offset(
-                                    position.dx + renderBox.size.width - 16,
-                                    position.dy + 48,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // 改编直接露在悬停操作里，不用先找右键菜单；
+                                // 条件与菜单项一致，草稿选不回原著。
+                                if (novel.contentKind == contentKindNovel &&
+                                    !novel.draft)
+                                  RevericIconButton(
+                                    icon: RevericIcons.movie_outlined,
+                                    tooltip: context.t(
+                                      LocaleKeys.libraryActionAdapt,
+                                    ),
+                                    onPressed: onAdapt,
                                   ),
-                                );
-                              },
+                                RevericIconButton(
+                                  icon: RevericIcons.more_horiz,
+                                  tooltip: context.t(
+                                    LocaleKeys.commonMoreActions,
+                                  ),
+                                  onPressed: () {
+                                    final renderBox =
+                                        context.findRenderObject() as RenderBox;
+                                    final position = renderBox.localToGlobal(
+                                      Offset.zero,
+                                    );
+                                    _showMoreActionsMenu(
+                                      context,
+                                      Offset(
+                                        position.dx + renderBox.size.width - 16,
+                                        position.dy + 48,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -488,27 +522,31 @@ class _NovelCard extends HookConsumerWidget {
                       // 小说和剧本混在一个网格里，剧本在类型前多一个标记。
                       Row(
                         children: [
-                          if (isScreenplay) ...[
-                            const ScreenplayKindMark(),
+                          if (novel.contentKind != contentKindNovel) ...[
+                            ScreenplayKindMark(contentKind: novel.contentKind),
                             const SizedBox(width: RevericSpacing.xs),
                           ],
-                          Flexible(
-                            child: Text(
-                              homeNovelTypeText(context, novel.type),
-                              style: typo.uiTiny.copyWith(
-                                color: colors.textSubtle,
+                          // 画布没有原创 / 改编之分，只留类型标记。
+                          if (!isCanvas)
+                            Flexible(
+                              child: Text(
+                                homeNovelTypeText(context, novel.type),
+                                style: typo.uiTiny.copyWith(
+                                  color: colors.textSubtle,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
                         ],
                       ),
-                      if ((!isScreenplay && novel.wordCount > 0) ||
+                      if ((novel.contentKind == contentKindNovel &&
+                              novel.wordCount > 0) ||
                           novel.description.isNotEmpty) ...[
                         const SizedBox(height: RevericSpacing.xs),
                         Text(
-                          !isScreenplay && novel.wordCount > 0
+                          novel.contentKind == contentKindNovel &&
+                                  novel.wordCount > 0
                               ? homeNovelWordCountLabel(
                                   context,
                                   novel.wordCount,
@@ -524,8 +562,11 @@ class _NovelCard extends HookConsumerWidget {
                         formatHomeNovelUpdatedAt(context, novel.updatedAt),
                         style: typo.uiTiny.copyWith(color: colors.textSubtle),
                       ),
-                      const SizedBox(height: RevericSpacing.sm),
-                      _buildTagsRow(context, tags, colors, typo),
+                      // 书封卡片留空行保持等高；画布卡片高度固定，没有标签就把空间让给画面。
+                      if (!isCanvas || tags.isNotEmpty) ...[
+                        const SizedBox(height: RevericSpacing.sm),
+                        _buildTagsRow(context, tags, colors, typo),
+                      ],
                     ],
                   ),
                 ),

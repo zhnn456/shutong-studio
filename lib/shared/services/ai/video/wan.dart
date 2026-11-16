@@ -1,9 +1,11 @@
-// 职责: 将 Wan 3.0 标准版及 prime 请求与回执转换为异步视频协议。
+// 职责: 将 Wan 与 HappyHorse 请求及回执转换为千问异步视频协议。
 // 关联文件:
 //   lib/shared/services/ai/video/client.dart
+//   lib/shared/models/video/channels.dart
 //   lib/shared/models/video/request.dart
 //   lib/shared/models/video/task_result.dart
 
+import '../../../models/video/channels.dart';
 import '../../../models/video/request.dart';
 import '../../../models/video/task_result.dart';
 import 'client.dart';
@@ -30,8 +32,12 @@ class WanVideoClient extends VideoClient {
       'api/v1/services/aigc/video-generation/video-synthesis';
   @override
   String queryPath(String id) => 'api/v1/tasks/$id';
+
+  /// 仅创建任务需要声明异步；`GET api/v1/tasks/{id}` 属于同步查询接口，
+  /// 携带该头时 workspace 专属 Endpoint 会直接返回
+  /// `403 access_denied: current user api does not support asynchronous calls`。
   @override
-  Map<String, String> get extraHeaders => {'X-DashScope-Async': 'enable'};
+  Map<String, String> get submitHeaders => {'X-DashScope-Async': 'enable'};
   @override
   Map<String, dynamic> encode(
     VideoRequest request,
@@ -42,16 +48,20 @@ class WanVideoClient extends VideoClient {
       'prompt': request.prompt,
       if (references.isNotEmpty)
         'media': [
-          for (final ref in references)
-            {'type': ref.role.name, 'url': ref.url.toString()},
+          for (final ref in references) {'type': ref.role.name, 'url': ref.url},
         ],
     },
     'parameters': {
       'resolution': request.resolution,
       'duration': request.durationSeconds,
-      'ratio': request.ratio,
-      'audio': request.audio,
-      'prompt_extend': request.promptExtend,
+      if (lookupVideoChannelModel(
+            providerType,
+            request.modelId,
+          )?.protocolOptions.requiredMode !=
+          VideoMode.first_frame)
+        'ratio': request.ratio,
+      'audio': ?request.audio,
+      'prompt_extend': ?request.promptExtend,
     },
   };
   @override

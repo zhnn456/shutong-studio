@@ -25,6 +25,7 @@ import 'package:reveric/shared/services/ai/video/openrouter.dart';
 import 'package:reveric/shared/services/ai/video/agnes.dart';
 import 'package:reveric/shared/services/ai/video/client.dart';
 import 'package:reveric/shared/services/ai/video/minimax.dart';
+import 'package:reveric/shared/services/ai/video/purefox.dart';
 import 'package:reveric/shared/services/ai/video/wan.dart';
 import '../../../../helpers/media_provider_types.dart';
 
@@ -82,7 +83,7 @@ VideoRequest request(
 VideoReference reference(VideoInputRole role, {int duration = 2000}) =>
     VideoReference(
       role: role,
-      url: Uri.parse('https://reference.example/${role.name}'),
+      url: 'https://reference.example/${role.name}',
       mimeType: switch (role.kind) {
         VideoMediaKind.image => 'image/png',
         VideoMediaKind.video => 'video/mp4',
@@ -139,6 +140,13 @@ VideoClient client(VideoProtocol protocol, http.Client transport) =>
         endpoint: Uri.parse('https://example.com/proxy'),
         apiKey: 'secret',
       ),
+      // PureFox 走 NDJSON 流，回执不是 JSON，专项用例在 purefox_test.dart。
+      VideoProtocol.purefox_media => PurefoxVideoClient(
+        httpClient: transport,
+        providerType: videoProviderType(protocol),
+        endpoint: Uri.parse('https://example.com/proxy/v1'),
+        apiKey: 'secret',
+      ),
     };
 
 Map<String, dynamic> receipt(VideoProtocol protocol) => switch (protocol) {
@@ -158,6 +166,9 @@ Map<String, dynamic> receipt(VideoProtocol protocol) => switch (protocol) {
   VideoProtocol.wan_video => {
     'output': {'task_id': 'task-1', 'task_status': 'PENDING'},
   },
+  VideoProtocol.purefox_media => throw UnimplementedError(
+    'PureFox receipts are NDJSON frames, covered by purefox_test.dart',
+  ),
 };
 Map<String, dynamic> result(
   VideoProtocol protocol,
@@ -213,9 +224,94 @@ Map<String, dynamic> result(
       if (withUrl) 'video_url': 'https://result.example/movie.mp4',
     },
   },
+  VideoProtocol.purefox_media => throw UnimplementedError(
+    'PureFox results are NDJSON frames, covered by purefox_test.dart',
+  ),
 };
 
 void main() {
+  for (final (suffix, mode, role) in [
+    ('t2v', VideoMode.text, null),
+    ('i2v', VideoMode.first_frame, VideoInputRole.first_frame),
+    ('r2v', VideoMode.reference, VideoInputRole.reference_image),
+  ]) {
+    test(
+      'Token Plan HappyHorse $suffix submits and polls native protocol',
+      () async {
+        final model = 'happyhorse-1.1-$suffix';
+        final req = VideoRequest(
+          modelId: model,
+          prompt: 'A bird flying',
+          mode: mode,
+          resolution: '720P',
+          ratio: suffix == 'i2v' ? 'adaptive' : '16:9',
+        );
+        final refs = role == null ? <VideoReference>[] : [reference(role)];
+        var calls = 0;
+        final api = WanVideoClient(
+          providerType: 'qwen_token_plan',
+          endpoint: wanVideoEndpoint(
+            'https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1',
+          ),
+          apiKey: 'plan-key',
+          httpClient: MockClient((r) async {
+            calls++;
+            expect(r.headers['Authorization'], 'Bearer plan-key');
+            if (r.method == 'POST') {
+              expect(
+                r.url.toString(),
+                'https://token-plan.maas.qianwenaiapi.com/api/v1/services/aigc/video-generation/video-synthesis',
+              );
+              expect(r.headers['X-DashScope-Async'], 'enable');
+              expect(jsonDecode(r.body), {
+                'model': model,
+                'input': {
+                  'prompt': 'A bird flying',
+                  if (role != null)
+                    'media': [
+                      {'type': role.name, 'url': refs.single.url.toString()},
+                    ],
+                },
+                'parameters': {
+                  'resolution': '720P',
+                  'duration': 5,
+                  if (suffix != 'i2v') 'ratio': '16:9',
+                },
+              });
+              return http.Response(
+                jsonEncode({
+                  'output': {'task_id': 'task-1', 'task_status': 'PENDING'},
+                }),
+                200,
+              );
+            }
+            expect(r.method, 'GET');
+            expect(
+              r.url.toString(),
+              'https://token-plan.maas.qianwenaiapi.com/api/v1/tasks/task-1',
+            );
+            expect(r.headers.containsKey('X-DashScope-Async'), false);
+            return http.Response(
+              jsonEncode({
+                'output': {
+                  'task_status': 'SUCCEEDED',
+                  'video_url': 'https://result.example/video.mp4',
+                },
+              }),
+              200,
+            );
+          }),
+        );
+        addTearDown(api.httpClient.close);
+        final task = await api.submit(req, refs);
+        final result = await api.query(task);
+        expect(result.status, VideoRemoteStatus.succeeded);
+        expect(result.videoUrl.toString(), 'https://result.example/video.mp4');
+        expect(calls, 2);
+      },
+    );
+  }
+
   test(
     'AtlasCloud frame modes select the image route and preserve both frames',
     () async {
@@ -297,9 +393,9 @@ void main() {
     expect(log, contains('connection reset'));
     expect(log, contains('ClientException'));
     expect(log, isNot(contains('secret')));
-    expect(log, isNot(contains('private.example')));
+    expect(log, contains('https://private.example/?token=[redacted]'));
   });
-  test('HTTP error diagnostics redact credentials and signed URLs', () async {
+  test('HTTP error diagnostics retain URLs and redact credentials', () async {
     final lines = <String>[];
     final originalDebugPrint = debugPrint;
     debugPrint = (message, {wrapWidth}) {
@@ -329,12 +425,11 @@ void main() {
     final log = lines.join('\n');
     expect(log, contains('status=503'));
     expect(log, contains('No available channel'));
+    expect(log, contains('https://signed.example/video?token=private-token'));
     for (final sensitive in [
       'secret',
       'upstream-token',
       'sk-private-key',
-      'signed.example',
-      'private-token',
       '\nnext line',
     ]) {
       expect(log, isNot(contains(sensitive)));
@@ -462,7 +557,10 @@ void main() {
       );
     },
   );
-  for (final protocol in VideoProtocol.values) {
+  for (final protocol in VideoProtocol.values.where(
+    // PureFox 的型号目录由 /v1/models 运行时登记，NDJSON 协议在 purefox_test.dart 覆盖。
+    (protocol) => protocol != VideoProtocol.purefox_media,
+  )) {
     test(
       '$protocol preserves output review failure on a successful poll',
       () async {
@@ -791,6 +889,12 @@ void main() {
           );
           expect(seen.last.url.path, '/proxy/api/v1/tasks/task-1');
           expect(seen.first.headers['X-DashScope-Async'], 'enable');
+          // 查询接口是同步接口，携带异步头会被 workspace Endpoint 403 拒绝。
+          expect(
+            seen.last.headers.containsKey('X-DashScope-Async'),
+            false,
+            reason: '任务查询不得携带异步请求头',
+          );
           expect(body['input']['media'], [
             for (final ref in refs)
               {'type': ref.role.name, 'url': ref.url.toString()},

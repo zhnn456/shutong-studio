@@ -1,4 +1,4 @@
-// 职责: 应用级别编译期常量（版本号、产品线、匿名上报地址、反馈渠道、匿名诊断公共头）
+// 职责: 应用级别编译期常量（版本号、功能开关、产品线、匿名上报地址、反馈渠道、匿名诊断公共头）
 // 关联文件:
 //   lib/shared/providers/trace_providers.dart
 //   lib/shared/providers/anonymous_reporting_providers.dart
@@ -10,7 +10,7 @@
 /// 应用版本号。
 /// 与 pubspec.yaml 的 version 字段保持同步，由 release.sh 一同更新。
 /// 供需要同步获取版本号的场景使用（如匿名上报），避免 PackageInfo 异步调用。
-const appVersion = '0.6.8';
+const appVersion = '0.6.12';
 
 /// 匿名诊断接收地址，包含完整路径；请求不追加业务 API 后缀。
 /// 为空表示本构建不接匿名诊断：不上报，也不展示 opt-in 入口。
@@ -18,6 +18,10 @@ const anonymousReportingBaseUrl = '';
 
 /// 公开仓库地址；关于页与反馈的 GitHub Issue 都指向这里。
 const revericGitHubRepoUrl = 'https://github.com/zhnn456/shutong-studio';
+
+/// QQ 交流群官方邀请链接。
+const revericQqGroupJoinUrl = 'https://qm.qq.com/q/Ap8pfOWHDO';
+const revericQqGroupNumber = '924148054';
 
 /// 技能广场只读取公开链接目录，导入沿用各来源平台的现有流程。
 const revericSkillsCatalogUrl =
@@ -37,3 +41,12 @@ final revericApiHeaders = <String, String>{
   'Content-Type': 'application/json',
   'X-Product-Code': revericProductCode,
 };
+
+/// 用户主动提交日志与会话的诊断后端，与匿名事件上报独立。
+const diagnosticsBaseUrl = 'https://diagnostics.reveric.app';
+
+/// 构思画布的 UI、工具与内置技能入口；不影响视频制作画布。
+const ideationCanvasEnabled = bool.fromEnvironment(
+  'ENABLE_IDEATION_CANVAS',
+  defaultValue: false,
+);

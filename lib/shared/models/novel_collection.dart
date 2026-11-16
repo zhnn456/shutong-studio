@@ -19,6 +19,12 @@ class LibraryCollection {
   String get id => record.id;
   String get name => record.name;
   bool get builtin => record.builtin;
+
+  /// null 表示各库共用，目前只有内置「全部」。
+  String? get contentKind => record.contentKind;
+
+  /// 是否出现在 [kind] 这个库里。
+  bool visibleIn(String kind) => contentKind == null || contentKind == kind;
   bool get manual =>
       !builtin && record.filterMode == 'manual' && unavailableReason == null;
 }
@@ -53,7 +59,18 @@ List<LibraryCollection> orderCollections(
   for (final collection in all.where((c) => c.builtin)) {
     add(collection.id);
   }
-  for (final id in saved ?? ['collection:in_progress', 'collection:finished']) {
+  for (final id
+      in saved ??
+          const [
+            'collection:in_progress',
+            'collection:finished',
+            'collection:novel:in_progress',
+            'collection:novel:finished',
+            'collection:screenplay:in_progress',
+            'collection:screenplay:finished',
+            'collection:canvas:in_progress',
+            'collection:canvas:archived',
+          ]) {
     add(id);
   }
   ordered.addAll(byId.values);

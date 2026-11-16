@@ -45,6 +45,7 @@ void main() {
                     child: ContinueWritingHero(
                       chapters: chapters,
                       lastWrittenChapter: hasChapters ? chapters.first : null,
+                      hasAnyFoundation: true,
                       onContinueWriting: requests.add,
                       onSelectionChanged: selections.add,
                     ),

@@ -49,9 +49,14 @@ class _DraftCompletionPreview {
 /// Session-bound operations. Approval-gated commands use [operations] on every platform;
 /// media commands are registered only when [media] is true.
 class ToolOperationHost {
-  const ToolOperationHost(this.operations, {this.media = true, this.production})
-    : assert(media || production == null);
+  const ToolOperationHost(
+    this.operations, {
+    this.media = true,
+    this.production,
+    this.openSettings,
+  }) : assert(media || production == null);
   final ToolOperationManager operations;
+  final void Function(String section)? openSettings;
 
   /// The host provides production, editing, ffmpeg and local file commands.
   final bool media;
@@ -92,8 +97,9 @@ class ProductionToolHost {
       );
     }
     await canvas.shots.requireEpisode(clip.episodeId);
-    final episode = (await canvas.db.screenplayDao.getEpisode(clip.episodeId))!;
-    final canvasId = episode.canvasId;
+    final canvasId = clip.episodeId.isEmpty
+        ? (await canvas.ensureCanvas('')).id
+        : (await canvas.db.screenplayDao.getEpisode(clip.episodeId))!.canvasId;
     if (canvasId == null) {
       throw const ToolOperationException(
         'failed_precondition',
@@ -287,8 +293,10 @@ class ProductionToolHost {
     } on VideoException catch (error) {
       throw ToolOperationException(
         error.field ?? error.code.name,
-        error.toString(),
+        [error.toString(), ?error.detail].join('\n'),
       );
+    } on StoryboardException catch (error) {
+      throw ToolOperationException(error.code, error.toString());
     }
   }
 
@@ -441,7 +449,8 @@ class ProductionToolHost {
       );
     }
     final kind = spec.subcommand.substring('generate-'.length);
-    final target = '/clips/$clipId';
+    final target =
+        '${await canvas.shots.isCanvasWork ? '/production' : ''}/clips/$clipId';
     final node = await nodeForClip(clipId);
     final clip = (await canvas.shots.getShot(clipId))!;
     if (clip.kind != kind) {
@@ -638,7 +647,7 @@ class ProductionToolHost {
         if (task != null) ...await summary(task),
         'ok': false,
         'error_code': error.field ?? error.code.name,
-        'error': error.toString(),
+        'error': [error.toString(), ?error.detail].join('\n'),
       };
     } on StoryboardException catch (error) {
       throw ToolOperationException(

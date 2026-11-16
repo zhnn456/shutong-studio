@@ -2,8 +2,7 @@
 
 # ShuTong AI Workbench
 
-### AI-Native Desktop Creative Studio
-**An agent that understands your entire work, from the first chapter to the final cut.**
+### An AI-native desktop studio that understands your entire work, from the first chapter to the final cut
 
 <p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/github/license/zhnn456/shutong-studio?color=brightgreen" alt="license"></a>
@@ -15,13 +14,10 @@
 
 <p align="center">
   <a href="README.md">简体中文</a> •
-  <a href="README.en-US.md">English</a>
-</p>
-
-<p align="center">
-  <a href="#core-features">Core Features</a> •
-  <a href="#end-to-end-workflow">Workflow Showcase</a> •
-  <a href="#supported-models">Supported Models</a> •
+  <a href="README.en-US.md">English</a> ｜
+  <a href="#core-features">Features</a> •
+  <a href="#end-to-end-workflow">Workflow</a> •
+  <a href="#supported-models">Models</a> •
   <a href="#download--installation">Download</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#developer-guide">Developer Guide</a> •
@@ -254,28 +250,22 @@ Get started with your collaborative AI studio in four simple steps:
 
 ---
 
-## Developer Guide
+## Feedback & Community
 
 ShuTong AI Workbench is built using Flutter and modern cross-platform engineering practices. Community contributions are welcome!
 
-### Tech Stack
+Found a bug or have a feature request? Open an issue on [GitHub Issues](https://github.com/looplj/reveric/issues).
 
-- **Framework & Language**: Flutter 3.8+, Dart SDK
-- **State Management**: Riverpod (Hooks Riverpod) + Flutter Hooks
-- **Storage**: Drift (SQLite) with Local-First architecture
-- **3D Engine**: Flutter Scene (spatial rendering & camera rigging)
-- **Multimedia Engine**: FFmpeg Kit, FVP video player
+### QQ Group
 
-### Local Setup & Build
+Scan the QR code or [join via link](https://qm.qq.com/q/Ap8pfOWHDO) (group number: 924148054) to discuss AI fiction and short drama creation and share tips.
 
 ```bash
 # 1. Clone repository
 git clone https://github.com/zhnn456/shutong-studio.git
 cd shutong-studio
 
-# 2. Install dependencies (FVM recommended)
-make deps
-# Or: fvm flutter pub get
+### Other Communities
 
 # 3. Run code generation (Drift DB schema & Riverpod annotations)
 make codegen

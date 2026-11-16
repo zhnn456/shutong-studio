@@ -18,6 +18,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:reveric/desktop/features/production/node_card.dart';
+import 'package:reveric/desktop/features/production/history_region.dart';
+import 'package:reveric/desktop/features/production/edit_session.dart';
+import 'package:reveric/desktop/features/editing/canvas_shell.dart';
+import 'package:reveric/desktop/features/production/editing_node.dart';
+import 'package:reveric/shared/models/content_kind.dart';
 import 'package:reveric/desktop/features/production/input_preview.dart';
 import 'package:reveric/desktop/features/production/subject_picker.dart';
 import 'package:reveric/shared/database/app_database.dart' as app;
@@ -25,6 +30,9 @@ import 'package:reveric/shared/database/novel_content_database.dart';
 import 'package:reveric/shared/localization/merging_asset_loader.dart';
 import 'package:reveric/shared/models/video/request.dart';
 import 'package:reveric/shared/providers/novel_providers.dart';
+import 'package:reveric/shared/providers/settings_providers.dart';
+import 'package:reveric/desktop/features/production/node_title.dart';
+import 'package:reveric/shared/widgets/md/reveric_markdown_editor.dart';
 import 'package:reveric/shared/services/production/canvas_service.dart';
 import 'package:reveric/shared/services/production/ffmpeg_runner.dart';
 import 'package:reveric/shared/services/production/library_service.dart';
@@ -66,6 +74,323 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
   });
+
+  testWidgets(
+    'editing node opens its project and remains removable when the project disappears',
+    (tester) async {
+      final db = NovelContentDatabase.forTest(NativeDatabase.memory());
+      final main = app.AppDatabase.forTest(NativeDatabase.memory());
+      await ScreenplayService(db).createCanvasStructure();
+      final service = ProductionCanvasService(
+        StoryboardService(db, contentKind: contentKindCanvas),
+        MediaLibraryService(
+          main,
+          MediaService(FfmpegRunner()),
+          Directory.systemTemp,
+        ),
+        'work',
+      );
+      final canvas = await service.ensureCanvas('');
+      final node = await service.addEditing(canvas.id, title: 'Cut A');
+      String? opened;
+      try {
+        await tester.pumpWidget(
+          ProviderScope(
+            child: _wrap(
+              Center(
+                child: SizedBox(
+                  width: 260,
+                  height: 180,
+                  child: CanvasEditingScope(
+                    open: (id) async => opened = id,
+                    child: ProductionNodeCard(
+                      service: service,
+                      node: node,
+                      selected: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Cut A'), findsOneWidget);
+        expect(productionNodePorts(node, derived: false), (
+          input: false,
+          output: false,
+        ));
+        await tester.tap(find.byType(ProductionEditingNode));
+        await tester.pump(const Duration(milliseconds: 60));
+        await tester.tap(find.byType(ProductionEditingNode));
+        await tester.pumpAndSettle();
+        expect(opened, node.id);
+        opened = null;
+        await db.editingDao.softDelete(node.editingId!);
+        await tester.pumpAndSettle();
+        expect(find.text('Editing project is unavailable'), findsOneWidget);
+        await tester.tap(find.byType(ProductionEditingNode));
+        await tester.pump(const Duration(milliseconds: 60));
+        await tester.tap(find.byType(ProductionEditingNode));
+        await tester.pumpAndSettle();
+        expect(opened, isNull);
+        await service.removeNode(node.id);
+        expect(await db.canvasDao.getNodeById(node.id), isNull);
+        expect(await db.editingDao.get(node.editingId!), isNull);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        await db.close();
+        await main.close();
+      }
+    },
+  );
+
+  testWidgets(
+    'text node edits preserve drafts, save once and show text-only input actions',
+    (tester) async {
+      final db = NovelContentDatabase.forTest(NativeDatabase.memory());
+      final main = app.AppDatabase.forTest(NativeDatabase.memory());
+      final episode = (await ScreenplayService(
+        db,
+      ).createInitialStructure()).episodeId;
+      final service = ProductionCanvasService(
+        StoryboardService(db),
+        MediaLibraryService(
+          main,
+          MediaService(FfmpegRunner()),
+          Directory.systemTemp,
+        ),
+        'work',
+      );
+      final canvas = await service.ensureCanvas(episode);
+      final text = await service.addText(
+        canvas.id,
+        title: 'Note',
+        content: 'Original text',
+      );
+      final history = CanvasHistory(service.shots, canvas.id);
+      final session = ProductionEditSession();
+      // 画布把标题输入放在节点之外的浮层里；这里直接摆在卡片上方。
+      final title = ProductionNodeTitle();
+      addTearDown(title.dispose);
+      try {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appDatabaseProvider.overrideWithValue(main),
+              appSettingsDatabaseProvider.overrideWithValue(main),
+            ],
+            child: _wrap(
+              ProductionHistoryScope(
+                service: service,
+                canvas: canvas,
+                history: history,
+                session: session,
+                child: Center(
+                  child: SizedBox(
+                    width: 260,
+                    height: 300,
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: 40,
+                          child: ProductionNodeTitleField(
+                            title: title,
+                            nodeId: text.id,
+                          ),
+                        ),
+                        Expanded(
+                          child: StreamBuilder<CanvasNode?>(
+                            stream: db.canvasDao.watchNodeById(text.id),
+                            initialData: text,
+                            builder: (context, snapshot) => ProductionNodeCard(
+                              service: service,
+                              node: snapshot.data!,
+                              selected: true,
+                              textTitle: title,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(productionNodePorts(text, derived: false), (
+          input: false,
+          output: true,
+        ));
+        // 没有编辑按钮：双击正文进入编辑。
+        await tester.tap(find.byType(RevericMarkdownPreview));
+        await tester.pump(kDoubleTapMinTime);
+        await tester.tap(find.byType(RevericMarkdownPreview));
+        await tester.pumpAndSettle();
+        final fields = find.byType(EditableText);
+        await tester.enterText(fields.at(0), 'Shared direction');
+        // 正文是 Markdown 编辑器，没有 EditableText；通过它的外部 controller 写入。
+        TextEditingController body() => tester
+            .widget<RevericMarkdownEditor>(find.byType(RevericMarkdownEditor))
+            .controller;
+        body().text = 'Edited description';
+        await service.updateText(
+          text.id,
+          title: 'AI update',
+          content: 'Background change',
+        );
+        await tester.pumpAndSettle();
+        expect(body().text, 'Edited description');
+        expect(history.undoCount, 0);
+        // 没有保存按钮：焦点同时离开标题和正文即保存并退出编辑。
+        FocusManager.instance.primaryFocus!.unfocus();
+        await tester.pumpAndSettle();
+        expect(find.byType(RevericMarkdownEditor), findsNothing);
+        expect(history.undoCount, 1);
+        final saved = await service.requireNode(text.id);
+        expect(saved.title, 'Shared direction');
+        expect(saved.content, 'Edited description');
+        await history.undo();
+        await tester.pumpAndSettle();
+        expect(
+          (await service.requireNode(text.id)).content,
+          'Background change',
+        );
+        // 没有编辑按钮：双击正文进入编辑。
+        await tester.tap(find.byType(RevericMarkdownPreview));
+        await tester.pump(kDoubleTapMinTime);
+        await tester.tap(find.byType(RevericMarkdownPreview));
+        await tester.pumpAndSettle();
+        body().text = 'Saved on leaving';
+        expect(await session.close(), isTrue);
+        await tester.pumpAndSettle();
+        expect(
+          (await service.requireNode(text.id)).content,
+          'Saved on leaving',
+        );
+
+        var moved = 0;
+        var removed = false;
+        await tester.pumpWidget(
+          _wrap(
+            Center(
+              child: ProductionInputTile(
+                service: service,
+                input: ProductionInput.text(text.id),
+                valid: true,
+                onRole: (_) => fail('Text has no media role menu'),
+                onMove: (delta) => moved = delta,
+                onRemove: () => removed = true,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Text'), findsOneWidget);
+        expect(find.text('Saved on leaving'), findsOneWidget);
+        await tester.tap(find.byType(ProductionInputTile));
+        await tester.pumpAndSettle();
+        expect(find.text('Reference image'), findsNothing);
+        expect(find.text('Preview adopted result'), findsNothing);
+        await tester.tap(find.text('Move up'));
+        await tester.pumpAndSettle();
+        expect(moved, -1);
+        await tester.tap(find.byType(ProductionInputTile));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Disconnect'));
+        await tester.pumpAndSettle();
+        expect(removed, isTrue);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        history.dispose();
+        await db.close();
+        await main.close();
+      }
+    },
+  );
+
+  testWidgets(
+    'middle frame menus follow model support and show sequence labels',
+    (tester) async {
+      final db = NovelContentDatabase.forTest(NativeDatabase.memory());
+      final main = app.AppDatabase.forTest(NativeDatabase.memory());
+      final service = ProductionCanvasService(
+        StoryboardService(db),
+        MediaLibraryService(
+          main,
+          MediaService(FfmpegRunner()),
+          Directory.systemTemp,
+        ),
+        'work',
+      );
+      final input = ProductionInput.asset(
+        'missing',
+        VideoInputRole.middle_frame,
+      );
+      VideoInputRole? selected;
+      try {
+        for (final (supported, mode, label, roleLabel) in [
+          (false, VideoMode.first_last_frame, 'Middle 2', 'Middle frame'),
+          (true, VideoMode.first_last_frame, 'Middle 2', 'Middle frame'),
+          (
+            true,
+            VideoMode.reference,
+            'Middle ref. 2',
+            'Middle-frame reference',
+          ),
+        ]) {
+          await tester.pumpWidget(
+            _wrap(
+              Center(
+                child: ProductionInputTile(
+                  service: service,
+                  input: input,
+                  mode: mode,
+                  supportsMiddleFrames: supported,
+                  middleFrameIndex: 2,
+                  valid: supported,
+                  onRole: (role) => selected = role,
+                  onMove: null,
+                  onRemove: () {},
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.text(label), findsOneWidget);
+          await tester.tap(find.byType(ProductionInputTile));
+          await tester.pumpAndSettle();
+          expect(
+            find.text(roleLabel),
+            supported ? findsOneWidget : findsNothing,
+          );
+          if (supported) {
+            await tester.tap(find.text(roleLabel));
+            expect(selected, VideoInputRole.middle_frame);
+          } else {
+            await tester.tap(find.text('First frame'));
+            expect(selected, VideoInputRole.first_frame);
+          }
+          await tester.pumpAndSettle();
+        }
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        await db.close();
+        await main.close();
+      }
+    },
+    variant: TargetPlatformVariant({
+      TargetPlatform.windows,
+      TargetPlatform.macOS,
+    }),
+  );
 
   testWidgets(
     'shared voices can be renamed and unlinked',
@@ -438,87 +763,145 @@ void main() {
       },
     );
   }
-  testWidgets(
-    'subject profile shows character fields and adopts a shared photo',
-    (tester) async {
-      final db = NovelContentDatabase.forTest(NativeDatabase.memory());
-      final main = app.AppDatabase.forTest(NativeDatabase.memory());
-      final shots = StoryboardService(db);
-      final service = ProductionCanvasService(
-        shots,
-        MediaLibraryService(
-          main,
-          MediaService(FfmpegRunner()),
-          Directory.systemTemp,
-        ),
-        'work',
-      );
-      String? picked;
-      try {
-        final episode = (await ScreenplayService(
-          db,
-        ).createInitialStructure()).episodeId;
-        final canvas = await shots.ensureCanvas(episode);
-        await db
-            .into(db.characterProfiles)
-            .insert(
-              CharacterProfilesCompanion.insert(
-                id: 'hero',
-                name: 'Clyde',
-                identity: const Value('Painter'),
-                appearance: const Value('Black hair, slim build'),
-                photos: const Value([SubjectPhoto(assetId: 'front')]),
-              ),
-            );
-        final node = await service.addSubject(canvas.id, characterId: 'hero');
-        final clip = (await shots.getShot(node.clipId!))!;
-        await tester.binding.setSurfaceSize(const Size(1200, 900));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [appDatabaseProvider.overrideWithValue(main)],
-            child: _wrap(
-              Builder(
-                builder: (context) => TextButton(
-                  onPressed: () async {
-                    picked = await showProductionSubjectProfile(
-                      context,
-                      service,
-                      clip,
-                    );
-                  },
-                  child: const Text('Open'),
+  for (final character in [true, false]) {
+    testWidgets(
+      '${character ? 'character' : 'location'} profile removes photos and still adopts',
+      (tester) async {
+        final db = NovelContentDatabase.forTest(NativeDatabase.memory());
+        final main = app.AppDatabase.forTest(NativeDatabase.memory());
+        final shots = StoryboardService(db);
+        final service = ProductionCanvasService(
+          shots,
+          MediaLibraryService(
+            main,
+            MediaService(FfmpegRunner()),
+            Directory.systemTemp,
+          ),
+          'work',
+        );
+        String? picked;
+        try {
+          final episode = (await ScreenplayService(
+            db,
+          ).createInitialStructure()).episodeId;
+          final canvas = await shots.ensureCanvas(episode);
+          if (character) {
+            await db
+                .into(db.characterProfiles)
+                .insert(
+                  CharacterProfilesCompanion.insert(
+                    id: 'hero',
+                    name: 'Clyde',
+                    identity: const Value('Painter'),
+                    appearance: const Value('Black hair, slim build'),
+                    photos: const Value([
+                      SubjectPhoto(assetId: 'front'),
+                      SubjectPhoto(assetId: 'side'),
+                    ]),
+                  ),
+                );
+          } else {
+            await db
+                .into(db.locations)
+                .insert(
+                  LocationsCompanion.insert(
+                    id: 'hero',
+                    name: 'Studio',
+                    description: const Value('Painter studio'),
+                    photos: const Value([
+                      SubjectPhoto(assetId: 'front'),
+                      SubjectPhoto(assetId: 'side'),
+                    ]),
+                  ),
+                );
+          }
+          final node = await service.addSubject(
+            canvas.id,
+            characterId: character ? 'hero' : null,
+            locationId: character ? null : 'hero',
+          );
+          final clip = (await shots.getShot(node.clipId!))!;
+          await tester.binding.setSurfaceSize(const Size(1200, 900));
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [appDatabaseProvider.overrideWithValue(main)],
+              child: _wrap(
+                Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () async {
+                      picked = await showProductionSubjectProfile(
+                        context,
+                        service,
+                        clip,
+                      );
+                    },
+                    child: const Text('Open'),
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Open'));
-        // drift 的 watch 查询要真实事件循环推进，假时钟下不会出结果。
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 50)),
-        );
-        await tester.pumpAndSettle();
-        expect(find.text('Profile'), findsOneWidget);
-        expect(find.text('Identity'), findsOneWidget);
-        expect(find.text('Painter'), findsOneWidget);
-        expect(find.text('Character Appearance'), findsOneWidget);
-        expect(find.text('Black hair, slim build'), findsOneWidget);
-        expect(find.text('Photos'), findsOneWidget);
-        expect(find.text('Close'), findsOneWidget);
-        await tester.tap(find.byKey(const ValueKey('subject-photo-front')));
-        await tester.pumpAndSettle();
-        expect(picked, 'front');
-        expect(tester.takeException(), isNull);
-      } finally {
-        await tester.pumpWidget(const SizedBox.shrink());
-        await tester.pumpAndSettle();
-        await db.close();
-        await main.close();
-      }
-    },
-  );
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Open'));
+          // drift 的 watch 查询要真实事件循环推进，假时钟下不会出结果。
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)),
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('Profile'), findsOneWidget);
+          if (character) {
+            expect(find.text('Identity'), findsOneWidget);
+            expect(find.text('Painter'), findsOneWidget);
+            expect(find.text('Character Appearance'), findsOneWidget);
+            expect(find.text('Black hair, slim build'), findsOneWidget);
+          } else {
+            expect(find.text('Painter studio'), findsOneWidget);
+          }
+          expect(find.text('Photos'), findsOneWidget);
+          expect(find.text('Close'), findsOneWidget);
+          final remove = find.byKey(
+            const ValueKey('remove-subject-photo-side'),
+          );
+          expect(remove, findsNothing);
+          final mouse = await tester.createGesture(
+            kind: PointerDeviceKind.mouse,
+          );
+          await mouse.addPointer(
+            location: tester.getCenter(
+              find.byKey(const ValueKey('subject-photo-side')),
+            ),
+          );
+          addTearDown(mouse.removePointer);
+          await tester.pump();
+          await tester.tap(remove);
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)),
+          );
+          await tester.pumpAndSettle();
+          expect(
+            find.byKey(const ValueKey('subject-photo-side')),
+            findsNothing,
+          );
+          expect(find.byType(ProductionSubjectProfileDialog), findsOneWidget);
+          expect(picked, isNull);
+          expect(
+            await tester.runAsync(() => service.subjectPhotos(clip)),
+            const [SubjectPhoto(assetId: 'front')],
+          );
+          await tester.tap(find.byKey(const ValueKey('subject-photo-front')));
+          await tester.pumpAndSettle();
+          expect(picked, 'front');
+          expect(tester.takeException(), isNull);
+        } finally {
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pumpAndSettle();
+          await db.close();
+          await main.close();
+        }
+      },
+    );
+  }
   testWidgets(
     'soft-deleting an asset invalidates its media card without deleting the file',
     (tester) async {

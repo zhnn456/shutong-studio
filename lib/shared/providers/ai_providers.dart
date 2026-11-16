@@ -2184,19 +2184,6 @@ AiClient? aiService(Ref ref, String? sessionId) {
       databasePath: novelContentPath,
     ),
   );
-  final segmenterOption = ref.watch(
-    resolvedAiModelOptionForRoleProvider(
-      role: AiModelRole.segmenter,
-      databasePath: novelContentPath,
-    ),
-  );
-  // TODO: embedding 功能暂时屏蔽
-  // final embeddingOption = ref.watch(
-  //   resolvedAiModelOptionForKindProvider(
-  //     kind: AiModelKind.embedding,
-  //     databasePath: novelContentPath,
-  //   ),
-  // );
   final config =
       writerConfig ??
       (writerOption == null
@@ -2210,9 +2197,6 @@ AiClient? aiService(Ref ref, String? sessionId) {
   if (config == null || !config.isValid) return null;
   final chatModel = writerOption?.model ?? sessionConfig.model;
   if (chatModel == null) return null;
-  final segmenterModel = segmenterOption?.providerId == config.id
-      ? segmenterOption?.model
-      : chatModel;
   final contentService = novelContentPath == null || novelContentPath.isEmpty
       ? null
       : ref.watch(novelContentServiceProvider(novelContentPath));
@@ -2239,11 +2223,6 @@ AiClient? aiService(Ref ref, String? sessionId) {
     config,
     chatModel: chatModel,
     reasoningEffort: sessionConfig.reasoningEffort,
-    segmenterModel: segmenterModel,
-    // TODO: embedding 功能暂时屏蔽
-    // embeddingModel: embeddingOption?.providerId == config.id
-    //     ? embeddingOption?.model
-    //     : null,
     novelContentService: contentService,
     workingOverlayService: workingOverlay,
     providerReader: () async =>
@@ -2309,19 +2288,6 @@ Future<AiClient?> aiServiceAsync(Ref ref, String? sessionId) async {
       databasePath: novelContentPath,
     ),
   );
-  final segmenterOption = ref.watch(
-    resolvedAiModelOptionForRoleProvider(
-      role: AiModelRole.segmenter,
-      databasePath: novelContentPath,
-    ),
-  );
-  // TODO: embedding 功能暂时屏蔽
-  // final embeddingOption = ref.watch(
-  //   resolvedAiModelOptionForKindProvider(
-  //     kind: AiModelKind.embedding,
-  //     databasePath: novelContentPath,
-  //   ),
-  // );
   final config =
       writerConfig ??
       (writerOption == null
@@ -2335,9 +2301,6 @@ Future<AiClient?> aiServiceAsync(Ref ref, String? sessionId) async {
   if (config == null || !config.isValid) return null;
   final chatModel = writerOption?.model ?? sessionConfig.model;
   if (chatModel == null) return null;
-  final segmenterModel = segmenterOption?.providerId == config.id
-      ? segmenterOption?.model
-      : chatModel;
   final contentService = novelContentPath == null || novelContentPath.isEmpty
       ? null
       : ref.watch(novelContentServiceProvider(novelContentPath));
@@ -2364,11 +2327,6 @@ Future<AiClient?> aiServiceAsync(Ref ref, String? sessionId) async {
     config,
     chatModel: chatModel,
     reasoningEffort: sessionConfig.reasoningEffort,
-    segmenterModel: segmenterModel,
-    // TODO: embedding 功能暂时屏蔽
-    // embeddingModel: embeddingOption?.providerId == config.id
-    //     ? embeddingOption?.model
-    //     : null,
     novelContentService: contentService,
     workingOverlayService: workingOverlay,
     providerReader: () async =>
@@ -2481,7 +2439,13 @@ AiImageGenerationCallback? imageGenerationCallback(Ref ref, String workId) {
   }
   final defaultModel = preferredOption.model;
   final imageLibrary = ref.watch(imageLibraryServiceProvider);
-  return (String prompt, {String? model, String? size, String? quality}) async {
+  return (
+    String prompt, {
+    String? model,
+    String? size,
+    String? quality,
+    String? complexity,
+  }) async {
     // 生图工具只作用于作品内的角色和物品，结果按作品入库。
     final service = AiImageGenerationService(
       config,
@@ -2492,6 +2456,7 @@ AiImageGenerationCallback? imageGenerationCallback(Ref ref, String workId) {
       model: model,
       size: size,
       quality: quality,
+      complexity: complexity,
     );
     final asset = await imageLibrary.importGenerated(
       result,
@@ -2515,11 +2480,23 @@ AiImageGenerationCallback? imageGenerationCallback(Ref ref, String workId) {
 AiImageGenerationCallback? coverImageGenerationCallback(Ref ref) {
   final selection = ref.watch(coverStudioImageModelSelectionProvider);
   if (selection == null) return null;
-  return (String prompt, {String? model, String? size, String? quality}) {
+  return (
+    String prompt, {
+    String? model,
+    String? size,
+    String? quality,
+    String? complexity,
+  }) {
     return AiImageGenerationService(
       selection.config,
       model: model ?? selection.model,
-    ).generateImage(prompt, model: model, size: size, quality: quality);
+    ).generateImage(
+      prompt,
+      model: model,
+      size: size,
+      quality: quality,
+      complexity: complexity,
+    );
   };
 }
 
@@ -2533,6 +2510,7 @@ AiMultiImageEditCallback? coverImageMultiEditCallback(Ref ref) {
     String? model,
     String? size,
     String? quality,
+    String? complexity,
   }) {
     return AiImageGenerationService(
       selection.config,
@@ -2543,6 +2521,7 @@ AiMultiImageEditCallback? coverImageMultiEditCallback(Ref ref) {
       model: model,
       size: size,
       quality: quality,
+      complexity: complexity,
     );
   };
 }
@@ -2616,6 +2595,7 @@ AiMultiImageEditCallback? imageMultiEditCallback(Ref ref) {
     String? model,
     String? size,
     String? quality,
+    String? complexity,
   }) async {
     final service = AiImageGenerationService(
       config,
@@ -2627,6 +2607,7 @@ AiMultiImageEditCallback? imageMultiEditCallback(Ref ref) {
       model: model,
       size: size,
       quality: quality,
+      complexity: complexity,
     );
     return result;
   };

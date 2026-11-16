@@ -227,6 +227,7 @@ void main() {
       expect(unknown['id'], 'literal%2Fmodel');
       expect(unknown['capabilities_known'], false);
       expect(unknown.containsKey('capabilities'), true);
+      expect(unknown['available'], true);
       expect(unknown['capabilities'], isNull);
       expect(unknown.containsKey('defaults'), true);
       expect(unknown['defaults'], isNull);
@@ -518,27 +519,49 @@ void main() {
         'image',
         'unregistered/vendor/model',
       );
-      expect(unknown['available'], false);
+      expect(unknown['available'], true);
       expect(unknown['capabilities_known'], false);
-      expect(unknown['capabilities'], null);
+      expect(unknown['capabilities'], isNull);
       final custom = providerModelResource(
         provider('openai_compatible'),
         'image',
         'unregistered/vendor/model',
       );
-      expect(custom['available'], false);
-      expect(custom['unavailable_reason'], 'model_unsupported_by_adapter');
+      expect(custom['available'], true);
+      expect(custom['unavailable_reason'], isNull);
       expect(custom['capabilities_known'], false);
       final gemini = providerModelResource(
         provider('gemini').copyWith(imageModels: ['gemini-2.5-flash-image']),
         'image',
         'gemini-2.5-flash-image',
       );
-      expect(gemini['capabilities']['modes'], ['text']);
-      expect(gemini['capabilities']['ratios'], ['auto']);
-      expect(gemini['capabilities']['max_references'], 0);
+      expect(gemini['capabilities_known'], true);
+      expect(gemini['capabilities']['modes'], ['text', 'reference']);
+      expect(gemini['capabilities']['ratios'], contains('16:9'));
+      expect(gemini['capabilities']['max_references'], 3);
     },
   );
+
+  test('video models expose the catalog ID behind channel model IDs', () {
+    final configured = provider('openrouter').copyWith(
+      videoModels: ['bytedance/seedance-2.0', 'vendor/unregistered-video'],
+    );
+    expect(
+      providerModelResource(
+        configured,
+        'video',
+        'bytedance/seedance-2.0',
+      )['catalog_model_id'],
+      'doubao-seedance-2-0-260128',
+    );
+    final unknown = providerModelResource(
+      configured,
+      'video',
+      'vendor/unregistered-video',
+    );
+    expect(unknown.containsKey('catalog_model_id'), true);
+    expect(unknown['catalog_model_id'], isNull);
+  });
 
   test('video and audio expose adapter limits and consumed defaults', () async {
     final detail = (await run('models', {

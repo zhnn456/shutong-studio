@@ -224,6 +224,16 @@ mixin _AiToolManagerRunMixin
         await _productionStyleService(),
       ).run(spec.subcommand, options),
     ),
+    'settings': _RunCommandDefinition(
+      session: true,
+      subcommands: const {'open': RunPermission.none()},
+      codemode: const {
+        'open': _RunCodemodeAccess.denied(
+          'Open settings through a direct Run call.',
+        ),
+      },
+      (spec, options, _) => _runSettingsCommand(options),
+    ),
     'providers': _RunCommandDefinition(
       codemode: const {
         'list': _RunCodemodeAccess.read(),
@@ -539,11 +549,15 @@ mixin _AiToolManagerRunMixin
         // Skill-owned commands keep their usage in the bundled skill only.
         if (bundledControlRunCommandToCallName.containsKey(command)) {
           if (subcommand.isEmpty || subcommand == '--help') {
-            return _missingBundledSkillSubcommand(command, startedAt);
+            return _missingBundledSkillSubcommand(
+              command,
+              startedAt,
+              contentKind: contentKind,
+            );
           }
           throw _RunCommandException(
             '[error] unknown $command command: $subcommand\n'
-            '${_bundledSkillCommandGuidance(command)}',
+            '${_bundledSkillCommandGuidance(command, contentKind: contentKind)}',
             exitCode: 127,
           );
         }
@@ -604,7 +618,7 @@ mixin _AiToolManagerRunMixin
       return mcpRunHelp;
     }
     if (_currentToolExecutionContext?.parentToolCallId == null) {
-      return '${mcpRunHandler != null && mcpAllowed?.call() == true && (command == null || command.isEmpty) ? 'mcp: discover and call enabled MCP tools. Use Run help mcp.\n' : ''}${_helpFor(command, operations: _mediaOperations, sessionOperations: _sessionOperations)}';
+      return '${mcpRunHandler != null && mcpAllowed?.call() == true && (command == null || command.isEmpty) ? 'mcp: discover and call enabled MCP tools. Use Run help mcp.\n' : ''}${_helpFor(command, operations: _mediaOperations, sessionOperations: _sessionOperations, contentKind: contentKind)}';
     }
     final lines = <String>[];
     for (final entry in _runCommands.entries) {
@@ -632,6 +646,7 @@ mixin _AiToolManagerRunMixin
           lines.add(
             _helpFor(
               entry.key,
+              contentKind: contentKind,
               operations: _mediaOperations,
               sessionOperations: _sessionOperations,
             ),
@@ -660,6 +675,29 @@ mixin _AiToolManagerRunMixin
     return EditingToolHost(
       await build(),
     ).run(subcommand, options, context, manager, _activeRunCallId ?? '');
+  }
+
+  Future<Map<String, dynamic>> _runSettingsCommand(
+    Map<String, dynamic> options,
+  ) async {
+    final section = options['section'];
+    if (options.length != 1 ||
+        section is! String ||
+        section.isEmpty ||
+        section == 'debug') {
+      throw const FormatException(
+        'settings open requires a non-empty section; debug is not supported.',
+      );
+    }
+    final open = operationHost?.openSettings;
+    if (open == null) {
+      throw const ToolOperationException(
+        'unavailable',
+        'Settings navigation requires an application session.',
+      );
+    }
+    open(section);
+    return {'ok': true};
   }
 
   Future<Map<String, dynamic>> _runProductionCommand(
@@ -1733,6 +1771,12 @@ mixin _AiToolManagerRunMixin
     Map<String, dynamic> options,
     DateTime startedAt,
   ) async {
+    if (contentKind == contentKindCanvas) {
+      throw const ToolOperationException(
+        'unsupported',
+        'Canvas works do not expose subjects. Use production clips.',
+      );
+    }
     final usage = _usageForSubjectImage(spec.operation);
     final prompt = _requiredOption(options, 'prompt', usage: usage);
     final subjectKey = spec.command == 'item' ? 'item' : 'character';
@@ -1977,11 +2021,13 @@ Map<String, dynamic> _runTextResult({
 
 String _helpFor(
   String? command, {
+  String contentKind = contentKindNovel,
   required bool operations,
   required bool sessionOperations,
 }) {
   if (command == null || command.isEmpty) {
     return _runHelpText(
+      contentKind: contentKind,
       operations: operations,
       sessionOperations: sessionOperations,
     );
@@ -1997,7 +2043,7 @@ String _helpFor(
     return ProvidersRunCommandHandler.helpText;
   }
   if (bundledControlRunCommandToCallName.containsKey(command)) {
-    return _bundledSkillCommandGuidance(command);
+    return _bundledSkillCommandGuidance(command, contentKind: contentKind);
   }
   if (command == 'novel') {
     return _novelHelpText();
@@ -2030,28 +2076,30 @@ const _operationRunCommands = {
   'ffmpeg',
 };
 
-const _sessionRunCommands = {'files', 'operations'};
+const _sessionRunCommands = {'files', 'operations', 'settings'};
 
-String get _operationHelpLines =>
+String _operationHelpLines(String contentKind) =>
     '''  assets          List, read, view and certify this work's media assets.
-  stagings        Read and edit staging documents, inspect frames and refresh previews. Load AgentSkill "${bundledControlRunCommandToCallName['stagings']}".
-  styles          Query visual styles; create and edit custom styles. Load AgentSkill "${bundledControlRunCommandToCallName['styles']}".
+  stagings        Read and edit staging documents, inspect frames and refresh previews. Load AgentSkill "${bundledControlSkillForRun('stagings', contentKind: contentKind)}".
+  styles          Query visual styles; create and edit custom styles. Load AgentSkill "${bundledControlSkillForRun('styles', contentKind: contentKind)}".
   editing         Read and edit shared timelines, undo, preview and clean up previews. Load AgentSkill "${bundledControlRunCommandToCallName['editing']}".
-  production      Generate saved clips or derive media from production nodes. Load AgentSkill "${bundledControlRunCommandToCallName['production']}".
+  production      Generate saved clips or derive media from production nodes. Load AgentSkill "${bundledControlSkillForRun('production', contentKind: contentKind)}".
   ffmpeg          Inspect or process local media with explicit input/output arguments. Load AgentSkill "${bundledControlRunCommandToCallName['ffmpeg']}".
 ''';
 
 String get _sessionHelpLines =>
-    '''  files           Read local files; list or remove managed files with glob patterns. Load AgentSkill "${bundledControlRunCommandToCallName['files']}".
+    '''  settings        Open application settings for the user. Load AgentSkill "系统管理".
+  files           Read local files; list or remove managed files with glob patterns. Load AgentSkill "${bundledControlRunCommandToCallName['files']}".
   operations      List, read, wait for, or cancel session operations. Load AgentSkill "${bundledControlRunCommandToCallName['operations']}".
 ''';
 
 String _runHelpText({
+  String contentKind = contentKindNovel,
   required bool operations,
   required bool sessionOperations,
 }) {
   return '''Available commands:
-${operations ? _operationHelpLines : ''}${sessionOperations ? _sessionHelpLines : ''}  providers       List configured providers and inspect chat, image, video and audio models.
+${operations ? _operationHelpLines(contentKind) : ''}${sessionOperations ? _sessionHelpLines : ''}  providers       List configured providers and inspect chat, image, video and audio models.
   novel           Add the current quick-start draft novel to the library after user confirmation.
   sessions        List, read, and search saved AI conversations.
   map             Submit a map design draft for review in Cartographer.
@@ -2066,8 +2114,11 @@ ${operations ? _operationHelpLines : ''}${sessionOperations ? _sessionHelpLines 
 For usage, load the indicated AgentSkill; otherwise use command=help subcommand=<command>.''';
 }
 
-String _bundledSkillCommandGuidance(String command) {
-  final callName = bundledControlRunCommandToCallName[command];
+String _bundledSkillCommandGuidance(
+  String command, {
+  String contentKind = contentKindNovel,
+}) {
+  final callName = bundledControlSkillForRun(command, contentKind: contentKind);
   if (callName == null) {
     throw StateError('Run command has no bundled skill mapping: $command');
   }
@@ -2077,12 +2128,13 @@ String _bundledSkillCommandGuidance(String command) {
 
 Map<String, dynamic> _missingBundledSkillSubcommand(
   String command,
-  DateTime startedAt,
-) {
+  DateTime startedAt, {
+  String contentKind = contentKindNovel,
+}) {
   return _runTextResult(
     stdout:
         '[error] command "$command" requires a subcommand\n'
-        '${_bundledSkillCommandGuidance(command)}',
+        '${_bundledSkillCommandGuidance(command, contentKind: contentKind)}',
     exitCode: 1,
     startedAt: startedAt,
     error: '$command requires subcommand',

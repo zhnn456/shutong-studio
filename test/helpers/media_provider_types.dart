@@ -16,9 +16,11 @@ String videoProviderType(VideoProtocol protocol) => switch (protocol) {
   VideoProtocol.agnes_video => 'agnes',
   VideoProtocol.openrouter_video => 'openrouter',
   VideoProtocol.atlascloud_video => 'atlascloud',
+  VideoProtocol.purefox_media => 'purefox_media',
 };
 
 String audioProviderType(AudioProtocol protocol) => switch (protocol) {
+  AudioProtocol.moss_audio => 'moss',
   AudioProtocol.new_api_speech => 'api88',
   AudioProtocol.seed_audio => 'volcengine',
   AudioProtocol.minimax_music => 'minimax',
@@ -28,6 +30,7 @@ String audioProviderType(AudioProtocol protocol) => switch (protocol) {
 };
 
 String imageProviderType(ImageProtocol protocol) => switch (protocol) {
+  ImageProtocol.moss_image => 'moss',
   ImageProtocol.new_api_images => 'api88',
   ImageProtocol.agnes_image => 'agnes',
   ImageProtocol.qwen_image => 'qwen',
@@ -37,4 +40,6 @@ String imageProviderType(ImageProtocol protocol) => switch (protocol) {
   ImageProtocol.openai_images => 'openai_compatible',
   ImageProtocol.codex_image => 'codex',
   ImageProtocol.gemini_image => 'gemini',
+  ImageProtocol.purefox_media => 'purefox_media',
+  ImageProtocol.minimax_image => 'minimax',
 };

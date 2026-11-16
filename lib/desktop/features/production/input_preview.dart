@@ -20,9 +20,11 @@ import '../../../shared/services/production/generate_orchestrator.dart';
 import '../../../shared/theme/theme.dart';
 import 'node_card.dart';
 import 'support.dart';
+import 'text_input_tile.dart';
+import '../../../shared/database/app_database.dart' show AssetRow;
 
 /// 输入格边长。
-const double productionInputTileSize = 56;
+const double productionInputTileSize = RevericSizes.productionInputTileSize;
 
 class ProductionInputTile extends HookWidget {
   const ProductionInputTile({
@@ -31,6 +33,8 @@ class ProductionInputTile extends HookWidget {
     required this.input,
     required this.valid,
     this.mode,
+    this.supportsMiddleFrames = false,
+    this.middleFrameIndex,
     required this.onRole,
     required this.onMove,
     required this.onRemove,
@@ -41,6 +45,8 @@ class ProductionInputTile extends HookWidget {
   /// 用途在当前生成方式下可用。
   final bool valid;
   final VideoMode? mode;
+  final bool supportsMiddleFrames;
+  final int? middleFrameIndex;
   final ValueChanged<VideoInputRole>? onRole;
 
   /// -1 前移，1 后移；到头时为 null。
@@ -49,13 +55,12 @@ class ProductionInputTile extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final asset = useStream(
-      useMemoized(() => service.watchInputAsset(input), [
-        service,
-        input.id,
-        input.refType,
-        input.refId,
-        input.role,
-      ]),
+      useMemoized(
+        () => input.isPrompt
+            ? const Stream<AssetRow>.empty()
+            : service.watchInputAsset(input),
+        [service, input.id, input.refType, input.refId, input.roleName],
+      ),
     );
     final assetId = asset.hasError ? null : asset.data?.id;
     final colors = RevericTheme.colorsOf(context);
@@ -64,6 +69,14 @@ class ProductionInputTile extends HookWidget {
         ? context.t(LocaleKeys.productionGenerateReferenceMissing)
         : asset.data?.name ?? input.refId;
     final hovered = useState(false);
+    if (input.isPrompt) {
+      return ProductionTextInputTile(
+        service: service,
+        input: input,
+        onMove: onMove,
+        onRemove: onRemove,
+      );
+    }
 
     void menu() {
       final box = context.findRenderObject()! as RenderBox;
@@ -86,7 +99,9 @@ class ProductionInputTile extends HookWidget {
           ],
           if (onRole != null)
             for (final role in VideoInputRole.values.where(
-              (r) => r.kind == input.role.kind,
+              (r) =>
+                  r.kind == input.role.kind &&
+                  (r != VideoInputRole.middle_frame || supportsMiddleFrames),
             ))
               RevericMenuItem(
                 label: productionRole(context, role, mode: mode),
@@ -126,7 +141,7 @@ class ProductionInputTile extends HookWidget {
 
     return Tooltip(
       message: [
-        '$name · ${productionRole(context, input.role, mode: mode)}',
+        '$name · ${productionRole(context, input.role, mode: mode, middleFrameIndex: middleFrameIndex)}',
         if (mode != null &&
             productionSubmitRole(mode!, input.role) != input.role)
           context.t(LocaleKeys.productionFrameReferenceHint),
@@ -175,7 +190,12 @@ class ProductionInputTile extends HookWidget {
                         ),
                       ),
                       child: Text(
-                        productionRole(context, input.role, mode: mode),
+                        productionRole(
+                          context,
+                          input.role,
+                          mode: mode,
+                          middleFrameIndex: middleFrameIndex,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: typo.uiTinySemibold.copyWith(

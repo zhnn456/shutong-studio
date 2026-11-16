@@ -41,23 +41,29 @@ VideoRequest shotVideoRequest(ProductionClipRow shot) => VideoRequest(
 /// 接口用的方式由 [productionSubmitMode] 按实际发送的输入算。
 bool productionUsesFrames(VideoMode mode) => mode == VideoMode.first_last_frame;
 
-/// 当前组别下可挂的输入用途；其余输入保留但不发送。
+/// 当前组别参与提交校验的用途；全参考模式保留各类帧的编辑用途。
 List<VideoInputRole> productionRoles(VideoMode mode) =>
     productionUsesFrames(mode)
-    ? const [VideoInputRole.first_frame, VideoInputRole.last_frame]
+    ? const [
+        VideoInputRole.first_frame,
+        VideoInputRole.middle_frame,
+        VideoInputRole.last_frame,
+      ]
     : const [
         VideoInputRole.reference_image,
         VideoInputRole.reference_video,
         VideoInputRole.reference_audio,
         VideoInputRole.first_frame,
         VideoInputRole.last_frame,
+        VideoInputRole.middle_frame,
       ];
 
-/// 全参考模式保留编辑用途，发送时把首尾帧作为普通参考图。
+/// 全参考模式保留编辑用途，发送时把首帧、中间帧和尾帧作为普通参考图。
 VideoInputRole productionSubmitRole(VideoMode mode, VideoInputRole role) =>
     (mode == VideoMode.reference || mode == VideoMode.text) &&
         (role == VideoInputRole.first_frame ||
-            role == VideoInputRole.last_frame)
+            role == VideoInputRole.last_frame ||
+            role == VideoInputRole.middle_frame)
     ? VideoInputRole.reference_image
     : role;
 
@@ -66,7 +72,8 @@ VideoMode productionSubmitMode(
   VideoMode mode,
   Iterable<VideoInputRole> roles,
 ) => productionUsesFrames(mode)
-    ? (roles.contains(VideoInputRole.last_frame)
+    ? (roles.contains(VideoInputRole.last_frame) ||
+              roles.contains(VideoInputRole.middle_frame)
           ? VideoMode.first_last_frame
           : VideoMode.first_frame)
     : (roles.isEmpty ? VideoMode.text : VideoMode.reference);
@@ -75,7 +82,7 @@ VideoMode productionSubmitMode(
 List<ProductionInput> productionInputsWithVoices(
   List<ProductionInput> inputs,
 ) => [
-  for (final input in inputs) ...[
+  for (final input in inputs.where((input) => !input.isPrompt)) ...[
     input,
     if (input.voiceAssetId != null)
       ProductionInput(
@@ -99,15 +106,34 @@ List<VideoReferenceSlot> productionSlots(
   VideoProtocol protocol,
   List<ResolvedProductionInput> inputs, {
   required VideoMode mode,
+  bool indexedKeyframes = false,
 }) {
+  final imageOrder = [
+    if (mode == VideoMode.first_frame || mode == VideoMode.first_last_frame)
+      for (final role in [
+        VideoInputRole.first_frame,
+        VideoInputRole.middle_frame,
+        VideoInputRole.last_frame,
+      ])
+        ...inputs.where((input) => input.role == role),
+    ...inputs.where(
+      (input) =>
+          productionSubmitRole(mode, input.role) ==
+          VideoInputRole.reference_image,
+    ),
+  ];
   final counts = <VideoMediaKind, int>{};
   return inputs.map((input) {
     final role = productionSubmitRole(mode, input.role);
     final kind = role.kind;
     final index = counts.update(kind, (n) => n + 1, ifAbsent: () => 1);
     final slot = switch (role) {
+      _ when indexedKeyframes && kind == VideoMediaKind.image =>
+        '@image_${imageOrder.indexWhere((item) => item.id == input.id) + 1}',
+      _ when indexedKeyframes => '@${kind.name}_$index',
       VideoInputRole.first_frame => 'first frame',
       VideoInputRole.last_frame => 'last frame',
+      VideoInputRole.middle_frame => 'middle frame $index',
       _ when protocol == VideoProtocol.atlascloud_video =>
         '@${switch (kind) {
           VideoMediaKind.image => 'Image',
@@ -136,27 +162,39 @@ List<VideoReferenceSlot> productionSlots(
 VideoRequest compileProductionPrompt(
   String providerType,
   VideoRequest raw,
-  List<ResolvedProductionInput> inputs,
-) {
+  List<ResolvedProductionInput> inputs, {
+  Map<String, String> textInputs = const {},
+}) {
   final parsed = StoryboardPrompt.parse(raw.prompt);
   final slots = productionSlots(
     productionProtocol(providerType),
     inputs,
     mode: raw.mode,
+    indexedKeyframes:
+        (lookupVideoChannelModel(
+              providerType,
+              raw.modelId,
+            )?.capabilities.maxMiddleFrames ??
+            0) >
+        0,
   );
   if (inputs.map((s) => s.id).toSet().length != slots.length) {
     throw const StoryboardException('invalid_reference');
   }
-  final text = parsed.parts.map((part) {
-    if (!part.isReference) {
-      return part.text;
-    }
-    final slot = slots.where((s) => s.inputId == part.inputId).firstOrNull;
-    if (slot == null) {
-      throw const StoryboardException('invalid_reference');
-    }
-    return slot.slot;
-  }).join();
+  final text = parsed.render(
+    textInputs: textInputs,
+    reference: (part) {
+      final slot = slots.where((s) => s.inputId == part.inputId).firstOrNull;
+      if (slot == null) {
+        throw const StoryboardException('invalid_reference');
+      }
+      return slot.slot;
+    },
+  );
+  final middleFrameIds = [
+    for (final input in inputs)
+      if (input.role == VideoInputRole.middle_frame) input.id,
+  ];
   final frameInstructions = <String>[
     for (final (index, input) in inputs.indexed)
       if (productionSubmitRole(raw.mode, input.role) != input.role)
@@ -165,6 +203,8 @@ VideoRequest compileProductionPrompt(
             '以 ${slots[index].slot} 作为视频起始画面，延续其构图、人物姿态和场景状态。',
           VideoInputRole.last_frame =>
             '视频结束画面应呈现 ${slots[index].slot} 所示的构图、人物姿态和场景状态。',
+          VideoInputRole.middle_frame =>
+            '以 ${slots[index].slot} 作为第 ${middleFrameIds.indexOf(input.id) + 1} 个中间过程的画面参考。',
           _ => throw StateError('Unexpected converted production role'),
         },
   ];
@@ -201,7 +241,10 @@ VideoRequest compileProductionPrompt(
     durationSeconds: raw.durationSeconds,
     audio: raw.audio ?? defaults?.audio,
     promptExtend: raw.promptExtend ?? defaults?.promptExtend,
-    originalPrompt: raw.prompt,
+    originalPrompt: parsed.render(
+      textInputs: textInputs,
+      reference: (part) => part.text,
+    ),
     referenceSlots: slots,
   );
 }
@@ -233,13 +276,27 @@ class ProductionGenerateOrchestrator {
     final shot = node.clipId == null
         ? null
         : await service.shots.getShot(node.clipId!);
-    final raw = shot == null ? null : shotVideoRequest(shot);
-    final providerId = shot?.providerId;
-    if (shot?.kind != 'video' ||
-        raw == null ||
-        providerId == null ||
-        (shot?.durationMs != null && shot!.durationMs! % 1000 != 0)) {
-      throw const StoryboardException('invalid_config');
+    if (shot == null || shot.kind != 'video') {
+      throw const StoryboardException(
+        'invalid_config',
+        'Only video clips can generate video.',
+      );
+    }
+    final raw = shotVideoRequest(shot);
+    final providerId = shot.providerId;
+    if (providerId == null) {
+      throw const StoryboardException(
+        'invalid_config',
+        'provider_id and model_id are not set.',
+      );
+    }
+    final durationMs = shot.durationMs;
+    if (durationMs != null && durationMs % 1000 != 0) {
+      throw StoryboardException(
+        'invalid_config',
+        'duration_ms is in milliseconds and must be whole seconds '
+            '(4 s = 4000); current value: $durationMs.',
+      );
     }
     final provider = await service.library.database.aiProviderDao.getById(
       providerId,
@@ -261,7 +318,9 @@ class ProductionGenerateOrchestrator {
         field: 'draft',
       );
     }
-    final savedInputs = await service.inputs(nodeId);
+    final allInputs = await service.inputs(nodeId);
+    final textInputs = await service.promptTexts(allInputs);
+    final savedInputs = allInputs.where((input) => !input.isPrompt).toList();
     for (final input in savedInputs.where((i) => i.voiceAssetId != null)) {
       if (productionUsesFrames(raw.mode)) {
         throw const VideoException(
@@ -306,7 +365,7 @@ class ProductionGenerateOrchestrator {
       references.add(
         VideoReference(
           role: role,
-          url: Uri.https('local.invalid', '/preview'),
+          url: 'https://local.invalid/preview',
           mimeType: media.mimeType,
           fileSize: await file.length(),
           mediaInfo: VideoMediaInfo(
@@ -337,8 +396,9 @@ class ProductionGenerateOrchestrator {
             : null,
       ),
       ordered,
+      textInputs: textInputs,
     );
-    final style = await service.effectiveStyle(shot!);
+    final style = await service.effectiveStyle(shot);
     final request = compiled.withPrompt(
       style?.assemble(compiled.prompt) ?? compiled.prompt,
     );

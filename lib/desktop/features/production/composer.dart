@@ -20,7 +20,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import '../../../shared/components/reveric_icon_button.dart';
 import '../../../shared/components/reveric_select.dart';
 import '../../../shared/database/novel_content_database.dart';
 import '../../../shared/database/app_database.dart' show AssetRow;
@@ -36,6 +35,7 @@ import '../../../shared/models/storyboard/prompt.dart';
 import '../../../shared/models/video/capabilities.dart';
 import '../../../shared/models/video/channels.dart';
 import '../../../shared/providers/novel_providers.dart';
+import '../../../shared/providers/purefox_media_providers.dart';
 import '../../../shared/providers/video_tasks.dart';
 import '../../../shared/services/ai/video/draft.dart';
 import '../../../shared/services/production/canvas_service.dart';
@@ -49,6 +49,8 @@ import 'input_preview.dart';
 import 'character_input.dart';
 import '../../../shared/services/production/voices.dart';
 import 'edit_session.dart';
+import 'history_region.dart';
+import 'text_inputs.dart';
 import 'prompt_field.dart';
 import 'support.dart';
 import 'style_button.dart';
@@ -58,7 +60,7 @@ import 'composer_toolbar.dart';
 import 'generate_button.dart';
 import 'spec_panel.dart';
 import 'upload.dart';
-import '../../widgets/settings/settings_dialog.dart';
+import '../../widgets/agent_management/ai_providers_page.dart';
 import '../../../shared/widgets/settings/provider_video_highlights.dart';
 
 final _log = AppLogger.forModule('Production');
@@ -69,6 +71,11 @@ String productionReferenceErrorKey({
   required VideoMode mode,
   required List<VideoInputRole> roles,
 }) {
+  if (roles.contains(VideoInputRole.middle_frame) &&
+      productionUsesFrames(mode) &&
+      channel.capabilities.maxMiddleFrames == 0) {
+    return LocaleKeys.productionGenerateMiddleFramesUnsupported;
+  }
   if (!productionUsesFrames(mode)) {
     return channel.capabilities.allowsReferenceMode
         ? LocaleKeys.productionGenerateReferencesInvalid
@@ -176,6 +183,8 @@ class _ComposerForm extends HookConsumerWidget {
     final busy = useState(false);
     final error = useState<String?>(null);
     final saved = useRef('');
+    // 型号能力由启动时的远端登记决定；完成后重建，让型号下拉拿到最新的能力表。
+    ref.watch(purefoxMediaModelsProvider);
     final form = useForm<ShotField>(
       listen: false,
       initialValues: {
@@ -216,13 +225,16 @@ class _ComposerForm extends HookConsumerWidget {
     final overlay = ref.watch(workingOverlayServiceProvider(path));
     String value(ShotField field) => form.getValue<String>(field) ?? '';
     String signature() =>
-        '${value(ShotField.title)}|${prompt.source}|${inputs.value.map((i) => '${i.identity}:${i.role.name}:${i.sourceNodeId}:${i.voiceAssetId}').join('|')}|${form.getValue<(String, String)>(ShotField.model)}|${value(ShotField.mode)}|${value(ShotField.ratio)}|${value(ShotField.resolution)}|${value(ShotField.duration)}|${form.getValue<bool>(ShotField.generateAudio)}';
+        '${value(ShotField.title)}|${prompt.source}|${inputs.value.map((i) => '${i.identity}:${i.roleName}:${i.sourceNodeId}:${i.voiceAssetId}').join('|')}|${form.getValue<(String, String)>(ShotField.model)}|${value(ShotField.mode)}|${value(ShotField.ratio)}|${value(ShotField.resolution)}|${value(ShotField.duration)}|${form.getValue<bool>(ShotField.generateAudio)}';
     if (saved.value.isEmpty) {
       saved.value = signature();
     }
     prompt.inputIds = inputs.value.map((i) => i.id).toSet();
     prompt.onPreview = (id) => productionRun(context, () async {
       final input = inputs.value.firstWhere((i) => i.id == id);
+      if (input.isPrompt) {
+        return;
+      }
       final asset = await service.inputAsset(input);
       if (context.mounted) {
         await previewProductionAsset(context, service, asset.id);
@@ -345,13 +357,22 @@ class _ComposerForm extends HookConsumerWidget {
     );
 
     List<VideoInputRole> currentRoles() =>
-        productionRoles(VideoMode.values.byName(value(ShotField.mode)));
+        productionRoles(VideoMode.values.byName(value(ShotField.mode)))
+            .where(
+              (role) =>
+                  role != VideoInputRole.middle_frame ||
+                  (!productionUsesFrames(
+                        VideoMode.values.byName(value(ShotField.mode)),
+                      ) ||
+                      (modelConfig?.capabilities.maxMiddleFrames ?? 0) > 0),
+            )
+            .toList();
 
     Future<void> attach(AssetRow asset, {bool reference = false}) async {
       final matching = currentRoles()
           .where((r) => r.kind.name == asset.type)
           .toList();
-      void apply(VideoInputRole role) {
+      Future<void> apply(VideoInputRole role) async {
         if (!context.mounted) {
           return;
         }
@@ -365,7 +386,9 @@ class _ComposerForm extends HookConsumerWidget {
             .firstOrNull;
         if (input == null) {
           input = ProductionInput.asset(asset.id, role);
-          inputs.value = [...inputs.value, input];
+          await changeProductionInputs(context, node.id, save, () {
+            inputs.value = [...inputs.value, input!];
+          });
         }
         if (reference) {
           prompt.insertReference(input.id, asset.name);
@@ -373,7 +396,7 @@ class _ComposerForm extends HookConsumerWidget {
       }
 
       if (matching.length == 1) {
-        apply(matching.single);
+        await apply(matching.single);
       } else {
         await menu([
           for (final role in matching)
@@ -406,7 +429,7 @@ class _ComposerForm extends HookConsumerWidget {
         VideoMode.values.byName(value(ShotField.mode)),
       );
       final candidates = inputs.value
-          .where((i) => allowed.contains(i.role))
+          .where((i) => i.isPrompt || allowed.contains(i.role))
           .toList();
       final labels = <String, String>{};
       for (final input in candidates) {
@@ -468,6 +491,17 @@ class _ComposerForm extends HookConsumerWidget {
                 !await ensureReferenceStorage(
                   context,
                   ref.read(referenceStorageServiceProvider),
+                  providerId: preview.providerId,
+                  modelId: preview.request.modelId,
+                  inputs: preview.inputs
+                      .map(
+                        (input) => VideoInput(
+                          role: input.role,
+                          assetId: input.assetId,
+                          mimeType: input.mimeType,
+                        ),
+                      )
+                      .toList(),
                 ))) {
           return;
         }
@@ -497,16 +531,45 @@ class _ComposerForm extends HookConsumerWidget {
       () => value(ShotField.resolution),
     );
     final allowed = productionRoles(mode);
+    final textNodes = ProductionTextInputScope.of(context);
+    final supportsMiddleFrames =
+        !productionUsesFrames(mode) ||
+        (modelConfig?.capabilities.maxMiddleFrames ?? 0) > 0;
+    final displayInputs = productionUsesFrames(mode)
+        ? [
+            for (final role in [
+              VideoInputRole.first_frame,
+              VideoInputRole.middle_frame,
+              VideoInputRole.last_frame,
+            ])
+              ...inputs.value.where(
+                (input) => !input.isPrompt && input.role == role,
+              ),
+            ...inputs.value.where(
+              (input) =>
+                  input.isPrompt ||
+                  ![
+                    VideoInputRole.first_frame,
+                    VideoInputRole.middle_frame,
+                    VideoInputRole.last_frame,
+                  ].contains(input.role),
+            ),
+          ]
+        : inputs.value;
     final audioKey = inputs.value
         .where(
-          (i) => i.role.kind == VideoMediaKind.audio || i.voiceAssetId != null,
+          (i) =>
+              !i.isPrompt &&
+              (i.role.kind == VideoMediaKind.audio || i.voiceAssetId != null),
         )
-        .map((i) => '${i.identity}:${i.role.name}:${i.voiceAssetId}')
+        .map((i) => '${i.identity}:${i.roleName}:${i.voiceAssetId}')
         .join('|');
     final audioNames = useFuture(
       useMemoized(
         () => service.audioInputNames(
-          inputs.value.where((i) => allowed.contains(i.role)).toList(),
+          inputs.value
+              .where((i) => !i.isPrompt && allowed.contains(i.role))
+              .toList(),
         ),
         [service, audioKey, mode],
       ),
@@ -568,11 +631,28 @@ class _ComposerForm extends HookConsumerWidget {
       final roles = activeInputs
           .map((input) => productionSubmitRole(mode, input.role))
           .toList();
+      final promptInputs = inputs.value
+          .where((input) => input.isPrompt)
+          .toList();
+      if (promptInputs.isNotEmpty &&
+          ProductionTextInputScope.hasError(context)) {
+        return context.t(LocaleKeys.productionFailed);
+      }
+      if (promptInputs.isNotEmpty && textNodes == null) {
+        return context.t(LocaleKeys.productionGenerateChecking);
+      }
+      if (promptInputs.any((input) => !textNodes!.containsKey(input.refId))) {
+        return context.t(LocaleKeys.productionGenerateReferenceMissing);
+      }
+      final textInputs = {
+        for (final input in promptInputs) input.id: textNodes![input.refId]!,
+      };
       final parsed = StoryboardPrompt.parse(prompt.source);
       if (parsed.parts.any(
         (part) =>
             part.isReference &&
-            !activeInputs.any((input) => input.id == part.inputId),
+            !activeInputs.any((input) => input.id == part.inputId) &&
+            !textInputs.containsKey(part.inputId),
       )) {
         return context.t(LocaleKeys.productionGenerateReferenceMissing);
       }
@@ -599,6 +679,7 @@ class _ComposerForm extends HookConsumerWidget {
               for (final input in activeInputs)
                 ResolvedProductionInput(input, input.refId),
             ],
+            textInputs: textInputs,
           ),
           roles,
         );
@@ -727,80 +808,146 @@ class _ComposerForm extends HookConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                ProductionComposerTools(
+                  expanded: expanded.value,
+                  onExpand: () => expanded.value = !expanded.value,
                   children: [
-                    Expanded(
-                      child: Wrap(
-                        spacing: RevericSpacing.sm,
-                        runSpacing: RevericSpacing.sm,
-                        children: [
-                          for (var i = 0; i < inputs.value.length; i++)
-                            ProductionCharacterInput(
-                              key: ValueKey(inputs.value[i].identity),
-                              service: service,
-                              input: inputs.value[i],
-                              framesMode: frames,
-                              onChanged: (input) {
-                                final next = [...inputs.value];
-                                next[i] = input;
-                                inputs.value = next;
-                              },
-                              child: ProductionInputTile(
-                                service: service,
-                                input: inputs.value[i],
-                                mode: mode,
-                                valid: allowed.contains(inputs.value[i].role),
-                                onRole: (r) {
-                                  final next = [...inputs.value];
-                                  next[i] = next[i].withRole(r);
-                                  inputs.value = next;
-                                },
-                                onMove: inputs.value.length < 2
-                                    ? null
-                                    : (delta) {
-                                        final to = i + delta;
-                                        if (to < 0 ||
-                                            to >= inputs.value.length) {
-                                          return;
-                                        }
-                                        final next = [...inputs.value];
-                                        next.insert(to, next.removeAt(i));
-                                        inputs.value = next;
-                                      },
-                                onRemove: () {
-                                  inputs.value = [...inputs.value]..removeAt(i);
-                                },
-                              ),
-                            ),
-                        ],
-                      ),
+                    ProductionAddInputButton(
+                      service: service,
+                      types: allowed.map((r) => r.kind.name).toSet(),
+                      enabled: !busy.value,
+                      onPicked: attach,
                     ),
-                    RevericIconButton(
-                      icon: expanded.value
-                          ? RevericIcons.arrows_in
-                          : RevericIcons.arrows_out,
-                      tooltip: context.t(
-                        expanded.value
-                            ? LocaleKeys.commonCollapse
-                            : LocaleKeys.commonExpand,
-                      ),
-                      onPressed: () => expanded.value = !expanded.value,
+                    ProductionToolChip(
+                      icon: RevericIcons.at,
+                      label: context.t(LocaleKeys.productionMention),
+                      tooltip: context.t(LocaleKeys.productionReference),
+                      onTap: busy.value
+                          ? null
+                          : () => productionRun(context, reference),
+                    ),
+                    ProductionToolChip(
+                      icon: RevericIcons.video_camera,
+                      label: context.t(LocaleKeys.productionCameraLibrary),
+                      onTap: busy.value
+                          ? null
+                          : () => productionRun(context, insertCamera),
                     ),
                   ],
                 ),
-                const SizedBox(height: RevericSpacing.sm),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: expanded.value ? 200 : 60,
-                    maxHeight: expanded.value ? 360 : 140,
+                if (displayInputs.isNotEmpty) ...[
+                  const SizedBox(height: RevericSpacing.sm),
+                  Wrap(
+                    spacing: RevericSpacing.sm,
+                    runSpacing: RevericSpacing.sm,
+                    children: [
+                      for (var i = 0; i < displayInputs.length; i++)
+                        ProductionCharacterInput(
+                          key: ValueKey(displayInputs[i].identity),
+                          service: service,
+                          input: displayInputs[i],
+                          framesMode: frames,
+                          onChanged: (input) => changeProductionInputs(
+                            context,
+                            node.id,
+                            save,
+                            () {
+                              final next = [...inputs.value];
+                              next[next.indexWhere(
+                                    (item) => item.id == displayInputs[i].id,
+                                  )] =
+                                  input;
+                              inputs.value = next;
+                            },
+                          ),
+                          child: ProductionInputTile(
+                            service: service,
+                            input: displayInputs[i],
+                            mode: mode,
+                            valid:
+                                displayInputs[i].isPrompt ||
+                                allowed.contains(displayInputs[i].role) &&
+                                    (displayInputs[i].role !=
+                                            VideoInputRole.middle_frame ||
+                                        supportsMiddleFrames),
+                            supportsMiddleFrames: supportsMiddleFrames,
+                            middleFrameIndex: displayInputs[i].middleFrameIndex(
+                              inputs.value,
+                            ),
+                            onRole: (r) => changeProductionInputs(
+                              context,
+                              node.id,
+                              save,
+                              () {
+                                final next = [...inputs.value];
+                                final index = next.indexWhere(
+                                  (item) => item.id == displayInputs[i].id,
+                                );
+                                next[index] = next[index].withRole(r);
+                                inputs.value = next;
+                              },
+                            ),
+                            onMove:
+                                displayInputs.length < 2 ||
+                                    (productionUsesFrames(mode) &&
+                                        !displayInputs[i].isPrompt &&
+                                        displayInputs[i].role !=
+                                            VideoInputRole.middle_frame)
+                                ? null
+                                : (delta) => changeProductionInputs(
+                                    context,
+                                    node.id,
+                                    save,
+                                    () {
+                                      final to = i + delta;
+                                      if (to < 0 ||
+                                          to >= displayInputs.length ||
+                                          (productionUsesFrames(mode) &&
+                                              !displayInputs[to].isPrompt &&
+                                              displayInputs[to].role !=
+                                                  VideoInputRole
+                                                      .middle_frame)) {
+                                        return;
+                                      }
+                                      final next = [...displayInputs];
+                                      next.insert(to, next.removeAt(i));
+                                      inputs.value = next;
+                                    },
+                                  ),
+                            onRemove: () => changeProductionInputs(
+                              context,
+                              node.id,
+                              save,
+                              () {
+                                inputs.value = inputs.value
+                                    .where(
+                                      (input) =>
+                                          input.id != displayInputs[i].id,
+                                    )
+                                    .toList();
+                              },
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  child: SingleChildScrollView(
-                    child: ProductionPromptField(
-                      controller: prompt,
-                      footer: false,
-                      maxLines: null,
-                      onReference: () => productionRun(context, reference),
+                ],
+                const SizedBox(height: RevericSpacing.sm),
+                // 画布留给输入框的高度不够时，提示词区先收缩，在框内滚动。
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: expanded.value ? 200 : 60,
+                      maxHeight: expanded.value ? 360 : 140,
+                    ),
+                    child: SingleChildScrollView(
+                      child: ProductionPromptField(
+                        autofocus: true,
+                        controller: prompt,
+                        footer: false,
+                        maxLines: null,
+                        onReference: () => productionRun(context, reference),
+                      ),
                     ),
                   ),
                 ),
@@ -827,35 +974,7 @@ class _ComposerForm extends HookConsumerWidget {
                     },
                   ),
                   children: [
-                    ProductionAddInputButton(
-                      service: service,
-                      types: allowed.map((r) => r.kind.name).toSet(),
-                      enabled: !busy.value,
-                      onPicked: attach,
-                    ),
-                    ProductionToolButton(
-                      icon: RevericIcons.at,
-                      tooltip: context.t(LocaleKeys.productionReference),
-                      onTap: busy.value
-                          ? null
-                          : () => productionRun(context, reference),
-                    ),
-                    ProductionToolButton(
-                      icon: RevericIcons.video_camera,
-                      tooltip: context.t(LocaleKeys.productionCameraLibrary),
-                      onTap: busy.value
-                          ? null
-                          : () => productionRun(context, insertCamera),
-                    ),
                     ProductionStylePill(service: service, clipId: node.clipId!),
-                    Container(
-                      width: 1,
-                      height: 18,
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: RevericSpacing.xxs,
-                      ),
-                      color: colors.borderSubtle,
-                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: RevericSpacing.sm,
@@ -873,6 +992,7 @@ class _ComposerForm extends HookConsumerWidget {
                                 ),
                                 compact: true,
                                 dropUp: true,
+                                searchable: true,
                                 height: 30,
                                 menuWidth: 300,
                                 leadingIcon: RevericIcons.auto_awesome,

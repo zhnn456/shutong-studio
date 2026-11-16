@@ -4,6 +4,8 @@
 //   lib/shared/models/collections/fields.dart
 //   lib/shared/database/daos/novel_collection_dao.dart
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import '../../models/collections/filter.dart';
 import '../../models/collections/fields.dart';
 import '../../models/content_kind.dart';
@@ -84,6 +86,9 @@ class CollectionFilterCompiler {
       CollectionCompare() => compare(condition),
     };
     var sql = 'n.deleted_at = 0 AND n.draft = 0';
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      sql += ' AND n.content_kind <> ${bind(contentKindCanvas)}';
+    }
     if (contentKind != null) {
       sql += ' AND n.content_kind = ${bind(contentKind)}';
     }
@@ -113,6 +118,9 @@ class CollectionFilterCompiler {
 }
 
 void validateCollectionConfiguration(NovelCollection collection) {
+  if (collection.contentKind case final kind? when !isValidContentKind(kind)) {
+    throw const FormatException('Invalid collection content kind');
+  }
   if (collection.builtin) {
     if (collection.filterMode != 'rule' || collection.filter != null) {
       throw const FormatException('Invalid builtin collection');

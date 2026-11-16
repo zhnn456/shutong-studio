@@ -21,7 +21,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../../shared/components/reveric_context_menu.dart';
-import '../../../shared/components/reveric_icon_button.dart';
 import '../../../shared/components/reveric_select.dart';
 import '../../../shared/database/novel_content_database.dart';
 import '../../../shared/database/app_database.dart' show AssetRow;
@@ -41,6 +40,7 @@ import '../../../shared/theme/theme.dart';
 import '../canvas/widgets/glass.dart';
 import '../storyboard/edit_form.dart' show ShotField;
 import 'edit_session.dart';
+import 'history_region.dart';
 import 'audio_submit.dart';
 import 'speech_options.dart';
 import 'input_preview.dart';
@@ -50,7 +50,7 @@ import 'prompt_field.dart';
 import 'support.dart';
 import 'upload.dart';
 import 'popover.dart';
-import '../../widgets/settings/settings_dialog.dart';
+import '../../widgets/agent_management/ai_providers_page.dart';
 
 final _log = AppLogger.forModule('ProductionAudio');
 
@@ -174,7 +174,10 @@ class _AudioForm extends HookConsumerWidget {
       () => form.getValue<String>(ShotField.audioInstructions) ?? '',
     );
     final showInstructions = useState(false);
-    final inputKinds = inputs.value.map((i) => i.role.kind.name).toList();
+    final inputKinds = inputs.value
+        .where((i) => !i.isPrompt)
+        .map((i) => i.role.kind.name)
+        .toList();
     final imageMode = inputKinds.contains('image');
     final referenceTypes = {
       for (final kind in capability?.model.references.keys ?? <String>[])
@@ -199,10 +202,17 @@ class _AudioForm extends HookConsumerWidget {
       blockedReason = context.t(LocaleKeys.productionAudioReferenceInvalid);
     }
     if (blockedReason == null &&
-        capability!.model.speech &&
-        inputs.value.isEmpty &&
+        capability!.model.requiresVoice &&
+        inputs.value.every((input) => input.isPrompt) &&
         voice.trim().isEmpty) {
       blockedReason = context.t(LocaleKeys.productionSpeechVoiceRequired);
+    }
+    if (blockedReason == null &&
+        capability!.model.requiresInstructions &&
+        instructions.trim().isEmpty) {
+      blockedReason = context.t(
+        LocaleKeys.productionSpeechInstructionsRequired,
+      );
     }
     final saved = useRef('');
     final pending = useRef<Timer?>(null);
@@ -236,7 +246,7 @@ class _AudioForm extends HookConsumerWidget {
           inputs: inputs.value,
           parameters: AudioRequestDefaults(
             voice: ConfigValue(
-              inputs.value.isEmpty &&
+              inputs.value.every((input) => input.isPrompt) &&
                       value(ShotField.audioVoice).trim().isNotEmpty
                   ? value(ShotField.audioVoice).trim()
                   : null,
@@ -345,7 +355,9 @@ class _AudioForm extends HookConsumerWidget {
       if (!context.mounted) {
         return;
       }
-      inputs.value = next;
+      await changeProductionInputs(context, node.id, save, () {
+        inputs.value = next;
+      });
       if (reference &&
           capability?.model.supportsAudioReferencePlaceholders == true &&
           asset.type == 'audio') {
@@ -365,15 +377,20 @@ class _AudioForm extends HookConsumerWidget {
     }
 
     Future<void> reference() async {
-      if (imageMode ||
-          capability == null ||
-          !capability.model.supportsAudioReferencePlaceholders) {
+      if (!inputs.value.any((input) => input.isPrompt) &&
+          (imageMode ||
+              capability == null ||
+              !capability.model.supportsAudioReferencePlaceholders)) {
         return;
       }
       final box = context.findRenderObject()! as RenderBox;
       final names = <String, String>{};
       for (final input in inputs.value.where(
-        (i) => i.role == VideoInputRole.reference_audio,
+        (i) =>
+            i.isPrompt ||
+            (!imageMode &&
+                capability?.model.supportsAudioReferencePlaceholders == true &&
+                i.role == VideoInputRole.reference_audio),
       )) {
         names[input.identity] = await service.inputName(input);
       }
@@ -425,94 +442,121 @@ class _AudioForm extends HookConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              ProductionComposerTools(
+                expanded: expanded.value,
+                onExpand: () => expanded.value = !expanded.value,
                 children: [
-                  Expanded(
-                    child: Wrap(
-                      spacing: RevericSpacing.sm,
-                      runSpacing: RevericSpacing.sm,
-                      children: [
-                        for (var i = 0; i < inputs.value.length; i++)
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (inputs.value[i].role ==
-                                  VideoInputRole.reference_audio)
-                                Text(
-                                  context.t(
-                                    LocaleKeys.productionAudioReferenceLabel,
-                                    namedArgs: {'index': '${i + 1}'},
-                                  ),
-                                  style: typo.uiTiny.copyWith(
-                                    color: colors.textMuted,
-                                  ),
-                                ),
-                              ProductionInputTile(
-                                service: service,
-                                input: inputs.value[i],
-                                valid: capability?.accepts(inputKinds) ?? false,
-                                onRole: null,
-                                onMove: inputs.value.length < 2
-                                    ? null
-                                    : (delta) {
-                                        final target = i + delta;
-                                        if (target >= 0 &&
-                                            target < inputs.value.length) {
-                                          final next = [...inputs.value];
-                                          next.insert(target, next.removeAt(i));
-                                          inputs.value = next;
-                                        }
-                                      },
-                                onRemove: () =>
-                                    inputs.value = [...inputs.value]
-                                      ..removeAt(i),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
+                  ProductionAddInputButton(
+                    service: service,
+                    types: referenceTypes,
+                    enabled: referenceTypes.isNotEmpty,
+                    onPicked: attach,
                   ),
-                  RevericIconButton(
-                    icon: expanded.value
-                        ? RevericIcons.arrows_in
-                        : RevericIcons.arrows_out,
-                    tooltip: context.t(
-                      expanded.value
-                          ? LocaleKeys.commonCollapse
-                          : LocaleKeys.commonExpand,
-                    ),
-                    onPressed: () => expanded.value = !expanded.value,
+                  ProductionToolChip(
+                    icon: RevericIcons.at,
+                    label: context.t(LocaleKeys.productionMention),
+                    tooltip: context.t(LocaleKeys.productionReference),
+                    onTap:
+                        !inputs.value.any((input) => input.isPrompt) &&
+                            (imageMode ||
+                                capability == null ||
+                                !capability
+                                    .model
+                                    .supportsAudioReferencePlaceholders)
+                        ? null
+                        : () => productionRun(context, reference),
                   ),
                 ],
               ),
-              const SizedBox(height: RevericSpacing.sm),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: expanded.value ? 200 : 60,
-                  maxHeight: expanded.value ? 360 : 140,
-                ),
-                child: SingleChildScrollView(
-                  child: ProductionPromptField(
-                    controller: prompt,
-                    hintText: imageMode
-                        ? context.t(LocaleKeys.productionAudioImagePrompt)
-                        : context.t(
-                            capability?.model.speech == true
-                                ? LocaleKeys.productionSpeechText
-                                : LocaleKeys.productionAudioPrompt,
+              if (inputs.value.isNotEmpty) ...[
+                const SizedBox(height: RevericSpacing.sm),
+                Wrap(
+                  spacing: RevericSpacing.sm,
+                  runSpacing: RevericSpacing.sm,
+                  children: [
+                    for (var i = 0; i < inputs.value.length; i++)
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!inputs.value[i].isPrompt &&
+                              inputs.value[i].role ==
+                                  VideoInputRole.reference_audio)
+                            Text(
+                              context.t(
+                                LocaleKeys.productionAudioReferenceLabel,
+                                namedArgs: {'index': '${i + 1}'},
+                              ),
+                              style: typo.uiTiny.copyWith(
+                                color: colors.textMuted,
+                              ),
+                            ),
+                          ProductionInputTile(
+                            service: service,
+                            input: inputs.value[i],
+                            valid: capability?.accepts(inputKinds) ?? false,
+                            onRole: null,
+                            onMove: inputs.value.length < 2
+                                ? null
+                                : (delta) => changeProductionInputs(
+                                    context,
+                                    node.id,
+                                    save,
+                                    () {
+                                      final target = i + delta;
+                                      if (target >= 0 &&
+                                          target < inputs.value.length) {
+                                        final next = [...inputs.value];
+                                        next.insert(target, next.removeAt(i));
+                                        inputs.value = next;
+                                      }
+                                    },
+                                  ),
+                            onRemove: () => changeProductionInputs(
+                              context,
+                              node.id,
+                              save,
+                              () {
+                                inputs.value = [...inputs.value]..removeAt(i);
+                              },
+                            ),
                           ),
-                    footer: false,
-                    maxLines: null,
-                    onReference: () => productionRun(context, reference),
+                        ],
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: RevericSpacing.sm),
+              // 画布留给输入框的高度不够时，提示词区先收缩，在框内滚动。
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: expanded.value ? 200 : 60,
+                    maxHeight: expanded.value ? 360 : 140,
+                  ),
+                  child: SingleChildScrollView(
+                    child: ProductionPromptField(
+                      controller: prompt,
+                      hintText: imageMode
+                          ? context.t(LocaleKeys.productionAudioImagePrompt)
+                          : context.t(
+                              capability?.model.speech == true
+                                  ? LocaleKeys.productionSpeechText
+                                  : LocaleKeys.productionAudioPrompt,
+                            ),
+                      footer: false,
+                      maxLines: null,
+                      onReference: () => productionRun(context, reference),
+                    ),
                   ),
                 ),
               ),
               if (capability?.model.supportsInstructions == true &&
-                  (showInstructions.value || instructions.isNotEmpty))
+                  (capability!.model.requiresInstructions ||
+                      showInstructions.value ||
+                      instructions.isNotEmpty))
                 ProductionSpeechInstructions(
                   // 只有用户点开时抢焦点；带着已有说明打开节点时焦点留在台词。
-                  autofocus: instructions.isEmpty,
+                  autofocus: showInstructions.value && instructions.isEmpty,
                 ),
               if (capability != null)
                 ValueListenableBuilder<TextEditingValue>(
@@ -568,34 +612,8 @@ class _AudioForm extends HookConsumerWidget {
                   blockedReason: blockedReason,
                 ),
                 children: [
-                  ProductionAddInputButton(
-                    service: service,
-                    types: referenceTypes,
-                    enabled: referenceTypes.isNotEmpty,
-                    onPicked: attach,
-                  ),
-                  ProductionToolButton(
-                    icon: RevericIcons.at,
-                    tooltip: context.t(LocaleKeys.productionReference),
-                    onTap:
-                        imageMode ||
-                            capability == null ||
-                            !capability.model.supportsAudioReferencePlaceholders
-                        ? null
-                        : () => productionRun(context, reference),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 18,
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: RevericSpacing.xxs,
-                    ),
-                    color: colors.borderSubtle,
-                  ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: RevericSpacing.sm,
-                    ),
+                    padding: const EdgeInsets.only(right: RevericSpacing.sm),
                     child: SizedBox(
                       width: 180,
                       child: HookedFormField<ShotField, (String, String)>(
@@ -606,6 +624,7 @@ class _AudioForm extends HookConsumerWidget {
                               value: value,
                               compact: true,
                               dropUp: true,
+                              searchable: true,
                               height: 30,
                               menuWidth: 240,
                               leadingIcon: RevericIcons.auto_awesome,
@@ -662,7 +681,7 @@ class _AudioForm extends HookConsumerWidget {
                       ),
                     ),
                   ),
-                  if (capability?.model.speech == true)
+                  if (capability?.model.requiresVoice == true)
                     ProductionSpeechVoiceSelect(
                       capability: capability!.model,
                       hasReference: inputs.value.isNotEmpty,

@@ -16,6 +16,8 @@
 //   lib/shared/utils/text_unit_count.dart
 // ignore_for_file: use_null_aware_elements, unused_element
 
+import '../../app_config.dart';
+
 import 'tool_operations.dart';
 import 'mcp/run_command_handler.dart';
 import 'files/attachments.dart';
@@ -95,7 +97,8 @@ import '../../utils/json_repair.dart' show tryExtractJson;
 import '../../utils/storage_paths.dart';
 import '../../utils/text_unit_count.dart' show countTextUnitStats;
 import '../../logger/app_logger.dart';
-import '../bundled_control_skills.dart' show bundledControlRunCommandToCallName;
+import '../bundled_control_skills.dart'
+    show bundledControlRunCommandToCallName, bundledControlSkillForRun;
 import '../working_overlay.dart';
 import '../../agent/agent_tool_dispatcher.dart'
     show AgentToolDispatcher, ToolDef, ToolExecutionContext, ToolWorkingChange;
@@ -1083,6 +1086,7 @@ Set<String> readableResourceIdPathsForTesting() {
 }
 
 const _resourceDefinitions = <String, _ResourceDefinition>{
+  'production': _canvasProductionDefinition,
   'profile': _ResourceDefinition(
     segment: 'profile',
     address: _ResourceAddress(_AddressKind.singleton),
@@ -2630,168 +2634,175 @@ const _resourceDefinitions = <String, _ResourceDefinition>{
     ],
     documentType: 'material',
   ),
-  'canvas': _ResourceDefinition(
-    segment: 'canvas',
-    address: _ResourceAddress(
-      _AddressKind.name,
-      itemToken: 'name',
-      nameField: 'name',
-    ),
-    description:
-        '构思画布，用于剧情、关系与灵感组织；按集制作画布位于 `/episodes/{episode_id}/production/canvas`。',
-    listing: _ResourceListing(),
-    fields: {
-      'id': _ResourceField(
-        value: _ValueSchema(_ValueType.string, referenceTarget: 'self'),
-        read: _FieldRead(listing: true),
+  if (ideationCanvasEnabled)
+    'canvas': _ResourceDefinition(
+      segment: 'canvas',
+      address: _ResourceAddress(
+        _AddressKind.name,
+        itemToken: 'name',
+        nameField: 'name',
       ),
-      'name': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(required: true),
-        write: _FieldInputUse(field: true),
-        search: {_FieldSearch.short_text},
-      ),
-      'description': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-        search: {_FieldSearch.short_text},
-      ),
-      'node_count': _ResourceField(
-        value: _ValueSchema(_ValueType.integer),
-        read: _FieldRead(listing: true),
-      ),
-      'edge_count': _ResourceField(
-        value: _ValueSchema(_ValueType.integer),
-        read: _FieldRead(listing: true),
-      ),
-      'layout': _ResourceField(
-        value: _ValueSchema(
-          _ValueType.object,
-          properties: {
-            'grid_pitch': _ValueProperty(
-              _ValueSchema(
-                _ValueType.object,
-                properties: {
-                  'x': _ValueProperty(_ValueSchema(_ValueType.number)),
-                  'y': _ValueProperty(_ValueSchema(_ValueType.number)),
-                },
+      description:
+          '构思画布，用于剧情、关系与灵感组织；按集制作画布位于 `/episodes/{episode_id}/production/canvas`。',
+      listing: _ResourceListing(),
+      fields: {
+        'id': _ResourceField(
+          value: _ValueSchema(_ValueType.string, referenceTarget: 'self'),
+          read: _FieldRead(listing: true),
+        ),
+        'name': _ResourceField(
+          value: _ValueSchema(_ValueType.string),
+          read: _FieldRead(listing: true, path: true),
+          create: _FieldInputUse(required: true),
+          write: _FieldInputUse(field: true),
+          search: {_FieldSearch.short_text},
+        ),
+        'description': _ResourceField(
+          value: _ValueSchema(_ValueType.string),
+          read: _FieldRead(listing: true, path: true),
+          create: _FieldInputUse(),
+          write: _FieldInputUse(field: true),
+          search: {_FieldSearch.short_text},
+        ),
+        'node_count': _ResourceField(
+          value: _ValueSchema(_ValueType.integer),
+          read: _FieldRead(listing: true),
+        ),
+        'edge_count': _ResourceField(
+          value: _ValueSchema(_ValueType.integer),
+          read: _FieldRead(listing: true),
+        ),
+        'layout': _ResourceField(
+          value: _ValueSchema(
+            _ValueType.object,
+            properties: {
+              'grid_pitch': _ValueProperty(
+                _ValueSchema(
+                  _ValueType.object,
+                  properties: {
+                    'x': _ValueProperty(_ValueSchema(_ValueType.number)),
+                    'y': _ValueProperty(_ValueSchema(_ValueType.number)),
+                  },
+                ),
               ),
+              'node_count': _ValueProperty(_ValueSchema(_ValueType.integer)),
+              'edge_count': _ValueProperty(_ValueSchema(_ValueType.integer)),
+              'off_grid': _ValueProperty(_ValueSchema(_ValueType.integer)),
+              'mode': _ValueProperty(
+                _ValueSchema(
+                  _ValueType.string,
+                  nullable: true,
+                  enumValues: canvasLayoutSavedModes,
+                ),
+              ),
+            },
+          ),
+          read: _FieldRead(detail: false, path: true),
+          write: _FieldInputUse(
+            resource: false,
+            field: false,
+            value: _ValueSchema(
+              _ValueType.string,
+              enumValues: canvasLayoutModes,
             ),
-            'node_count': _ValueProperty(_ValueSchema(_ValueType.integer)),
-            'edge_count': _ValueProperty(_ValueSchema(_ValueType.integer)),
-            'off_grid': _ValueProperty(_ValueSchema(_ValueType.integer)),
-            'mode': _ValueProperty(
-              _ValueSchema(
-                _ValueType.string,
-                nullable: true,
-                enumValues: canvasLayoutSavedModes,
-              ),
+          ),
+        ),
+        'open': _ResourceField(
+          value: _ValueSchema(_ValueType.boolean),
+          write: _FieldInputUse(
+            resource: false,
+            field: false,
+            value: _ValueSchema(_ValueType.boolean, enumValues: [true]),
+          ),
+        ),
+      },
+      children: [_canvasNodeDefinition, _canvasEdgeDefinition],
+      operations: [
+        _ResourceOperation(
+          _ResourceTool.write,
+          _ResourceTargetKind.field,
+          field: 'layout',
+          input: _ResourceInput(
+            _ResourceInputKind.field_value,
+            field: 'layout',
+          ),
+          result: _ResourceResult(
+            _ResourceResultKind.mutation,
+            value: _ValueSchema(
+              _ValueType.object,
+              properties: {
+                'updated': _ValueProperty(_ValueSchema(_ValueType.boolean)),
+              },
+            ),
+            references: ['path'],
+          ),
+        ),
+        _ResourceOperation(
+          _ResourceTool.write,
+          _ResourceTargetKind.field,
+          field: 'open',
+          input: _ResourceInput(_ResourceInputKind.field_value, field: 'open'),
+          result: _ResourceResult(
+            _ResourceResultKind.mutation,
+            value: _ValueSchema(
+              _ValueType.object,
+              properties: {
+                'ok': _ValueProperty(_ValueSchema(_ValueType.boolean)),
+              },
+            ),
+          ),
+        ),
+        _ResourceOperation(
+          _ResourceTool.read,
+          _ResourceTargetKind.listing,
+          parameters: {
+            'search': _OperationParameter(
+              _ValueSchema(_ValueType.string),
+              query: _FieldQuery(match: _QueryMatch.contains),
+            ),
+          },
+          result: _ResourceResult(
+            _ResourceResultKind.listing,
+            references: ['entries[].path'],
+          ),
+        ),
+        _ResourceOperation(
+          _ResourceTool.read,
+          _ResourceTargetKind.resource,
+          result: _ResourceResult(
+            _ResourceResultKind.entity,
+            references: ['path'],
+          ),
+        ),
+        _ResourceOperation(
+          _ResourceTool.create,
+          _ResourceTargetKind.listing,
+          input: _ResourceInput(_ResourceInputKind.create_fields),
+        ),
+        _ResourceOperation(
+          _ResourceTool.write,
+          _ResourceTargetKind.resource,
+          input: _ResourceInput(_ResourceInputKind.resource_fields),
+          constraints: [
+            _ResourceConstraint(_ConstraintKind.at_least_one, [
+              'name',
+              'description',
+            ], presence: _ConstraintPresence.present),
+          ],
+        ),
+        _ResourceOperation(
+          _ResourceTool.remove,
+          _ResourceTargetKind.resource,
+          parameters: {
+            'force': _OperationParameter(
+              _ValueSchema(_ValueType.boolean),
+              hasDefault: true,
+              defaultValue: false,
             ),
           },
         ),
-        read: _FieldRead(detail: false, path: true),
-        write: _FieldInputUse(
-          resource: false,
-          field: false,
-          value: _ValueSchema(_ValueType.string, enumValues: canvasLayoutModes),
-        ),
-      ),
-      'open': _ResourceField(
-        value: _ValueSchema(_ValueType.boolean),
-        write: _FieldInputUse(
-          resource: false,
-          field: false,
-          value: _ValueSchema(_ValueType.boolean, enumValues: [true]),
-        ),
-      ),
-    },
-    children: [_canvasNodeDefinition, _canvasEdgeDefinition],
-    operations: [
-      _ResourceOperation(
-        _ResourceTool.write,
-        _ResourceTargetKind.field,
-        field: 'layout',
-        input: _ResourceInput(_ResourceInputKind.field_value, field: 'layout'),
-        result: _ResourceResult(
-          _ResourceResultKind.mutation,
-          value: _ValueSchema(
-            _ValueType.object,
-            properties: {
-              'updated': _ValueProperty(_ValueSchema(_ValueType.boolean)),
-            },
-          ),
-          references: ['path'],
-        ),
-      ),
-      _ResourceOperation(
-        _ResourceTool.write,
-        _ResourceTargetKind.field,
-        field: 'open',
-        input: _ResourceInput(_ResourceInputKind.field_value, field: 'open'),
-        result: _ResourceResult(
-          _ResourceResultKind.mutation,
-          value: _ValueSchema(
-            _ValueType.object,
-            properties: {
-              'ok': _ValueProperty(_ValueSchema(_ValueType.boolean)),
-            },
-          ),
-        ),
-      ),
-      _ResourceOperation(
-        _ResourceTool.read,
-        _ResourceTargetKind.listing,
-        parameters: {
-          'search': _OperationParameter(
-            _ValueSchema(_ValueType.string),
-            query: _FieldQuery(match: _QueryMatch.contains),
-          ),
-        },
-        result: _ResourceResult(
-          _ResourceResultKind.listing,
-          references: ['entries[].path'],
-        ),
-      ),
-      _ResourceOperation(
-        _ResourceTool.read,
-        _ResourceTargetKind.resource,
-        result: _ResourceResult(
-          _ResourceResultKind.entity,
-          references: ['path'],
-        ),
-      ),
-      _ResourceOperation(
-        _ResourceTool.create,
-        _ResourceTargetKind.listing,
-        input: _ResourceInput(_ResourceInputKind.create_fields),
-      ),
-      _ResourceOperation(
-        _ResourceTool.write,
-        _ResourceTargetKind.resource,
-        input: _ResourceInput(_ResourceInputKind.resource_fields),
-        constraints: [
-          _ResourceConstraint(_ConstraintKind.at_least_one, [
-            'name',
-            'description',
-          ], presence: _ConstraintPresence.present),
-        ],
-      ),
-      _ResourceOperation(
-        _ResourceTool.remove,
-        _ResourceTargetKind.resource,
-        parameters: {
-          'force': _OperationParameter(
-            _ValueSchema(_ValueType.boolean),
-            hasDefault: true,
-            defaultValue: false,
-          ),
-        },
-      ),
-    ],
-  ),
+      ],
+    ),
   'relations': _ResourceDefinition(
     segment: 'relations',
     address: _ResourceAddress(_AddressKind.id, itemToken: 'relation_id'),
@@ -2970,6 +2981,8 @@ const _resourceDefinitions = <String, _ResourceDefinition>{
           enumValues: ProductionSettings.ratios,
         ),
         read: _FieldRead(path: true),
+        write: _FieldInputUse(field: true),
+        edit: _FieldEdit(),
       ),
       'resolution': _ResourceField(
         value: _ValueSchema(
@@ -2977,6 +2990,8 @@ const _resourceDefinitions = <String, _ResourceDefinition>{
           enumValues: ProductionSettings.resolutions,
         ),
         read: _FieldRead(path: true),
+        write: _FieldInputUse(field: true),
+        edit: _FieldEdit(),
       ),
       'width': _ResourceField(
         value: _ValueSchema(_ValueType.integer),
@@ -3177,17 +3192,12 @@ const _resourceDefinitions = <String, _ResourceDefinition>{
     hidden: false,
     listing: _ResourceListing(parentQuery: 'scene_id'),
     fields: {
+      ..._productionClipFields,
       'is_storyboard': _ResourceField(
         value: _ValueSchema(_ValueType.boolean),
         description: '是否已编入场次的分镜，可为图片或视频；查询分镜使用 is_storyboard=true。',
         read: _FieldRead(listing: true, path: true),
         query: _FieldQuery(normalization: _QueryNormalization.boolean),
-      ),
-      'style_selection': _ResourceField(
-        value: _ValueSchema(_ValueType.string, nullable: true),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
       ),
       'character_id': _ResourceField(
         value: _ValueSchema(_ValueType.string, nullable: true),
@@ -3203,19 +3213,6 @@ const _resourceDefinitions = <String, _ResourceDefinition>{
         value: _ValueSchema(_ValueType.string, nullable: true),
         read: _FieldRead(listing: true, path: true),
         create: _FieldInputUse(),
-      ),
-      'kind': _ResourceField(
-        value: _ValueSchema(
-          _ValueType.string,
-          enumValues: ['video', 'image', 'audio'],
-        ),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(hasDefault: true, defaultValue: 'video'),
-        query: _FieldQuery(),
-      ),
-      'id': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
       ),
       'scene_id': _ResourceField(
         value: _ValueSchema(
@@ -3239,258 +3236,9 @@ const _resourceDefinitions = <String, _ResourceDefinition>{
         read: _FieldRead(listing: true, path: true),
         write: _FieldInputUse(field: true),
       ),
-      'title': _ResourceField(
-        search: {_FieldSearch.short_text},
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-        edit: _FieldEdit(),
-      ),
-      'inputs': _ResourceField(
-        value: _ValueSchema(
-          _ValueType.array,
-          items: _ValueSchema(
-            _ValueType.object,
-            properties: {
-              'id': _ValueProperty(
-                _ValueSchema(_ValueType.string),
-                required: true,
-              ),
-              'ref_type': _ValueProperty(
-                _ValueSchema(_ValueType.string, enumValues: ['asset', 'node']),
-                required: true,
-              ),
-              'ref_id': _ValueProperty(
-                _ValueSchema(_ValueType.string),
-                required: true,
-              ),
-              'role': _ValueProperty(
-                _ValueSchema(
-                  _ValueType.string,
-                  enumValues: [
-                    'reference_image',
-                    'reference_video',
-                    'reference_audio',
-                    'first_frame',
-                    'last_frame',
-                  ],
-                ),
-                required: true,
-              ),
-            },
-          ),
-        ),
-        read: _FieldRead(path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-      ),
-      'adopted_asset_id': _ResourceField(
-        value: _ValueSchema(_ValueType.string, nullable: true),
-        read: _FieldRead(listing: true, path: true),
-        write: _FieldInputUse(field: true),
-      ),
-      'prompt': _ResourceField(
-        search: {_FieldSearch.body},
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-        edit: _FieldEdit(),
-      ),
-      'provider_id': _ResourceField(
-        value: _ValueSchema(_ValueType.string, nullable: true),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-      ),
-      'model_id': _ResourceField(
-        value: _ValueSchema(_ValueType.string, nullable: true),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-      ),
-      'reference_mode': _ResourceField(
-        value: _ValueSchema(
-          _ValueType.string,
-          enumValues: ['reference', 'first_last_frame'],
-        ),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-      ),
-      'duration_ms': _ResourceField(
-        description: '视频生成的计划时长（毫秒），不是已生成媒体或整集成片的实测时长。',
-        value: _ValueSchema(_ValueType.integer, nullable: true, minimum: 1),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-      ),
-      'generate_audio': _ResourceField(
-        description: '是否生成音频；null 跟随模型默认。',
-        value: _ValueSchema(_ValueType.boolean, nullable: true),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-      ),
-      'ratio': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-      ),
-      'resolution': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-      ),
     },
     children: [_clipGenerations],
-    operations: [
-      _ResourceOperation(
-        _ResourceTool.read,
-        _ResourceTargetKind.listing,
-        result: _ResourceResult(
-          _ResourceResultKind.listing,
-          references: ['entries[].path'],
-        ),
-      ),
-      _ResourceOperation(
-        _ResourceTool.read,
-        _ResourceTargetKind.resource,
-        result: _ResourceResult(
-          _ResourceResultKind.entity,
-          references: ['path'],
-        ),
-      ),
-      _ResourceOperation(
-        _ResourceTool.create,
-        _ResourceTargetKind.listing,
-        input: _ResourceInput(_ResourceInputKind.create_fields),
-      ),
-      _ResourceOperation(
-        _ResourceTool.write,
-        _ResourceTargetKind.resource,
-        input: _ResourceInput(_ResourceInputKind.resource_fields),
-      ),
-    ],
-  ),
-  'beats': _ResourceDefinition(
-    segment: 'beats',
-    address: _ResourceAddress(_AddressKind.id, itemToken: 'beat_id'),
-    description: '节拍',
-    group: contentKindScreenplay,
-    hidden: false,
-    listing: _ResourceListing(parentQuery: 'episode_id'),
-    fields: {
-      'id': _ResourceField(
-        value: _ValueSchema(_ValueType.string, referenceTarget: 'self'),
-        read: _FieldRead(listing: true),
-      ),
-      'episode_id': _ResourceField(
-        value: _ValueSchema(_ValueType.string, referenceTarget: 'episodes'),
-        read: _FieldRead(listing: true),
-        create: _FieldInputUse(required: true),
-        query: _FieldQuery(),
-        description: '创建后固定；要换集就在目标集新建节拍，再改场次的 beat_id',
-      ),
-      'act_number': _ResourceField(
-        value: _ValueSchema(_ValueType.integer, minimum: 1),
-        read: _FieldRead(listing: true),
-        create: _FieldInputUse(required: true),
-        write: _FieldInputUse(field: true),
-      ),
-      'beat_number': _ResourceField(
-        value: _ValueSchema(_ValueType.integer),
-        read: _FieldRead(listing: true),
-        description: '只读；调整位置用 before_beat_id 或 after_beat_id',
-      ),
-      'title': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-        search: {_FieldSearch.short_text},
-      ),
-      'description': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(field: true),
-        edit: _FieldEdit(),
-        search: {_FieldSearch.body},
-      ),
-      'scene_count': _ResourceField(
-        value: _ValueSchema(_ValueType.integer),
-        read: _FieldRead(listing: true),
-      ),
-      'page_eighths': _ResourceField(
-        value: _ValueSchema(_ValueType.integer),
-        read: _FieldRead(listing: true),
-      ),
-    },
-    operations: [
-      _ResourceOperation(
-        _ResourceTool.read,
-        _ResourceTargetKind.listing,
-        result: _ResourceResult(
-          _ResourceResultKind.listing,
-          references: ['entries[].path'],
-        ),
-      ),
-      _ResourceOperation(
-        _ResourceTool.read,
-        _ResourceTargetKind.resource,
-        result: _ResourceResult(
-          _ResourceResultKind.entity,
-          references: ['path'],
-        ),
-      ),
-      _ResourceOperation(
-        _ResourceTool.create,
-        _ResourceTargetKind.listing,
-        input: _ResourceInput(_ResourceInputKind.create_fields),
-        parameters: {
-          'before_beat_id': _OperationParameter(
-            _ValueSchema(_ValueType.string, referenceTarget: 'beats'),
-          ),
-          'after_beat_id': _OperationParameter(
-            _ValueSchema(_ValueType.string, referenceTarget: 'beats'),
-          ),
-        },
-        constraints: [
-          _ResourceConstraint(_ConstraintKind.mutually_exclusive, [
-            'before_beat_id',
-            'after_beat_id',
-          ]),
-        ],
-      ),
-      _ResourceOperation(
-        _ResourceTool.write,
-        _ResourceTargetKind.resource,
-        input: _ResourceInput(_ResourceInputKind.resource_fields),
-        parameters: {
-          'before_beat_id': _OperationParameter(
-            _ValueSchema(_ValueType.string, referenceTarget: 'beats'),
-            fieldPath: true,
-          ),
-          'after_beat_id': _OperationParameter(
-            _ValueSchema(_ValueType.string, referenceTarget: 'beats'),
-            fieldPath: true,
-          ),
-        },
-        constraints: [
-          _ResourceConstraint(_ConstraintKind.mutually_exclusive, [
-            'act_number',
-            'before_beat_id',
-            'after_beat_id',
-          ]),
-        ],
-      ),
-
-      _ResourceOperation(_ResourceTool.remove, _ResourceTargetKind.resource),
-    ],
+    operations: _productionClipOperations,
   ),
   'scenes': _ResourceDefinition(
     segment: 'scenes',
@@ -3515,17 +3263,6 @@ const _resourceDefinitions = <String, _ResourceDefinition>{
         value: _ValueSchema(_ValueType.integer),
         read: _FieldRead(listing: true),
         description: '只读；调整位置用 before_scene_id 或 after_scene_id',
-      ),
-      'beat_id': _ResourceField(
-        value: _ValueSchema(
-          _ValueType.string,
-          nullable: true,
-          referenceTarget: 'beats',
-        ),
-        read: _FieldRead(listing: true),
-        create: _FieldInputUse(),
-        write: _FieldInputUse(),
-        query: _FieldQuery(),
       ),
       'location_id': _ResourceField(
         value: _ValueSchema(
@@ -3747,9 +3484,7 @@ typedef AiNovelWriter = Future<void> Function(Map<String, dynamic> fields);
 // 清除快速开书占位标记（「加入书架」）：由 Run 的 add-to-library 命令显式触发，
 // 不耦合任何写入动作。内部预检测，已非 draft 时无 DB 写入。
 typedef AiNovelDraftClearer = Future<void> Function();
-// TODO: embedding 功能暂时屏蔽
-// typedef AiEmbeddingSearchCallback =
-//     Future<List<AiEmbeddingSearchResult>> Function(String query, {int? limit});
+
 typedef AiToolCallRequestedCallback =
     void Function(
       String callId,
@@ -3764,6 +3499,8 @@ typedef AiImageGenerationCallback =
       String? size,
       // 出图质量。null 表示不写这个参数，交给服务端默认。
       String? quality,
+      // 复杂度。原样传用户的选择，由生图服务按型号校验并补目录默认值。
+      String? complexity,
     });
 typedef AiImageEditCallback =
     Future<AiImageGenerationResult> Function(
@@ -3778,6 +3515,7 @@ typedef AiMultiImageEditCallback =
       String? model,
       String? size,
       String? quality,
+      String? complexity,
     });
 typedef AiCreateLocationCallback =
     Future<String> Function({
@@ -3843,8 +3581,7 @@ abstract class _AiToolManagerBase {
     bool force = false,
     ({String oldText, String newText, bool replaceAll})? edit,
   });
-  // TODO: embedding 功能暂时屏蔽
-  // AiEmbeddingSearchCallback? get embeddingSearch;
+
   AiNovelReader? get novelReader;
   AiNovelWriter? get novelWriter;
   AiNovelDraftClearer? get novelDraftClearer;
@@ -4133,8 +3870,6 @@ class AiToolManager extends _AiToolManagerBase
   AiToolManager(
     this._primaryContentService, {
     required this.workingOverlayService,
-    // TODO: embedding 功能暂时屏蔽
-    // this.embeddingSearch,
     AiNovelReader? novelReader,
     this.crossWorkAccess,
     this.providerReader,
@@ -4206,10 +3941,6 @@ class AiToolManager extends _AiToolManagerBase
 
   @override
   final String? currentEpisodeId;
-
-  // TODO: embedding 功能暂时屏蔽
-  // @override
-  // final AiEmbeddingSearchCallback? embeddingSearch;
 
   @override
   AiNovelReader? get novelReader => _currentResourceCallContext == null
@@ -4761,7 +4492,7 @@ class AiToolManager extends _AiToolManagerBase
     return <String, dynamic>{
       'ok': false,
       'error': tr(
-        LocaleKeys.aiToolNotAllowedFmt,
+        LocaleKeys.toolNotAllowedFmt,
         namedArgs: {'mode': mode.value, 'tool_name': toolName},
       ),
       'error_code': ToolErrorCode.permission_denied.name,
@@ -5032,66 +4763,79 @@ class AiToolManager extends _AiToolManagerBase
     final defs = <ToolDef>[
       ToolDef(
         name: runToolName,
+        outputSchema: _builtinToolOutputSchema(runToolName),
         description: _runDescription,
         inputSchema: _runInputSchema,
       ),
       ToolDef(
         name: 'Read',
+        outputSchema: _builtinToolOutputSchema('Read'),
         description: _readDescription,
         inputSchema: _readInputSchema,
       ),
       ToolDef(
         name: 'Glob',
+        outputSchema: _builtinToolOutputSchema('Glob'),
         description: _globDescription,
         inputSchema: _globInputSchema,
       ),
       ToolDef(
         name: 'Grep',
+        outputSchema: _builtinToolOutputSchema('Grep'),
         description: _grepDescription,
         inputSchema: _grepInputSchema,
       ),
       ToolDef(
         name: 'Create',
+        outputSchema: _builtinToolOutputSchema('Create'),
         description: _createDescription,
         inputSchema: _createInputSchema,
       ),
       ToolDef(
         name: 'Write',
+        outputSchema: _builtinToolOutputSchema('Write'),
         description: _writeDescription,
         inputSchema: _writeInputSchema,
       ),
       ToolDef(
         name: 'Edit',
+        outputSchema: _builtinToolOutputSchema('Edit'),
         description: _editDescription,
         inputSchema: _editInputSchema,
       ),
       ToolDef(
         name: 'Replace',
+        outputSchema: _builtinToolOutputSchema('Replace'),
         description: _replaceDescription,
         inputSchema: _replaceInputSchema,
       ),
       ToolDef(
         name: 'Remove',
+        outputSchema: _builtinToolOutputSchema('Remove'),
         description: _removeDescription,
         inputSchema: _removeInputSchema,
       ),
       ToolDef(
         name: 'AskUser',
+        outputSchema: _builtinToolOutputSchema('AskUser'),
         description: _askUserDescription,
         inputSchema: _askUserInputSchema,
       ),
       ToolDef(
         name: 'SpawnAgent',
+        outputSchema: _builtinToolOutputSchema('SpawnAgent'),
         description: _spawnAgentDescription,
         inputSchema: _spawnAgentInputSchema,
       ),
       ToolDef(
         name: sendAgentMessageToolName,
+        outputSchema: _builtinToolOutputSchema(sendAgentMessageToolName),
         description: _sendAgentMessageDescription,
         inputSchema: _sendAgentMessageInputSchema,
       ),
       ToolDef(
         name: stopAgentToolName,
+        outputSchema: _builtinToolOutputSchema(stopAgentToolName),
         description: _stopAgentDescription,
         inputSchema: _stopAgentInputSchema,
       ),
@@ -5100,6 +4844,7 @@ class AiToolManager extends _AiToolManagerBase
       defs.add(
         ToolDef(
           name: skillToolName,
+          outputSchema: _builtinToolOutputSchema(skillToolName),
           description: _skillToolDescription,
           inputSchema: _skillToolInputSchema,
         ),
@@ -5110,6 +4855,7 @@ class AiToolManager extends _AiToolManagerBase
       defs.add(
         ToolDef(
           name: suggestNextActionToolName,
+          outputSchema: _builtinToolOutputSchema(suggestNextActionToolName),
           description: _suggestNextActionDescription,
           inputSchema: buildSuggestNextActionInputSchema(),
         ),
@@ -5119,11 +4865,13 @@ class AiToolManager extends _AiToolManagerBase
     defs.addAll([
       ToolDef(
         name: 'GraphSearch',
+        outputSchema: _builtinToolOutputSchema('GraphSearch'),
         description: _graphSearchDescription,
         inputSchema: _graphSearchInputSchema,
       ),
       ToolDef(
         name: 'TodoWrite',
+        outputSchema: _builtinToolOutputSchema('TodoWrite'),
         description: _todoWriteDescription,
         inputSchema: _todoWriteInputSchema,
       ),

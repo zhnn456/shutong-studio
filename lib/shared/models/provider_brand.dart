@@ -6,12 +6,19 @@
 
 const providerChannelUrls = {
   'metaso': 'https://metaso.cn/minimax-h3/?s=Reveric',
+  'purefox': 'https://purefox.org/keys',
+  'purefox_media': 'https://img.purefox.org/',
   'api88': 'https://xcai.dpdns.org?yonghu=190J4H9V79H5APU0',
+  'apikey': 'https://apikey.fun/register?aff=axonhub',
+  'infistar': 'https://infistar.cc/register?aff=FQHYXMMS&ref_source=link',
+  'ooki': 'https://ookiapi.com/',
   'openai': 'https://platform.openai.com/api-keys',
   'openrouter': 'https://openrouter.ai/settings/keys',
   'xai': 'https://console.x.ai/',
   'anthropic': 'https://platform.claude.com/settings/keys',
   'qwen': 'https://platform.qianwenai.com/api-keys',
+  'qwen_token_plan':
+      'https://www.qianwenai.com/benefits/tokenplan?shareCode=subTask..12980046..10274..,subTask..12980046..10274..',
   'gemini': 'https://aistudio.google.com/apikey',
   'deepseek': 'https://platform.deepseek.com/api_keys',
   'moonshot': 'https://platform.kimi.com/console/api-keys',
@@ -25,9 +32,11 @@ const providerChannelUrls = {
 
 const providerLogoAssets = <String, String>{
   'openai': 'assets/icons/providers/openai.png',
+  'openai_compatible': 'assets/icons/providers/openai.png',
   'anthropic': 'assets/icons/providers/anthropic.png',
   'deepseek': 'assets/icons/providers/deepseek.png',
   'qwen': 'assets/icons/providers/qwen.png',
+  'qwen_token_plan': 'assets/icons/providers/qwen.png',
   'gemini': 'assets/icons/providers/gemini.png',
   'moonshot': 'assets/icons/providers/moonshot.png',
   'zhipu': 'assets/icons/providers/zhipu.svg',
@@ -39,7 +48,12 @@ const providerLogoAssets = <String, String>{
   'agnes': 'assets/icons/providers/agnes.png',
   'atlascloud': 'assets/icons/providers/atlascloud.png',
   'api88': 'assets/icons/providers/api88.png',
+  'apikey': 'assets/icons/providers/apikey.png',
+  'infistar': 'assets/icons/providers/infistar.png',
+  'ooki': 'assets/icons/providers/ooki.png',
   'metaso': 'assets/icons/providers/metaso.png',
+  'purefox': 'assets/icons/providers/purefox.png',
+  'purefox_media': 'assets/icons/providers/purefox_media.png',
 };
 
 String? providerLogoAsset(String type) =>

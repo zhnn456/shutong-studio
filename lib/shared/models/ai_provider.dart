@@ -6,7 +6,9 @@
 //   lib/shared/localization/ai_provider_localization.dart
 //   lib/shared/localization/locale_keys.dart
 //   assets/translations/en/settings.json
+//   assets/translations/en/provider.json
 //   assets/translations/zh-CN/settings.json
+//   assets/translations/zh-CN/provider.json
 
 import 'dart:io';
 
@@ -34,10 +36,14 @@ enum AiProviderType {
   codex,
   openai_compatible,
   api88,
+  apikey,
+  infistar,
+  ooki,
   openrouter,
   xai,
   anthropic,
   qwen,
+  qwen_token_plan,
   gemini,
   deepseek,
   moonshot,
@@ -48,13 +54,16 @@ enum AiProviderType {
   metaso,
   agnes,
   atlascloud,
+  purefox,
+  purefox_media,
+  moss,
 }
 
 enum ReasoningEffort { none, low, medium, high }
 
-enum AiModelKind { chat, image, embedding, video, audio }
+enum AiModelKind { chat, image, video, audio }
 
-enum AiModelRole { planner, writer, segmenter }
+enum AiModelRole { planner, writer }
 
 /// 渠道上的型号 ID 由谁决定。
 enum ModelIdSource {
@@ -65,15 +74,24 @@ enum ModelIdSource {
   open,
 }
 
+enum UploadProtocol {
+  api88_media,
+  minimax_files,
+  purefox_uploads,
+  atlascloud_media,
+}
+
 class AiProviderTypeConfig {
   final String displayName;
   final bool fixedBaseUrl;
+  final bool usesNewApi;
   final ModelIdSource modelIdSource;
   final ImageProtocol? imageProtocol;
   final VideoProtocol? videoProtocol;
   final AudioProtocol? audioProtocol;
+  final UploadProtocol? uploadProtocol;
 
-  /// 不经过媒体协议的能力（chat / embedding）。
+  /// 不经过媒体协议的能力（chat）。
   final Set<AiModelKind> _textModelKinds;
 
   const AiProviderTypeConfig({
@@ -83,7 +101,9 @@ class AiProviderTypeConfig {
     this.imageProtocol,
     this.videoProtocol,
     this.audioProtocol,
+    this.uploadProtocol,
     this.fixedBaseUrl = false,
+    this.usesNewApi = false,
   });
 
   Set<AiModelKind> get supportedModelKinds => {
@@ -95,14 +115,18 @@ class AiProviderTypeConfig {
 }
 
 const Set<AiModelKind> _chatOnlyKinds = {AiModelKind.chat};
-const Set<AiModelKind> _chatEmbeddingKinds = {
-  AiModelKind.chat,
-  AiModelKind.embedding,
-};
 
 const Map<AiProviderType, AiProviderTypeConfig> aiProviderTypeConfigs = {
+  AiProviderType.moss: AiProviderTypeConfig(
+    displayName: 'MOSS',
+    modelIdSource: ModelIdSource.registered,
+    imageProtocol: ImageProtocol.moss_image,
+    audioProtocol: AudioProtocol.moss_audio,
+    fixedBaseUrl: true,
+  ),
   AiProviderType.atlascloud: AiProviderTypeConfig(
     displayName: 'AtlasCloud',
+    uploadProtocol: UploadProtocol.atlascloud_media,
     modelIdSource: ModelIdSource.registered,
     textModelKinds: _chatOnlyKinds,
     imageProtocol: ImageProtocol.atlascloud_image,
@@ -113,7 +137,7 @@ const Map<AiProviderType, AiProviderTypeConfig> aiProviderTypeConfigs = {
   AiProviderType.openai: AiProviderTypeConfig(
     displayName: 'OpenAI',
     modelIdSource: ModelIdSource.open,
-    textModelKinds: _chatEmbeddingKinds,
+    textModelKinds: _chatOnlyKinds,
     imageProtocol: ImageProtocol.openai_images,
   ),
   AiProviderType.codex: AiProviderTypeConfig(
@@ -131,17 +155,43 @@ const Map<AiProviderType, AiProviderTypeConfig> aiProviderTypeConfigs = {
   ),
   AiProviderType.api88: AiProviderTypeConfig(
     displayName: '星辰AI',
+    uploadProtocol: UploadProtocol.api88_media,
     modelIdSource: ModelIdSource.open,
     textModelKinds: _chatOnlyKinds,
     imageProtocol: ImageProtocol.new_api_images,
     videoProtocol: VideoProtocol.new_api_video,
     audioProtocol: AudioProtocol.new_api_speech,
     fixedBaseUrl: true,
+    usesNewApi: true,
+  ),
+  AiProviderType.apikey: AiProviderTypeConfig(
+    displayName: 'APIKEY.FAN',
+    modelIdSource: ModelIdSource.open,
+    textModelKinds: _chatOnlyKinds,
+    fixedBaseUrl: true,
+    usesNewApi: true,
+  ),
+  AiProviderType.infistar: AiProviderTypeConfig(
+    displayName: '无限星河',
+    modelIdSource: ModelIdSource.open,
+    textModelKinds: _chatOnlyKinds,
+    fixedBaseUrl: true,
+    usesNewApi: true,
+  ),
+  AiProviderType.ooki: AiProviderTypeConfig(
+    displayName: 'OOKiAPI',
+    modelIdSource: ModelIdSource.open,
+    textModelKinds: _chatOnlyKinds,
+    imageProtocol: ImageProtocol.new_api_images,
+    videoProtocol: VideoProtocol.new_api_video,
+    audioProtocol: AudioProtocol.new_api_speech,
+    fixedBaseUrl: true,
+    usesNewApi: true,
   ),
   AiProviderType.openrouter: AiProviderTypeConfig(
     displayName: 'OpenRouter',
     modelIdSource: ModelIdSource.registered,
-    textModelKinds: _chatEmbeddingKinds,
+    textModelKinds: _chatOnlyKinds,
     imageProtocol: ImageProtocol.openrouter_image,
     videoProtocol: VideoProtocol.openrouter_video,
     audioProtocol: AudioProtocol.openrouter_speech,
@@ -166,10 +216,19 @@ const Map<AiProviderType, AiProviderTypeConfig> aiProviderTypeConfigs = {
     videoProtocol: VideoProtocol.wan_video,
     audioProtocol: AudioProtocol.qwen_tts,
   ),
+  AiProviderType.qwen_token_plan: AiProviderTypeConfig(
+    displayName: 'Qwen Token Plan',
+    modelIdSource: ModelIdSource.open,
+    textModelKinds: _chatOnlyKinds,
+    imageProtocol: ImageProtocol.qwen_image,
+    videoProtocol: VideoProtocol.wan_video,
+    audioProtocol: AudioProtocol.qwen_tts,
+    fixedBaseUrl: true,
+  ),
   AiProviderType.gemini: AiProviderTypeConfig(
     displayName: 'Gemini',
     modelIdSource: ModelIdSource.open,
-    textModelKinds: _chatEmbeddingKinds,
+    textModelKinds: _chatOnlyKinds,
     imageProtocol: ImageProtocol.gemini_image,
   ),
   AiProviderType.deepseek: AiProviderTypeConfig(
@@ -190,7 +249,7 @@ const Map<AiProviderType, AiProviderTypeConfig> aiProviderTypeConfigs = {
   AiProviderType.doubao: AiProviderTypeConfig(
     displayName: 'Doubao',
     modelIdSource: ModelIdSource.open,
-    textModelKinds: _chatEmbeddingKinds,
+    textModelKinds: _chatOnlyKinds,
     imageProtocol: ImageProtocol.ark_image,
     videoProtocol: VideoProtocol.ark_video,
   ),
@@ -205,6 +264,7 @@ const Map<AiProviderType, AiProviderTypeConfig> aiProviderTypeConfigs = {
   ),
   AiProviderType.metaso: AiProviderTypeConfig(
     displayName: 'METASO',
+    uploadProtocol: UploadProtocol.minimax_files,
     modelIdSource: ModelIdSource.registered,
     videoProtocol: VideoProtocol.minimax_video_v2,
     fixedBaseUrl: true,
@@ -212,6 +272,8 @@ const Map<AiProviderType, AiProviderTypeConfig> aiProviderTypeConfigs = {
   AiProviderType.minimax: AiProviderTypeConfig(
     displayName: 'MiniMax',
     modelIdSource: ModelIdSource.open,
+    textModelKinds: _chatOnlyKinds,
+    imageProtocol: ImageProtocol.minimax_image,
     videoProtocol: VideoProtocol.minimax_video_v2,
     audioProtocol: AudioProtocol.minimax_music,
   ),
@@ -220,6 +282,21 @@ const Map<AiProviderType, AiProviderTypeConfig> aiProviderTypeConfigs = {
     modelIdSource: ModelIdSource.open,
     imageProtocol: ImageProtocol.agnes_image,
     videoProtocol: VideoProtocol.agnes_video,
+    fixedBaseUrl: true,
+  ),
+  AiProviderType.purefox: AiProviderTypeConfig(
+    displayName: 'PureFox',
+    modelIdSource: ModelIdSource.open,
+    textModelKinds: _chatOnlyKinds,
+    fixedBaseUrl: true,
+  ),
+  AiProviderType.purefox_media: AiProviderTypeConfig(
+    uploadProtocol: UploadProtocol.purefox_uploads,
+    displayName: 'PureFox Media',
+    modelIdSource: ModelIdSource.registered,
+    imageProtocol: ImageProtocol.purefox_media,
+    videoProtocol: VideoProtocol.purefox_media,
+    fixedBaseUrl: true,
   ),
 };
 
@@ -237,19 +314,57 @@ final List<AiProviderType> customAiProviderTypes = List.unmodifiable(
 );
 
 String aiProviderFixedBaseUrl(AiProviderType type) => switch (type) {
+  AiProviderType.qwen_token_plan =>
+    'https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1',
+  AiProviderType.moss => 'https://api.mosi.cn/v1',
   AiProviderType.metaso => 'https://metaso.cn/api/minimax',
   AiProviderType.api88 => 'https://api.88api.ai/v1',
+  AiProviderType.apikey => 'https://api.apikey.fan/v1',
+  AiProviderType.infistar => 'https://infistar.cc/v1',
+  AiProviderType.ooki => 'https://api.ookiapi.com/v1',
   AiProviderType.atlascloud => 'https://api.atlascloud.ai/v1',
+  AiProviderType.agnes => agnesDefaultBaseUrl,
   AiProviderType.codex => 'https://chatgpt.com/backend-api/codex',
   AiProviderType.openrouter => 'https://openrouter.ai/api/v1',
   AiProviderType.volcengine => 'https://ark.cn-beijing.volces.com/api/v3',
+  AiProviderType.purefox => 'https://purefox.org/v1',
+  AiProviderType.purefox_media => 'https://img.purefox.org/v1',
   _ => '',
 };
 
 /// Codex 新配置的预设目录。
 const codexPresetModels = <String>['gpt-6-astra', 'gpt-6-luna', 'gpt-6.1-sol'];
 
-const codexPresetImageModels = <String>['gpt-image-2'];
+const codexPresetImageModels = <String>[
+  'gpt-image-2.6-sunburst',
+  'gpt-image-2.6-flare',
+  'gpt-image-2.5-sunburst',
+  'gpt-image-2.5-flare',
+  'gpt-image-2',
+];
+
+/// MiniMax 没有公开的模型列表接口，「获取模型」使用这份目录。
+const minimaxPresetChatModels = <String>[
+  'MiniMax-M3',
+  'MiniMax-M2.7',
+  'MiniMax-M2.7-highspeed',
+  'MiniMax-M2.5',
+  'MiniMax-M2.5-highspeed',
+  'MiniMax-M2.1',
+];
+
+/// MiniMax 聊天走官方 Anthropic 兼容入口（`<host>/anthropic`），思考内容以
+/// thinking block 返回；视频、音频仍按原 Base URL 拼 `/v1/...`。
+String minimaxAnthropicBaseUrl(String baseUrl) {
+  var url = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+  if (url.endsWith('/anthropic')) {
+    return url;
+  }
+  if (url.endsWith('/v1')) {
+    url = url.substring(0, url.length - 3);
+  }
+  return '$url/anthropic';
+}
 
 const agnesDefaultBaseUrl = 'https://apihub.agnes-ai.com/v1';
 
@@ -315,6 +430,27 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    id: 'apikey',
+    name: 'APIKEY.FAN',
+    builtin: true,
+    type: 'apikey',
+    enabled: false,
+    apiKey: '',
+    baseUrl: aiProviderFixedBaseUrl(AiProviderType.apikey),
+    models: const [],
+    imageModels: const [],
+    audioModels: const [],
+    videoModels: const [],
+    embeddingModels: const [],
+    temperature: 0.7,
+    maxTurns: 512,
+    proxyUrl: '',
+    proxyUsername: '',
+    proxyPassword: '',
+    updatedAt: _builtinEpoch,
+    deletedAt: notDeletedSentinel,
+  ),
+  AiProvider(
     audioModels: const [],
     videoModels: const [],
     id: 'deepseek',
@@ -351,7 +487,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
       'deepseek-v3-2-251201',
     ],
     imageModels: imageModelsForProvider('doubao'),
-    embeddingModels: ['doubao-embedding-vision-251215'],
+    embeddingModels: const [],
     temperature: 0.7,
     maxTurns: 512,
     proxyUrl: '',
@@ -430,7 +566,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
       'o4-mini',
     ],
     imageModels: ['gpt-image-2'],
-    embeddingModels: ['text-embedding-3-large', 'text-embedding-3-small'],
+    embeddingModels: const [],
     temperature: 0.7,
     maxTurns: 512,
     proxyUrl: '',
@@ -450,6 +586,8 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     apiKey: '',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     models: [
+      'gemini-4-carbon',
+      'gemini-4-argon',
       'gemini-3.1-pro-preview',
       'gemini-3-flash-preview',
       'gemini-3.1-flash-lite-preview',
@@ -458,7 +596,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
       'gemini-2.5-flash',
     ],
     imageModels: ['gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image'],
-    embeddingModels: ['gemini-embedding-001'],
+    embeddingModels: const [],
     temperature: 0.7,
     maxTurns: 512,
     proxyUrl: '',
@@ -486,6 +624,48 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
       'claude-opus-4-6',
       'claude-opus-4-7',
     ],
+    imageModels: const [],
+    embeddingModels: const [],
+    temperature: 0.7,
+    maxTurns: 512,
+    proxyUrl: '',
+    proxyUsername: '',
+    proxyPassword: '',
+    updatedAt: _builtinEpoch,
+    deletedAt: notDeletedSentinel,
+  ),
+  AiProvider(
+    audioModels: const [],
+    videoModels: const [],
+    id: 'purefox',
+    name: 'PureFox',
+    builtin: true,
+    type: 'purefox',
+    enabled: false,
+    apiKey: '',
+    baseUrl: aiProviderFixedBaseUrl(AiProviderType.purefox),
+    models: const [],
+    imageModels: const [],
+    embeddingModels: const [],
+    temperature: 0.7,
+    maxTurns: 512,
+    proxyUrl: '',
+    proxyUsername: '',
+    proxyPassword: '',
+    updatedAt: _builtinEpoch,
+    deletedAt: notDeletedSentinel,
+  ),
+  AiProvider(
+    audioModels: const [],
+    videoModels: const [],
+    id: 'purefox_media',
+    name: 'PureFox Media',
+    builtin: true,
+    type: 'purefox_media',
+    enabled: false,
+    apiKey: '',
+    baseUrl: aiProviderFixedBaseUrl(AiProviderType.purefox_media),
+    models: const [],
     imageModels: const [],
     embeddingModels: const [],
     temperature: 0.7,
@@ -596,17 +776,13 @@ extension AiProviderX on AiProvider {
 
   bool get hasModels =>
       availableModels.isNotEmpty ||
-      availableEmbeddingModels.isNotEmpty ||
       availableImageModels.isNotEmpty ||
       availableVideoModels.isNotEmpty ||
       availableAudioModels.isNotEmpty;
 
   String? get enableValidationMessage {
     if (!isTypeSupported) {
-      return tr(
-        LocaleKeys.settingsProviderTypeUnsupported,
-        namedArgs: {'type': type},
-      );
+      return tr(LocaleKeys.providerTypeUnsupported, namedArgs: {'type': type});
     }
     if (!isPlatformSupported) {
       return tr(LocaleKeys.settingsCodexDesktopOnly);
@@ -623,8 +799,6 @@ extension AiProviderX on AiProvider {
       ? qwenBaseUrl(baseUrl)
       : typeEnum == AiProviderType.minimax && baseUrl.trim().isEmpty
       ? 'https://api.minimax.cn'
-      : typeEnum == AiProviderType.agnes && baseUrl.trim().isEmpty
-      ? agnesDefaultBaseUrl
       : baseUrl;
 
   bool get hasFixedBaseUrl => typeConfig.fixedBaseUrl;
@@ -645,11 +819,6 @@ extension AiProviderX on AiProvider {
       ? _normalizeModels(imageModels)
       : const [];
 
-  List<String> get availableEmbeddingModels =>
-      supportsModelKind(AiModelKind.embedding)
-      ? _normalizeModels(embeddingModels)
-      : const [];
-
   List<String> get availableAudioModels => supportsModelKind(AiModelKind.audio)
       ? _normalizeModels(audioModels)
       : const [];
@@ -663,7 +832,6 @@ extension AiProviderX on AiProvider {
     return switch (kind) {
       AiModelKind.chat => availableModels,
       AiModelKind.image => availableImageModels,
-      AiModelKind.embedding => availableEmbeddingModels,
       AiModelKind.video => availableVideoModels,
       AiModelKind.audio => availableAudioModels,
     };
@@ -827,20 +995,16 @@ class AiSettings {
   final String? defaultChatModelId;
   final String? defaultChatReasoningEffort;
   final String? defaultImageModelId;
-  final String? defaultEmbeddingModelId;
   final String? defaultPlannerModelId;
   final String? defaultWriterModelId;
-  final String? defaultSegmenterModelId;
 
   const AiSettings({
     this.providers = const [],
     this.defaultChatModelId,
     this.defaultChatReasoningEffort,
     this.defaultImageModelId,
-    this.defaultEmbeddingModelId,
     this.defaultPlannerModelId,
     this.defaultWriterModelId,
-    this.defaultSegmenterModelId,
   });
 
   factory AiSettings.defaults() {
@@ -864,10 +1028,8 @@ class AiSettings {
       defaultChatModelId: json['defaultChatModelId'] as String?,
       defaultChatReasoningEffort: json['defaultChatReasoningEffort'] as String?,
       defaultImageModelId: json['defaultImageModelId'] as String?,
-      defaultEmbeddingModelId: json['defaultEmbeddingModelId'] as String?,
       defaultPlannerModelId: json['defaultPlannerModelId'] as String?,
       defaultWriterModelId: json['defaultWriterModelId'] as String?,
-      defaultSegmenterModelId: json['defaultSegmenterModelId'] as String?,
     );
   }
 
@@ -876,14 +1038,10 @@ class AiSettings {
     if (defaultChatReasoningEffort != null)
       'defaultChatReasoningEffort': defaultChatReasoningEffort,
     if (defaultImageModelId != null) 'defaultImageModelId': defaultImageModelId,
-    if (defaultEmbeddingModelId != null)
-      'defaultEmbeddingModelId': defaultEmbeddingModelId,
     if (defaultPlannerModelId != null)
       'defaultPlannerModelId': defaultPlannerModelId,
     if (defaultWriterModelId != null)
       'defaultWriterModelId': defaultWriterModelId,
-    if (defaultSegmenterModelId != null)
-      'defaultSegmenterModelId': defaultSegmenterModelId,
   };
 
   AiSettings copyWith({
@@ -891,10 +1049,8 @@ class AiSettings {
     Object? defaultChatModelId = _sentinel,
     Object? defaultChatReasoningEffort = _sentinel,
     Object? defaultImageModelId = _sentinel,
-    Object? defaultEmbeddingModelId = _sentinel,
     Object? defaultPlannerModelId = _sentinel,
     Object? defaultWriterModelId = _sentinel,
-    Object? defaultSegmenterModelId = _sentinel,
   }) {
     return AiSettings(
       providers: providers ?? this.providers,
@@ -907,18 +1063,12 @@ class AiSettings {
       defaultImageModelId: defaultImageModelId == _sentinel
           ? this.defaultImageModelId
           : defaultImageModelId as String?,
-      defaultEmbeddingModelId: defaultEmbeddingModelId == _sentinel
-          ? this.defaultEmbeddingModelId
-          : defaultEmbeddingModelId as String?,
       defaultPlannerModelId: defaultPlannerModelId == _sentinel
           ? this.defaultPlannerModelId
           : defaultPlannerModelId as String?,
       defaultWriterModelId: defaultWriterModelId == _sentinel
           ? this.defaultWriterModelId
           : defaultWriterModelId as String?,
-      defaultSegmenterModelId: defaultSegmenterModelId == _sentinel
-          ? this.defaultSegmenterModelId
-          : defaultSegmenterModelId as String?,
     );
   }
 
@@ -948,9 +1098,6 @@ class AiSettings {
       AiModelKind.image: _normalizeModels(
         previous.imageModels,
       ).toSet().difference(_normalizeModels(provider.imageModels).toSet()),
-      AiModelKind.embedding: _normalizeModels(
-        previous.embeddingModels,
-      ).toSet().difference(_normalizeModels(provider.embeddingModels).toSet()),
     };
     return updated._clearDefaultSelectionsWhere((kind, optionId) {
       final prefix = '${provider.id}::';
@@ -1042,14 +1189,12 @@ class AiSettings {
   String? defaultOptionIdForKind(AiModelKind kind) => switch (kind) {
     AiModelKind.chat => defaultChatModelId,
     AiModelKind.image => defaultImageModelId,
-    AiModelKind.embedding => defaultEmbeddingModelId,
     AiModelKind.video || AiModelKind.audio => null,
   };
 
   String? defaultOptionIdForRole(AiModelRole role) => switch (role) {
     AiModelRole.planner => defaultPlannerModelId,
     AiModelRole.writer => defaultWriterModelId,
-    AiModelRole.segmenter => defaultSegmenterModelId,
   };
 
   AiSettings setDefaultOptionId(AiModelKind kind, String? optionId) {
@@ -1067,7 +1212,6 @@ class AiSettings {
               ),
       ),
       AiModelKind.image => copyWith(defaultImageModelId: optionId),
-      AiModelKind.embedding => copyWith(defaultEmbeddingModelId: optionId),
       AiModelKind.video || AiModelKind.audio => throw UnsupportedError(
         'Video requests choose their model explicitly',
       ),
@@ -1079,7 +1223,6 @@ class AiSettings {
     return switch (role) {
       AiModelRole.planner => copyWith(defaultPlannerModelId: optionId),
       AiModelRole.writer => copyWith(defaultWriterModelId: optionId),
-      AiModelRole.segmenter => copyWith(defaultSegmenterModelId: optionId),
     };
   }
 
@@ -1104,13 +1247,8 @@ class AiSettings {
           ? defaultChatReasoningEffort
           : null,
       defaultImageModelId: keep(AiModelKind.image, defaultImageModelId),
-      defaultEmbeddingModelId: keep(
-        AiModelKind.embedding,
-        defaultEmbeddingModelId,
-      ),
       defaultPlannerModelId: keep(AiModelKind.chat, defaultPlannerModelId),
       defaultWriterModelId: keep(AiModelKind.chat, defaultWriterModelId),
-      defaultSegmenterModelId: keep(AiModelKind.chat, defaultSegmenterModelId),
     );
   }
 

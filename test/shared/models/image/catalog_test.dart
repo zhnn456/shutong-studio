@@ -12,6 +12,111 @@ import 'package:reveric/shared/services/ai/image/agnes.dart';
 import '../../../helpers/media_provider_types.dart';
 
 void main() {
+  test(
+    'OpenRouter image additions retain channel-specific reference limits',
+    () {
+      final qwen = lookupImageChannelModel(
+        'openrouter',
+        'qwen/qwen-image-2.1-turbo',
+      )!;
+      final krea = lookupImageChannelModel('openrouter', 'krea/k3-edit')!;
+      qwen.capabilities.validateReferences(0);
+      qwen.capabilities.validateReferences(4);
+      expect(
+        () => qwen.capabilities.validateReferences(5),
+        throwsFormatException,
+      );
+      expect(qwen.capabilities.size('1:4', '2K'), isNull);
+      expect(qwen.requestDefaults.size, isNull);
+      expect(
+        () => krea.capabilities.validateReferences(0),
+        throwsFormatException,
+      );
+      krea.capabilities.validateReferences(1);
+      krea.capabilities.validateReferences(8);
+      expect(
+        () => krea.capabilities.validateReferences(9),
+        throwsFormatException,
+      );
+    },
+  );
+
+  test(
+    'configured unknown image models use defaults across provider protocols',
+    () {
+      for (final type in [
+        'openrouter',
+        'openai_compatible',
+        'qwen',
+        'agnes',
+        'atlascloud',
+        'gemini',
+      ]) {
+        final provider = aiProviderBuiltinById(
+          'openai',
+        )!.copyWith(type: type, enabled: true, imageModels: ['custom-image']);
+        final caps = ProductionImageCapabilities(provider, 'custom-image');
+        caps.validate(
+          prompt: 'cover',
+          ratio: 'auto',
+          resolution: 'auto',
+          references: 0,
+        );
+        expect(caps.size('auto', 'auto'), isNull);
+        expect(caps.verifiedCapabilities, isNull);
+        expect(caps.ratios.first, 'auto');
+        expect(caps.resolutions.first, 'auto');
+        for (final ratio in caps.ratios) {
+          for (final resolution in caps.resolutions) {
+            caps.validate(
+              prompt: 'cover',
+              ratio: ratio,
+              resolution: resolution,
+              references: 32,
+            );
+          }
+        }
+        expect(caps.allowsReferenceCount(32), isTrue);
+        expect(
+          caps.size('16:9', '2K'),
+          ['openrouter', 'gemini'].contains(type) ? null : '2048x1152',
+        );
+        expect(
+          () => caps.validate(
+            prompt: 'cover',
+            ratio: 'invalid',
+            resolution: '2K',
+            references: 1,
+          ),
+          throwsFormatException,
+        );
+        expect(
+          () =>
+              ProductionImageCapabilities(provider, 'not-configured').validate(
+                prompt: 'cover',
+                ratio: 'auto',
+                resolution: 'auto',
+                references: 0,
+              ),
+          throwsFormatException,
+        );
+        expect(
+          () =>
+              ProductionImageCapabilities(
+                provider.copyWith(enabled: false),
+                'custom-image',
+              ).validate(
+                prompt: 'cover',
+                ratio: 'auto',
+                resolution: 'auto',
+                references: 0,
+              ),
+          throwsFormatException,
+        );
+      }
+    },
+  );
+
   test('Qwen presets retain only 3.0 and Wan while 2.x stays usable', () {
     const presets = [
       'qwen-image-3.0-pro',
@@ -153,6 +258,20 @@ void main() {
       'qwen-image-2.0-pro',
     );
     expect(lookupImageModel('qwen-image-unknown'), isNull);
+    expect(recognizeImageModel('doubao-seedream-5-5-261028'), 'seedream-5.5');
+    final seedream55 = lookupImageChannelModel(
+      'volcengine',
+      'doubao-seedream-5-5-261028',
+    )!;
+    expect(seedream55.catalogId, 'seedream-5.5');
+    expect(seedream55.capabilities.resolutions, {'1K', '1.5K', '2K'});
+    expect(seedream55.capabilities.maxReferences, 10);
+    expect(seedream55.requestDefaults.outputFormat, 'png');
+    expect(seedream55.requestDefaults.promptOptimization, 'standard');
+    expect(
+      imageModelsForProvider('doubao').first,
+      'doubao-seedream-5-5-261028',
+    );
   });
 
   for (final protocol in imageChannelModels.entries) {
@@ -198,6 +317,8 @@ void main() {
     expect(routed, [
       'google/gemini-nano-banana-2.1',
       'black-forest-labs/flux-3-image',
+      'openai/gpt-image-2.6-sunburst',
+      'openai/gpt-image-2.6-flare',
       'openai/gpt-image-2.5-sunburst',
       'openai/gpt-image-2.5-flare',
       'bytedance-seed/seedream-5-0-pro',
@@ -246,26 +367,23 @@ void main() {
     imageModels: imageModelsForProvider('agnes'),
     videoModels: ['agnes-video-2.5-flash'],
   );
-  test(
-    'Agnes is an independent image/video provider with an editable endpoint',
-    () {
-      expect(customAiProviderTypes, contains(AiProviderType.agnes));
-      expect(provider.supportedModelKinds, {
-        AiModelKind.image,
-        AiModelKind.video,
-      });
-      expect(provider.effectiveBaseUrl, agnesDefaultBaseUrl);
-      expect(provider.hasFixedBaseUrl, false);
-      expect(
-        provider.copyWith(baseUrl: 'https://proxy.test/v1').effectiveBaseUrl,
-        'https://proxy.test/v1',
-      );
-      expect(provider.availableModels, isEmpty);
-      expect(provider.availableAudioModels, isEmpty);
-      expect(provider.availableVideoModels, ['agnes-video-2.5-flash']);
-      expect(provider.isValid, true);
-    },
-  );
+  test('Agnes is a preset image/video provider with its official endpoint', () {
+    expect(customAiProviderTypes, contains(AiProviderType.agnes));
+    expect(provider.supportedModelKinds, {
+      AiModelKind.image,
+      AiModelKind.video,
+    });
+    expect(provider.effectiveBaseUrl, agnesDefaultBaseUrl);
+    expect(provider.hasFixedBaseUrl, true);
+    expect(
+      provider.copyWith(baseUrl: 'https://proxy.test/v1').effectiveBaseUrl,
+      agnesDefaultBaseUrl,
+    );
+    expect(provider.availableModels, isEmpty);
+    expect(provider.availableAudioModels, isEmpty);
+    expect(provider.availableVideoModels, ['agnes-video-2.5-flash']);
+    expect(provider.isValid, true);
+  });
 
   for (final model in imageModelsForProvider('agnes')) {
     test('$model production sizes round trip to documented API parameters', () {
@@ -319,6 +437,76 @@ void main() {
         '4K',
       ),
       throwsFormatException,
+    );
+  });
+
+  test('gpt image 2.6 complexity comes from the catalog', () {
+    for (final id in ['gpt-image-2.6-sunburst', 'gpt-image-2.6-flare']) {
+      final entry = lookupImageModel(id)!;
+      expect(entry.capabilities.complexityLevels, {'low', 'medium', 'high'});
+      expect(entry.requestDefaults.complexity, 'high');
+    }
+    expect(
+      lookupImageModel('gpt-image-2.5-sunburst')!.capabilities.complexityLevels,
+      isEmpty,
+    );
+    expect(
+      lookupImageModel('gpt-image-2')!.capabilities.complexityLevels,
+      isEmpty,
+    );
+
+    const sunburst = 'gpt-image-2.6-sunburst';
+    expect(imageComplexityFor('openai', sunburst, null), 'high');
+    expect(imageComplexityFor('openai', sunburst, 'low'), 'low');
+    expect(imageComplexityFor('openai', sunburst, 'max'), 'high');
+    expect(imageComplexityFor('openai', 'gpt-image-2', 'high'), isNull);
+    expect(
+      imageComplexityLevels('openrouter', 'openai/gpt-image-2.6-sunburst'),
+      {'low', 'medium', 'high'},
+    );
+    const resolutions = {'1K', '2K', '4K'};
+    expect(
+      lookupImageModel('gpt-image-2.6-sunburst')!.capabilities.resolutions,
+      resolutions,
+    );
+    expect(
+      lookupImageModel('gpt-image-2.5-sunburst')!.capabilities.resolutions,
+      resolutions,
+    );
+    expect(
+      lookupImageChannelModel(
+        'openrouter',
+        'openai/gpt-image-2.6-sunburst',
+      )!.capabilities.resolutions,
+      resolutions,
+    );
+    expect(
+      lookupImageChannelModel(
+        'openrouter',
+        'openai/gpt-image-2.5-flare',
+      )!.capabilities.resolutions,
+      resolutions,
+    );
+    expect(lookupImageModel('gpt-5.4-image-2')!.capabilities.resolutions, {
+      'auto',
+    });
+    expect(
+      imageComplexityFor('openrouter', 'openai/gpt-image-2.6-flare', null),
+      'high',
+    );
+    expect(
+      imageComplexityLevels(
+        'atlascloud',
+        'openai/gpt-image-2.6-sunburst/text-to-image',
+      ),
+      isEmpty,
+    );
+    expect(
+      imageComplexityLevels(
+        'atlascloud',
+        'openai/gpt-image-2.5-sunburst/text-to-image',
+      ),
+      isEmpty,
     );
   });
 }

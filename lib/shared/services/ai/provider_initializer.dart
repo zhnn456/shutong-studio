@@ -108,16 +108,18 @@ class AiProviderInitializer {
 
   Future<ProviderClient> _createClient() async {
     switch (_config.typeEnum) {
+      case AiProviderType.purefox_media:
+        throw UnsupportedError(
+          'PureFox Media is configured for image and video generation only',
+        );
+      case AiProviderType.moss:
+        throw UnsupportedError('MOSS supports image and audio generation only');
       case AiProviderType.agnes:
         throw UnsupportedError(
           'Agnes is configured for image and video generation only',
         );
       case AiProviderType.metaso:
         throw UnsupportedError('METASO supports video generation only');
-      case AiProviderType.minimax:
-        throw UnsupportedError(
-          'MiniMax is configured for video generation only',
-        );
       case AiProviderType.codex:
         return CodexClient(
           model: _chatModel,
@@ -127,6 +129,9 @@ class AiProviderInitializer {
           streamHttpClientFactory: _createStreamHttpClient,
         );
       case AiProviderType.api88:
+      case AiProviderType.apikey:
+      case AiProviderType.infistar:
+      case AiProviderType.ooki:
         return NewApiClient(_config).chat(
           cacheKeyUserId: _cacheKeyUserId,
           model: _chatModel,
@@ -145,6 +150,7 @@ class AiProviderInitializer {
         );
       case AiProviderType.openrouter:
       case AiProviderType.atlascloud:
+      case AiProviderType.purefox:
       case AiProviderType.openai_compatible:
       case AiProviderType.xai:
       case AiProviderType.deepseek:
@@ -153,6 +159,7 @@ class AiProviderInitializer {
       case AiProviderType.doubao:
       case AiProviderType.volcengine:
       case AiProviderType.qwen:
+      case AiProviderType.qwen_token_plan:
         return OpenAiClient(
           apiKey: _config.effectiveApiKey,
           baseUrl: _config.effectiveBaseUrl,
@@ -162,7 +169,18 @@ class AiProviderInitializer {
           traceHeadersProvider: _traceHeadersProvider,
           useOpenRouter: _config.typeEnum == AiProviderType.openrouter,
           useThinkingField: useThinkingField(_chatModel),
-          useEnableThinkingField: _config.typeEnum == AiProviderType.qwen,
+          useEnableThinkingField:
+              _config.typeEnum == AiProviderType.qwen ||
+              _config.typeEnum == AiProviderType.qwen_token_plan,
+        );
+      case AiProviderType.minimax:
+        return AnthropicClient(
+          apiKey: _config.effectiveApiKey,
+          baseUrl: minimaxAnthropicBaseUrl(_config.effectiveBaseUrl),
+          model: _chatModel,
+          httpClient: _httpClient,
+          streamHttpClientFactory: _createStreamHttpClient,
+          traceHeadersProvider: _traceHeadersProvider,
         );
       case AiProviderType.anthropic:
         return AnthropicClient(
@@ -177,6 +195,7 @@ class AiProviderInitializer {
       case AiProviderType.gemini:
         return GeminiClient(
           apiKey: _config.effectiveApiKey,
+          baseUrl: _config.effectiveBaseUrl,
           model: _chatModel,
           httpClient: _httpClient,
           streamHttpClientFactory: _createStreamHttpClient,

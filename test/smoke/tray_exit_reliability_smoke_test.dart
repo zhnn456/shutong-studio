@@ -17,20 +17,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reveric/shared/logger/startup_failure_reporter.dart';
 import 'package:reveric/shared/services/system_tray_service.dart';
+import 'package:tray_manager/tray_manager.dart' as tray;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const windowManagerChannel = MethodChannel('window_manager');
-  const trayManagerChannel = MethodChannel('tray_manager');
   final calls = <String>[];
   Completer<Object?>? pendingWindowClose;
-  Completer<Object?>? pendingTrayDestroy;
 
   setUp(() {
     calls.clear();
     pendingWindowClose = null;
-    pendingTrayDestroy = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(windowManagerChannel, (call) async {
           calls.add('window.${call.method}');
@@ -39,21 +37,11 @@ void main() {
           }
           return true;
         });
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(trayManagerChannel, (call) async {
-          calls.add('tray.${call.method}');
-          if (call.method == 'destroy' && pendingTrayDestroy != null) {
-            return pendingTrayDestroy!.future;
-          }
-          return true;
-        });
   });
 
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(windowManagerChannel, null);
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(trayManagerChannel, null);
   });
 
   Future<void> _exit({
@@ -121,15 +109,18 @@ void main() {
       );
     });
 
-    test('e1. tray destroy 回包不返回：2s 超时兜底，不阻塞 terminate', () async {
-      pendingTrayDestroy = Completer<Object?>();
-      await _exit();
-      expect(calls, <String>[
-        'window.setPreventClose',
-        'tray.destroy',
-        'window.close',
-        'exit.0',
-      ]);
+    test('e1. 托盘清理抛异常：错误被吞掉，仍请求关窗并 terminate', () async {
+      final service = SystemTrayService.forTesting(_BoomTrayIcon());
+      String? terminateCode;
+      await service
+          .exitApplicationForTesting((code) => terminateCode = '$code')
+          .timeout(const Duration(seconds: 10));
+
+      expect(terminateCode, '0');
+      expect(
+        calls,
+        containsAllInOrder(['window.setPreventClose', 'window.close']),
+      );
     });
 
     test('e2. window close 回包不返回：close 不被 await，terminate 照常调用', () async {
@@ -137,22 +128,28 @@ void main() {
       await _exit();
       expect(calls, <String>[
         'window.setPreventClose',
-        'tray.destroy',
         'window.close',
         'exit.0',
       ]);
     });
 
-    test('正常退出调用序列：解除防关闭 → 销毁托盘 → 请求关窗 → 终止进程', () async {
+    test('正常退出调用序列：解除防关闭 → 请求关窗 → 终止进程', () async {
       await _exit();
       expect(calls, <String>[
         'window.setPreventClose',
-        'tray.destroy',
         'window.close',
         'exit.0',
       ]);
     });
   });
+}
+
+class _BoomTrayIcon implements tray.TrayIcon {
+  @override
+  void dispose() => throw StateError('native disposal failed');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _RecordingReporter extends StartupFailureReporter {

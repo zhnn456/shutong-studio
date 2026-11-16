@@ -19,10 +19,13 @@ import '../../shared/form/form.dart';
 import '../../shared/localization/app_localization.dart';
 import '../../shared/localization/locale_keys.dart';
 import '../../shared/models/novel_type.dart';
+import '../../shared/logger/app_logger.dart';
 import '../../shared/providers/dictionary_providers.dart';
 import '../../shared/services/novel_import.dart';
 import '../../shared/theme/theme.dart';
 import '../../shared/widgets/novel/category_field.dart';
+
+final _log = AppLogger.forModule('NovelImport');
 
 typedef MobileNovelImportSubmitter =
     Future<NovelImportResult> Function({
@@ -93,7 +96,6 @@ class MobileNovelImportPage extends HookConsumerWidget {
           form.getValue<String>(_ImportFormField.type) ?? novelTypeOriginal;
       final tags =
           form.getValue<List<String>>(_ImportFormField.tags) ?? const [];
-
       isBusy.value = true;
       try {
         final result = await onSubmit(
@@ -104,11 +106,19 @@ class MobileNovelImportPage extends HookConsumerWidget {
           tags: tags,
         );
         if (context.mounted) {
-          Navigator.of(context).pop(result);
+          Navigator.of(context).pop<NovelImportResult>(result);
         }
       } on NovelImportException catch (e) {
         if (context.mounted) {
           form.setError(_ImportFormField.title, e.message);
+        }
+      } catch (error, stackTrace) {
+        _log.error('Import failed', error: error, stackTrace: stackTrace);
+        if (context.mounted) {
+          form.setError(
+            _ImportFormField.title,
+            context.t(LocaleKeys.libraryImportTxtFailed),
+          );
         }
       } finally {
         if (context.mounted) {

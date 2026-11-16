@@ -1,6 +1,7 @@
 // 职责: 通过 Gemini 官方或网关 generateContent 接口生成和编辑图片。
 // 关联文件:
 //   lib/shared/services/ai/image/client.dart
+//   lib/shared/agent/client/gemini_client.dart
 //   lib/shared/localization/locale_keys.dart
 //   assets/translations/en/ai.json
 //   assets/translations/zh-CN/ai.json
@@ -8,6 +9,7 @@ import 'dart:convert';
 
 import 'package:easy_localization/easy_localization.dart';
 
+import '../../../agent/client/gemini_client.dart' show geminiModelEndpoint;
 import '../../../models/ai_provider.dart';
 import '../../../localization/locale_keys.dart';
 import '../image.dart';
@@ -19,17 +21,16 @@ class GeminiImageClient extends ImageClient {
   final bool useGateway;
 
   @override
-  bool get supportsEdit => useGateway;
-
-  @override
   Future<AiImageGenerationResult> generate(
     ImageGenerationRequest request,
   ) async {
-    final base = useGateway
-        ? config.effectiveBaseUrl.replaceFirst(RegExp(r'/v1$'), '')
-        : 'https://generativelanguage.googleapis.com';
-    final url = Uri.parse(
-      '$base/v1beta/models/${Uri.encodeComponent(request.model)}:generateContent',
+    validatedChannel(request);
+    final url = geminiModelEndpoint(
+      useGateway
+          ? config.effectiveBaseUrl.replaceFirst(RegExp(r'/v1$'), '')
+          : config.effectiveBaseUrl,
+      request.model,
+      'generateContent',
     );
     final partsInput = <Map<String, dynamic>>[
       {'text': request.prompt},
@@ -49,8 +50,7 @@ class GeminiImageClient extends ImageClient {
       ],
       'generationConfig': {
         'responseModalities': ['IMAGE', 'TEXT'],
-        if (useGateway &&
-            (request.aspectRatio != null || request.resolution != null))
+        if (request.aspectRatio != null || request.resolution != null)
           'imageConfig': {
             if (request.aspectRatio != null && request.aspectRatio != 'auto')
               'aspectRatio': request.aspectRatio,

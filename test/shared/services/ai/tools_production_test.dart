@@ -5,6 +5,7 @@
 //   lib/shared/services/screenplay/staging.dart
 //   lib/shared/services/director/preview.dart
 import 'dart:async';
+import 'package:reveric/shared/app_config.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -36,6 +37,9 @@ import 'package:reveric/shared/services/screenplay/staging.dart';
 import 'package:reveric/shared/services/screenplay/staging_edit.dart';
 import 'package:reveric/shared/services/storyboard/service.dart';
 import 'package:reveric/shared/services/production/canvas_service.dart';
+import 'package:reveric/shared/services/production/library_service.dart';
+import 'package:reveric/shared/services/production/media_service.dart';
+import 'package:reveric/shared/services/production/ffmpeg_runner.dart';
 import 'package:reveric/shared/services/working_overlay.dart';
 
 class PreviewContentService extends NovelContentService {
@@ -141,6 +145,15 @@ void main() {
       sessionId: 'session',
       workId: 'work',
       operationHost: ToolOperationHost(operations),
+      productionStyleServiceBuilder: () async => ProductionCanvasService(
+        StoryboardService(db),
+        MediaLibraryService(
+          app,
+          MediaService(FfmpegRunner()),
+          previewDirectory,
+        ),
+        'work',
+      ),
     )..registerAllTools();
   });
   tearDown(() async {
@@ -195,6 +208,60 @@ void main() {
     'visible': true,
     'color': '#B7A48B',
   };
+
+  test(
+    'text Remove and remove_types clean only their downstream prompt references',
+    () async {
+      final path = canvasPath;
+      final a = await call('Create', '$path/nodes', {
+        'type': 'text',
+        'content': 'A',
+      });
+      final b = await call('Create', '$path/nodes', {
+        'type': 'text',
+        'content': 'B',
+      });
+      final target = await call('Create', '$path/nodes', {
+        'type': 'image',
+        'title': 'Kept',
+      });
+      expect(a['ok'], true, reason: '$a');
+      expect(b['ok'], true, reason: '$b');
+      expect(target['ok'], true, reason: '$target');
+      final clipId = target['ref_id'] as String;
+      const aTag = '<ref input_id="a" label="A" />';
+      const bTag = '<ref input_id="b" label="B" />';
+      // This fixture has no media host; seed inputs before exercising AI deletion.
+      final shots = StoryboardService(db);
+      await shots.restoreInputs(clipId, [
+        {'id': 'a', 'ref_type': 'node', 'ref_id': a['id'], 'role': 'prompt'},
+        {'id': 'b', 'ref_type': 'node', 'ref_id': b['id'], 'role': 'prompt'},
+      ]);
+      await (db.update(
+        db.productionClips,
+      )..where((t) => t.id.equals(clipId))).write(
+        const ProductionClipsCompanion(
+          prompt: Value('Start $aTag/$bTag/$aTag end'),
+        ),
+      );
+      final removed = await call('Remove', '$path/nodes/${a['id']}');
+      expect(removed['ok'], true, reason: '$removed');
+      var clip = (await shots.getShot(clipId))!;
+      expect(clip.prompt, 'Start /$bTag/ end');
+      expect(clip.inputs.map((input) => input.id), ['b']);
+      final batched = await call('Write', path, {
+        'remove_types': ['text'],
+      });
+      expect(batched['ok'], true, reason: '$batched');
+      jsonEncode(batched);
+      clip = (await shots.getShot(clipId))!;
+      expect(clip.prompt, 'Start // end');
+      expect(clip.inputs, isEmpty);
+      expect(clip.title, 'Kept');
+      expect(await db.canvasDao.getNodeById(target['id'] as String), isNotNull);
+      expect(await db.canvasDao.getNodeById(b['id'] as String), isNull);
+    },
+  );
 
   test(
     'stagings normalizes plural IDs without advertising the alias',
@@ -569,6 +636,36 @@ void main() {
     ok(await director('read', {'staging_id': stored.stagingId}));
   });
 
+  test('screenplay adds text content while rejecting editing nodes', () async {
+    final existingProjects = (await db.editingDao.list())
+        .map((row) => row.id)
+        .toList();
+    final text = await call('Create', '$canvasPath/nodes', {
+      'type': 'text',
+      'title': 'Notes',
+      'content': 'Shared text',
+    });
+    ok(text);
+    expect(
+      (await call('Read', '$canvasPath/nodes/${text['id']}/content'))['value'],
+      'Shared text',
+    );
+    ok(
+      await call('Write', '$canvasPath/nodes/${text['id']}', {
+        'content': 'Updated',
+      }),
+    );
+    expect(
+      (await db.canvasDao.getNodeById(text['id'] as String))!.content,
+      'Updated',
+    );
+    expect(
+      (await call('Create', '$canvasPath/nodes', {'type': 'editing'}))['error'],
+      isNotNull,
+    );
+    expect((await db.editingDao.list()).map((row) => row.id), existingProjects);
+  });
+
   test(
     'explicit production paths work without discovering hidden resources',
     () async {
@@ -593,7 +690,12 @@ void main() {
       ok(all);
       expect(all['nodes'], hasLength(2));
       expect(all['edges'], isEmpty);
-      expect((await call('Read', 'canvas'))['entries'], isEmpty);
+      final ideation = await call('Read', 'canvas');
+      if (ideationCanvasEnabled) {
+        expect(ideation['entries'], isEmpty);
+      } else {
+        expect(ideation['error'], isNotNull);
+      }
       final glob = await tools.executeTool(
         name: 'Glob',
         input: {'pattern': 'episodes/**'},
@@ -841,6 +943,96 @@ void main() {
       expect(removedAction['error_code'], 'invalid_argument');
       expect((await director('read', {'staging_id': base}))['version'], 6);
       expect(await db.select(db.workingChanges).get(), isEmpty);
+    },
+  );
+
+  test('staging edits accept nested and repeated resource IDs', () async {
+    final created = await director('create', {'title': 'Resource identities'});
+    ok(created);
+    final base = created['id'] as String;
+    const firstId = '11111111-1111-4111-8111-000000000001';
+    const secondId = '11111111-1111-4111-8111-000000000002';
+    final nestedData = {...actor(), 'id': firstId};
+    final result = await director('apply', {
+      'staging_id': base,
+      'edits': [
+        {'op': 'create', 'collection': 'objects', 'data': nestedData},
+        {
+          'op': 'create',
+          'collection': 'objects',
+          'id': secondId,
+          'data': {...actor(), 'id': secondId},
+        },
+        {
+          'op': 'write',
+          'collection': 'objects',
+          'data': {'id': firstId, 'name': 'Renamed'},
+        },
+      ],
+    });
+    ok(result);
+    expect(result['results'].map((r) => r['id']), [firstId, secondId, firstId]);
+    expect(result['document']['objects'][0]['name'], 'Renamed');
+    expect(nestedData['id'], firstId);
+
+    final camera = Map<String, dynamic>.from(created['document']['cameras'][0]);
+    final cameraId = camera['id'];
+    camera['name'] = 'Updated camera';
+    ok(
+      await applyEdit(base, 'cameras', 'write', {
+        'id': cameraId,
+        'data': camera,
+      }),
+    );
+    final read = await director('read', {
+      'staging_id': base,
+      'collection': 'cameras',
+      'id': cameraId,
+    });
+    expect(read['data']['id'], cameraId);
+    expect(read['data']['name'], 'Updated camera');
+    final missing = await applyEdit(base, 'cameras', 'write', {
+      'data': {...camera, 'id': '33333333-3333-4333-8333-000000000001'},
+    });
+    expect(missing['error_code'], 'not_found');
+  });
+
+  test(
+    'conflicting staging IDs reject the batch without saving earlier edits',
+    () async {
+      final created = await director('create', {
+        'title': 'Conflicting identities',
+      });
+      ok(created);
+      final base = created['id'] as String;
+      final cameraId = created['document']['cameras'][0]['id'];
+      for (final op in ['create', 'write', 'remove']) {
+        final result = await director('apply', {
+          'staging_id': base,
+          'edits': [
+            {
+              'op': 'write',
+              'collection': 'cameras',
+              'id': cameraId,
+              'data': {'name': 'Must not persist'},
+            },
+            {
+              'op': op,
+              'collection': 'objects',
+              'id': '11111111-1111-4111-8111-000000000001',
+              'data': {
+                ...actor(),
+                'id': '11111111-1111-4111-8111-000000000002',
+              },
+            },
+          ],
+        });
+        expect(result['error_code'], 'invalid_argument');
+        expect(result['error'], contains('id and data.id must match'));
+        final current = await stagingService.require(base);
+        expect(current.document, created['document']);
+        expect(current.version, created['version']);
+      }
     },
   );
 
@@ -1518,6 +1710,10 @@ void main() {
       });
       expect(unknown['error_code'], 'not_found');
       expect(unknown['error'], contains('Run stagings list'));
+      final unknownAction = await director('not-a-staging-action', {});
+      expect(unknownAction['output'], contains('unknown stagings command'));
+      expect(unknownAction['output'], contains('剧本工具使用规范'));
+      expect(unknownAction['output'], isNot(contains('画布作品工具')));
       expect((await stagingService.require(stagingId)).version, before.version);
     },
   );
@@ -1547,6 +1743,49 @@ void main() {
       expect(session.history.preview, isNull);
       expect(session.history.dirty, isFalse);
       expect((await service.require(row.id)).title, 'Remote');
+    },
+  );
+  test(
+    'unbound actors accept null catalog IDs and reject invalid bindings',
+    () async {
+      final schema = await director('schema', {});
+      expect(schema['object']['properties']['catalog_id']['type'], [
+        'string',
+        'null',
+      ]);
+      final created = await director('create', {'title': 'Unbound actors'});
+      ok(created);
+      final base = created['id'] as String;
+      for (var i = 0; i < 2; i++) {
+        ok(
+          await applyEdit(base, 'objects', 'create', {
+            'data': {...actor(), 'catalog_id': null},
+          }),
+        );
+      }
+      final saved = await stagingService.require(base);
+      final document = DirectorDocument.parse(jsonEncode(saved.document));
+      expect(document.objects, hasLength(2));
+      expect(document.objects.every((o) => o['catalog_id'] == null), isTrue);
+      final actorId = document.objects.first['id'];
+      ok(
+        await applyEdit(base, 'objects', 'write', {
+          'id': actorId,
+          'data': {'name': 'Renamed', 'catalog_id': null},
+        }),
+      );
+      final beforeInvalid = await stagingService.require(base);
+      for (final invalidId in ['', 42, 'missing']) {
+        final result = await applyEdit(base, 'objects', 'write', {
+          'id': actorId,
+          'data': {'catalog_id': invalidId},
+        });
+        expect(result['error_code'], 'invalid_argument');
+        expect(
+          (await stagingService.require(base)).document,
+          beforeInvalid.document,
+        );
+      }
     },
   );
   test(

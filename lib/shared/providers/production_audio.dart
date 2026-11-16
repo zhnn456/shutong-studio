@@ -11,6 +11,7 @@ import '../models/ai_provider.dart';
 import '../models/audio/channels.dart';
 import '../services/ai/audio/client.dart';
 import '../services/ai/audio/seed.dart';
+import '../services/ai/audio/moss.dart';
 import '../services/ai/audio/minimax.dart';
 import '../services/ai/audio/openrouter.dart';
 import '../services/ai/new_api.dart';
@@ -32,6 +33,7 @@ final productionAudioInvokeProvider = Provider<ProductionAudioInvoke>(
       final AudioClient client = switch (aiProviderTypeConfigFor(
         type,
       )?.audioProtocol) {
+        AudioProtocol.moss_audio => MossAudioClient(httpClient, apiKey),
         AudioProtocol.new_api_speech => NewApiClient(
           provider,
         ).audio(httpClient, request.modelId),
@@ -100,7 +102,7 @@ final audioTaskServiceProvider = Provider<AudioTaskService>((ref) {
     library: ref.watch(mediaLibraryServiceProvider),
     invoke: ref.watch(productionAudioInvokeProvider),
     query: ref.watch(productionAudioQueryProvider),
-    download: downloadAudioOutput,
+    download: (provider, url) => downloadAudioOutput(url, provider: provider),
     beforeCreate: results.beforeCreate,
     beforeSubmit: results.beforeSubmit,
     recoverSources: results.recover,

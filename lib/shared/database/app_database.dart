@@ -56,6 +56,7 @@ import '../models/audio/request.dart';
 export '../models/generation/task.dart';
 import '../models/production/asset_content.dart';
 import 'app_database_indexes.dart';
+import 'app_database_migrations.dart';
 
 part 'app_database.drift.dart';
 
@@ -126,7 +127,7 @@ class Novels extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-/// 集合不分作品类型，小说与剧本可同在一个集合；成员关系保存在 NovelCollectionMembers。
+/// 集合按作品类型分开：小说库和剧本库各有自己的集合；成员关系保存在 NovelCollectionMembers。
 class NovelCollections extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -136,6 +137,10 @@ class NovelCollections extends Table {
   TextColumn get filterMode => text().withDefault(const Constant('manual'))();
   TextColumn get filter =>
       text().nullable().map(const CollectionFilterConverter())();
+
+  /// 集合所属的作品类型。null 只留给各库共用的内置「全部」。
+  /// 取值由 Dart 侧 [validateContentKind] 校验。
+  TextColumn get contentKind => text().nullable()();
   DateTimeColumn get createdAt =>
       dateTime().clientDefault(() => DateTime.now())();
   DateTimeColumn get updatedAt =>
@@ -433,8 +438,14 @@ class ToolPermissionRules extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-/// 本地素材在某个渠道私域素材库里的认证记录；同一素材在不同渠道各有一条。
+/// 本地素材在渠道中的上传或认证记录；同一素材按渠道和用途分别保存。
 class ProviderAssets extends Table {
+  TextColumn get kind => textEnum<ProviderAssetKind>().withDefault(
+    const Constant('certification'),
+  )();
+  TextColumn get contextHash => text().nullable()();
+  TextColumn get remoteUrl => text().nullable()();
+  DateTimeColumn get expiresAt => dateTime().nullable()();
   TextColumn get id => text()();
   TextColumn get assetId => text()();
   TextColumn get providerId => text()();
@@ -459,6 +470,8 @@ class ProviderAssets extends Table {
 }
 
 class GenerationTasks extends Table {
+  TextColumn get imageOutputs =>
+      text().map(const ImageTaskOutputsConverter()).nullable()();
   TextColumn get kind => textEnum<GenerationKind>()();
   TextColumn get id => text()();
 
@@ -1266,7 +1279,7 @@ class AppDatabase extends _$AppDatabase {
 
   static _CachedAppDatabase? _cachedDatabase;
 
-  static const currentSchemaVersion = 3;
+  static const currentSchemaVersion = 6;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -1274,11 +1287,10 @@ class AppDatabase extends _$AppDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onUpgrade: (migrator, from, to) async {
+      final migrations = AppDatabaseMigrations(this);
       if (from < 2) {
         try {
-          await migrator.createTable(pluginRegistry);
-          await migrator.createTable(pluginStorage);
-          await migrator.createTable(pluginSecrets);
+          await migrations.migrateToV2(migrator);
         } catch (error, stackTrace) {
           _log.error(
             '[DB] CREATE plugin_registry/plugin_storage/plugin_secrets schema=2',
@@ -1290,16 +1302,46 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         try {
-          await migrator.createTable(pluginPermissions);
-          await migrator.createTable(pluginTasks);
-          await createPluginTaskIndexes(migrator.database);
-          if (from >= 2) {
-            await migrator.addColumn(pluginStorage, pluginStorage.deletedAt);
-          }
-          await customStatement('DROP TABLE IF EXISTS memories');
+          await migrations.migrateToV3(migrator, from: from);
         } catch (error, stackTrace) {
           _log.error(
             '[DB] CREATE plugin_permissions/plugin_tasks / ALTER plugin_storage / DROP memories schema=3',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          rethrow;
+        }
+      }
+      if (from < 4) {
+        try {
+          await migrations.migrateToV4(migrator);
+        } catch (error, stackTrace) {
+          _log.error(
+            '[DB] ALTER novel_collections ADD content_kind / split mixed collections schema=4',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          rethrow;
+        }
+      }
+      if (from < 5) {
+        try {
+          await migrations.migrateToV5(migrator);
+        } catch (error, stackTrace) {
+          _log.error(
+            '[DB] ALTER provider_assets schema=5',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          rethrow;
+        }
+      }
+      if (from < 6) {
+        try {
+          await migrations.migrateToV6(migrator);
+        } catch (error, stackTrace) {
+          _log.error(
+            '[DB] ALTER generation_tasks ADD image_outputs schema=6',
             error: error,
             stackTrace: stackTrace,
           );
@@ -1468,6 +1510,10 @@ extension AssetMediaSummary on AssetRow {
 }
 
 extension GenerationTaskRequest on GenerationTask {
+  List<String> get resultAssetIds => imageOutputs == null
+      ? [?resultAssetId]
+      : [for (final item in imageOutputs!.items) ?item.assetId];
+
   AudioRequest get audioRequest =>
       (requestJson as AudioGenerationRequest).request;
   VideoRequest get videoRequest =>

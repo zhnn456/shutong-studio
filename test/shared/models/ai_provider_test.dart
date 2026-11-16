@@ -6,6 +6,7 @@
 //   lib/shared/models/audio/request.dart
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reveric/shared/models/provider_brand.dart';
 import 'package:reveric/shared/models/ai_provider.dart';
 import 'package:reveric/shared/models/production/image_request.dart';
 import 'package:reveric/shared/models/audio/request.dart';
@@ -13,6 +14,53 @@ import 'package:reveric/shared/services/production/generate_orchestrator.dart';
 import 'package:reveric/shared/models/video/request.dart';
 
 void main() {
+  test('Qwen Token Plan persists independently and uses its own channel', () {
+    final provider = aiProviderBuiltinById('openai')!.copyWith(
+      id: 'token-plan',
+      builtin: false,
+      type: 'qwen_token_plan',
+      baseUrl: 'https://maas.qianwenaiapi.com/compatible-mode/v1',
+      apiKey: 'test-key',
+      imageModels: ['qwen-image-3.0-pro'],
+    );
+    final restored = AiProvider.fromJson(provider.toJson());
+    expect(customAiProviderTypes, contains(AiProviderType.qwen_token_plan));
+    expect(restored.typeEnum, AiProviderType.qwen_token_plan);
+    expect(
+      restored.effectiveBaseUrl,
+      'https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1',
+    );
+    expect(restored.supportedModelKinds, AiModelKind.values.toSet());
+    expect(
+      ProductionImageCapabilities(restored, 'qwen-image-3.0-pro').isSupported,
+      true,
+    );
+    expect(providerLogoAsset(restored.type), providerLogoAsset('qwen'));
+    expect(
+      providerChannelUrls[restored.type],
+      'https://www.qianwenai.com/benefits/tokenplan?shareCode=subTask..12980046..10274..,subTask..12980046..10274..',
+    );
+  });
+
+  test('MiniMax chat uses the Anthropic-compatible entry of its base URL', () {
+    expect(
+      aiProviderTypeConfigs[AiProviderType.minimax]!.supportedModelKinds,
+      containsAll([AiModelKind.chat, AiModelKind.video, AiModelKind.audio]),
+    );
+    for (final (input, expected) in [
+      ('https://api.minimaxi.com', 'https://api.minimaxi.com/anthropic'),
+      ('https://api.minimaxi.com/', 'https://api.minimaxi.com/anthropic'),
+      ('https://api.minimaxi.com/v1', 'https://api.minimaxi.com/anthropic'),
+      (
+        'https://api.minimaxi.com/anthropic',
+        'https://api.minimaxi.com/anthropic',
+      ),
+      ('https://relay.test/minimax', 'https://relay.test/minimax/anthropic'),
+    ]) {
+      expect(minimaxAnthropicBaseUrl(input), expected, reason: input);
+    }
+  });
+
   group('AI settings validation boundaries', () {
     final provider = aiProviderBuiltinById('openai')!.copyWith(
       id: 'custom',
@@ -29,10 +77,8 @@ void main() {
       defaultChatModelId: 'custom::chat',
       defaultChatReasoningEffort: 'high',
       defaultImageModelId: 'custom::image',
-      defaultEmbeddingModelId: 'custom::embedding',
       defaultPlannerModelId: 'custom::chat',
       defaultWriterModelId: 'custom::keep',
-      defaultSegmenterModelId: 'custom::chat',
     );
 
     test('loading and copying preserve unsupported provider selections', () {
@@ -86,15 +132,12 @@ void main() {
       expect(updated.defaultChatModelId, isNull);
       expect(updated.defaultChatReasoningEffort, isNull);
       expect(updated.defaultPlannerModelId, isNull);
-      expect(updated.defaultSegmenterModelId, isNull);
       expect(updated.defaultWriterModelId, 'custom::keep');
       expect(updated.defaultImageModelId, 'custom::image');
-      expect(updated.defaultEmbeddingModelId, 'custom::embedding');
       final mediaRemoved = original.updateConfig(
-        provider.copyWith(imageModels: [], embeddingModels: []),
+        provider.copyWith(imageModels: []),
       );
       expect(mediaRemoved.defaultImageModelId, isNull);
-      expect(mediaRemoved.defaultEmbeddingModelId, isNull);
       expect(mediaRemoved.defaultChatModelId, 'custom::chat');
       expect(mediaRemoved.defaultChatReasoningEffort, 'high');
     });
@@ -108,9 +151,7 @@ void main() {
       expect(removed.defaultChatModelId, isNull);
       expect(removed.defaultChatReasoningEffort, isNull);
       expect(removed.defaultImageModelId, isNull);
-      expect(removed.defaultEmbeddingModelId, isNull);
       expect(removed.defaultPlannerModelId, isNull);
-      expect(removed.defaultSegmenterModelId, isNull);
       expect(removed.defaultWriterModelId, 'other::chat');
     });
 
@@ -175,7 +216,6 @@ void main() {
       expect(provider.availableImageModels, config.imageModels);
       expect(provider.availableVideoModels, config.videoModels);
       expect(provider.availableAudioModels, config.audioModels);
-      expect(provider.availableEmbeddingModels, isEmpty);
       expect(provider.isValid, isTrue);
       expect(provider.copyWith(apiKey: '').isValid, isFalse);
       expect(
@@ -219,7 +259,7 @@ void main() {
     final added = settings.findConfigById(provider.id)!;
     expect(added.builtin, false);
     expect(added.availableModels, codexPresetModels);
-    expect(added.availableImageModels, ['gpt-image-2']);
+    expect(added.availableImageModels, codexPresetImageModels);
     expect(
       settings
           .updateConfig(added.copyWith(models: []))
@@ -265,7 +305,6 @@ void main() {
     expect(provider.enableValidationMessage, isNull);
     expect(provider.effectiveBaseUrl, 'https://chatgpt.com/backend-api/codex');
     expect(provider.supportsModelKind(AiModelKind.image), true);
-    expect(provider.supportsModelKind(AiModelKind.embedding), false);
   });
   test(
     'removing a preset clears model defaults and edits do not restore it',
@@ -281,18 +320,14 @@ void main() {
         providers: [preset],
         defaultChatModelId: 'deepseek::chat',
         defaultImageModelId: 'deepseek::image',
-        defaultEmbeddingModelId: 'deepseek::embedding',
         defaultPlannerModelId: 'deepseek::chat',
         defaultWriterModelId: 'deepseek::chat',
-        defaultSegmenterModelId: 'deepseek::chat',
       );
       final removed = settings.removeConfig('deepseek');
       expect(removed.defaultChatModelId, isNull);
       expect(removed.defaultImageModelId, isNull);
-      expect(removed.defaultEmbeddingModelId, isNull);
       expect(removed.defaultPlannerModelId, isNull);
       expect(removed.defaultWriterModelId, isNull);
-      expect(removed.defaultSegmenterModelId, isNull);
       expect(
         removed
             .updateConfig(aiProviderBuiltinById('openai')!)

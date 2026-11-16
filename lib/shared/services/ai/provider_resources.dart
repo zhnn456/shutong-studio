@@ -52,8 +52,7 @@ Map<String, dynamic> providerModelResource(
   final adapterSupportsModel = kind == 'chat'
       ? provider.supportsModelKind(AiModelKind.chat)
       : kind == 'image'
-      ? ProductionImageCapabilities.supports(provider) &&
-            lookupImageChannelModel(provider.type, model) != null
+      ? ProductionImageCapabilities(provider, model).isSupported
       : capabilities != null;
   final reason = !provider.enabled
       ? 'provider_disabled'
@@ -72,6 +71,12 @@ Map<String, dynamic> providerModelResource(
     'kind': kind,
     'available': reason == null,
     'capabilities_known': capabilities != null,
+    // 渠道型号 ID 各异，目录 ID 让 Agent 按统一型号选择提示词格式。
+    if (kind == 'video')
+      'catalog_model_id': lookupVideoChannelModel(
+        provider.type,
+        model,
+      )?.catalogId,
     'unavailable_reason': reason,
     if (capabilities == null)
       'capabilities_reason':
@@ -108,6 +113,7 @@ Map<String, dynamic>? _image(AiProvider provider, String model) {
       'max_pixels': effective.maxPixels,
       'max_edit_pixels': effective.maxEditPixels,
       'max_aspect_ratio': effective.maxAspectRatio,
+      'complexity': effective.complexityLevels.toList(),
     },
     // Only channel defaults actually consumed by the adapter are advertised.
     'defaults': {
@@ -119,6 +125,7 @@ Map<String, dynamic>? _image(AiProvider provider, String model) {
         'watermark': defaults.watermark,
         'prompt_extend': defaults.promptExtend,
         'prompt_optimization': defaults.promptOptimization,
+        'complexity': defaults.complexity,
       },
     },
   };
@@ -134,7 +141,9 @@ Map<String, dynamic>? _video(AiProvider provider, String model) {
   return {
     'capabilities': {
       'modes': [
-        'text',
+        if (channel.protocolOptions.requiredMode == null ||
+            channel.protocolOptions.requiredMode == VideoMode.text)
+          'text',
         if (caps.frameRoles.contains(VideoInputRole.first_frame)) 'first_frame',
         if (caps.frameRoles.contains(VideoInputRole.first_frame) &&
             caps.frameRoles.contains(VideoInputRole.last_frame))
@@ -159,6 +168,7 @@ Map<String, dynamic>? _video(AiProvider provider, String model) {
         if (caps.allowsReferenceMode)
           ...kinds.map((kind) => 'reference_${kind.name}'),
       ],
+      'max_middle_frames': caps.maxMiddleFrames,
       'max_references': caps.maxReferences,
       'max_prompt_characters': caps.maxPromptCharacters,
       'supports_audio_only_reference': caps.supportsAudioOnlyReference,
@@ -208,6 +218,11 @@ Map<String, dynamic>? _audio(AiProvider provider, String model) {
   final caps = channel.capabilities;
   return {
     'capabilities': {
+      'speech': caps.speech,
+      'requires_voice': caps.requiresVoice,
+      'supports_instructions': caps.supportsInstructions,
+      'requires_instructions': caps.requiresInstructions,
+      'voices': caps.voices,
       'input_types': ['text', ...caps.references.keys],
       'max_prompt_characters': caps.maxPromptCharacters,
       'max_output_duration_ms': caps.maxOutputDurationMs,
@@ -221,6 +236,7 @@ Map<String, dynamic>? _audio(AiProvider provider, String model) {
         AudioProtocol.atlascloud_audio => [
           channel.requestDefaults.responseFormat!,
         ],
+        AudioProtocol.moss_audio => ['mp3', 'wav'],
         AudioProtocol.minimax_music => ['mp3'],
         AudioProtocol.openrouter_speech => ['pcm', 'mp3'],
         AudioProtocol.new_api_speech =>

@@ -10,6 +10,14 @@ import 'package:reveric/shared/localization/locale_keys.dart';
 import 'package:reveric/shared/models/content_kind.dart';
 
 void main() {
+  test('canvas and standalone screenplay beats have no navigation entry', () {
+    for (final kind in [contentKindNovel, contentKindScreenplay]) {
+      final labels = railGroupLabelKeysFor(kind).expand((group) => group);
+      expect(labels, isNot(contains(LocaleKeys.workspaceCanvas)));
+      expect(labels, isNot(contains(LocaleKeys.screenplayBeats)));
+    }
+  });
+
   // 创作组是第二组（系统 / 创作 / 世界观 / AI / 灵感）。
   const writingGroupIndex = 1;
 
@@ -21,6 +29,21 @@ void main() {
       LocaleKeys.workspaceSidebarOutline,
       LocaleKeys.workspaceCharacters,
       LocaleKeys.workspaceSidebarForeshadowing,
+      LocaleKeys.workspaceSidebarAssets,
+    ]);
+  });
+
+  test('screenplay splits production into storyboard and canvas entries', () {
+    final groups = railGroupLabelKeysFor(contentKindScreenplay);
+
+    expect(groups[writingGroupIndex], <String>[
+      LocaleKeys.screenplayScript,
+      LocaleKeys.screenplayOutline,
+      LocaleKeys.workspaceCharacters,
+      LocaleKeys.workspaceSidebarForeshadowing,
+      LocaleKeys.screenplayScenes,
+      LocaleKeys.storyboardBoard,
+      LocaleKeys.productionCanvas,
       LocaleKeys.workspaceSidebarAssets,
     ]);
   });

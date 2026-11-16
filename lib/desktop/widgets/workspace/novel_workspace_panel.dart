@@ -34,6 +34,8 @@
 //   assets/translations/zh-CN/common.json
 //   assets/translations/en/screenplay.json
 //   assets/translations/zh-CN/screenplay.json
+import '../../../shared/app_config.dart';
+
 import '../../features/production/region.dart';
 import '../../features/production/status.dart';
 import 'dart:async';
@@ -87,7 +89,6 @@ import 'foreshadowing_editor.dart';
 import '../history/resource_history_button.dart';
 import '../../features/canvas/widgets/canvas_region.dart';
 import '../../features/map/map_studio_page.dart';
-import '../../features/screenplay/beats.dart';
 import '../../features/screenplay/outline.dart';
 import '../../features/screenplay/overview.dart';
 import '../../features/screenplay/scenes.dart';
@@ -314,9 +315,9 @@ class NovelWorkspacePanel extends ConsumerWidget {
     // 画布铺满到底，工具簇贴在左下角；制片的画布 / 列表视图同理，底栏统计只跟着分镜视图。
     final showStatusBar = switch (selection.section) {
       NovelWorkspaceSection.maps || NovelWorkspaceSection.canvas => false,
-      NovelWorkspaceSection.storyboard => ref.watch(
-        productionSegmentsViewProvider(novel.id),
-      ),
+      NovelWorkspaceSection.storyboard =>
+        ref.watch(productionViewProvider(novel.id)) ==
+            ProductionViewMode.segments,
       _ => true,
     };
 
@@ -357,8 +358,16 @@ class NovelWorkspacePanel extends ConsumerWidget {
     // 具体类型只在选中条目后作为中间级出现（图鉴 > 势力 > 玄冥宗），
     // 未选中时不显示类型，避免暗示当前只在看某一类。
     final isCompendium = isCompendiumSection(selection.section);
+    // 制片在左栏拆成「分镜」「画布」两个入口，面包屑跟着当前视图走。
     final sectionLabel = isCompendium
         ? context.t(LocaleKeys.workspaceSidebarCompendium)
+        : selection.section == NovelWorkspaceSection.storyboard
+        ? context.t(
+            ref.watch(productionViewProvider(novel.id)) ==
+                    ProductionViewMode.segments
+                ? LocaleKeys.storyboardBoard
+                : LocaleKeys.productionCanvas,
+          )
         : _labelForSection(context, selection.section);
     final canShowActions = _showsHeaderActions();
     final sourceNovel =
@@ -366,7 +375,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
             novel.sourceNovelId != null
         ? ref.watch(novelProvider(novel.sourceNovelId!)).value
         : null;
-    // 制片里打开剪辑或导演台时，面包屑在「制片」后多一级子页面名称。
+    // 制片里打开剪辑或导演台时，面包屑在「分镜」/「画布」后多一级子页面名称。
     final databasePath = novel.contentDatabasePath;
     final subpage =
         selection.section == NovelWorkspaceSection.storyboard &&
@@ -667,7 +676,9 @@ class NovelWorkspacePanel extends ConsumerWidget {
       case NovelWorkspaceSection.entity_graph:
         return _buildEntityGraphPanel(context);
       case NovelWorkspaceSection.canvas:
-        return _buildCanvasPanel(context);
+        return ideationCanvasEnabled
+            ? _buildCanvasPanel(context)
+            : const SizedBox.shrink();
       case NovelWorkspaceSection.screenplay_script:
         return ScreenplayScriptRegion(
           novel: novel,
@@ -678,8 +689,6 @@ class NovelWorkspacePanel extends ConsumerWidget {
           novel: novel,
           registerFlush: onRegisterScreenplaySceneFlush ?? (_) {},
         );
-      case NovelWorkspaceSection.screenplay_beats:
-        return ScreenplayBeatsRegion(novel: novel);
       case NovelWorkspaceSection.storyboard:
         return ProductionRegion(
           novel: novel,
@@ -708,6 +717,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
         return ScreenplayOverviewRegion(
           novel: novel,
           screenplayId: screenplayId,
+          onEditNovel: onEditNovel,
         );
       },
     );
@@ -1154,7 +1164,6 @@ class NovelWorkspacePanel extends ConsumerWidget {
       case NovelWorkspaceSection.canvas:
       case NovelWorkspaceSection.screenplay_script:
       case NovelWorkspaceSection.screenplay_outline:
-      case NovelWorkspaceSection.screenplay_beats:
       case NovelWorkspaceSection.storyboard:
       case NovelWorkspaceSection.screenplay_scenes:
         return null;
@@ -1219,7 +1228,6 @@ class NovelWorkspacePanel extends ConsumerWidget {
       case NovelWorkspaceSection.story_progress:
       case NovelWorkspaceSection.screenplay_script:
       case NovelWorkspaceSection.screenplay_outline:
-      case NovelWorkspaceSection.screenplay_beats:
       case NovelWorkspaceSection.storyboard:
       case NovelWorkspaceSection.screenplay_scenes:
         return false;
@@ -1406,7 +1414,6 @@ class NovelWorkspacePanel extends ConsumerWidget {
       case NovelWorkspaceSection.canvas:
       case NovelWorkspaceSection.screenplay_script:
       case NovelWorkspaceSection.screenplay_outline:
-      case NovelWorkspaceSection.screenplay_beats:
       case NovelWorkspaceSection.storyboard:
       case NovelWorkspaceSection.screenplay_scenes:
         return const <dynamic>[];
@@ -1528,7 +1535,6 @@ class NovelWorkspacePanel extends ConsumerWidget {
         return selectedCanvasName ?? context.t(LocaleKeys.workspaceCanvas);
       case NovelWorkspaceSection.screenplay_script:
       case NovelWorkspaceSection.screenplay_outline:
-      case NovelWorkspaceSection.screenplay_beats:
       case NovelWorkspaceSection.storyboard:
       case NovelWorkspaceSection.screenplay_scenes:
         return context.t(sectionLocaleKey(selection.section));

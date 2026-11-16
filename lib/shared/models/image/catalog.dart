@@ -19,7 +19,28 @@ class ImageModelCatalogEntry {
   final ImageRequestDefaults requestDefaults;
 }
 
-const imageModelsCatalog = <String, ImageModelCatalogEntry>{
+/// 运行时目录：获取模型后可登记站点返回的动态型号。
+final imageModelsCatalog = <String, ImageModelCatalogEntry>{
+  for (final id in ['midjourney', 'midjourney-v8.2'])
+    id: ImageModelCatalogEntry(
+      capabilities: ImageModelCapabilities(
+        ratios: {
+          'auto',
+          '1:1',
+          '16:9',
+          '9:16',
+          '4:3',
+          '3:4',
+          '3:2',
+          '2:3',
+          '21:9',
+        },
+        resolutions: {'auto'},
+      ),
+    ),
+  // https://platform.moss.cn/docs/reference/images-generations/
+  'moss-image-base-1.0': _mossImage,
+  'moss-image-sft-1.0': _mossImage,
   // https://agnes-ai.com/zh-Hans/docs/agnes-image-20-flash
   'agnes-image-2.0-flash': ImageModelCatalogEntry(
     capabilities: ImageModelCapabilities(
@@ -106,6 +127,12 @@ const imageModelsCatalog = <String, ImageModelCatalogEntry>{
     ),
   ),
   // https://docs.volcengine.com/docs/ark/image-generation-api
+  // Seedream 5.5：1K / 1.5K / 2K，总像素与宽高比同 5.0 pro，最多 10 张参考图。
+  // 不支持组图、联网搜索和 fast 提示词优化。
+  'seedream-5.5': ImageModelCatalogEntry(
+    capabilities: _seedream50ProCapabilities,
+    requestDefaults: _seedream50ProDefaults,
+  ),
   'seedream-5.0-pro': ImageModelCatalogEntry(
     capabilities: _seedream50ProCapabilities,
     requestDefaults: _seedream50ProDefaults,
@@ -336,6 +363,14 @@ const imageModelsCatalog = <String, ImageModelCatalogEntry>{
   'ming-image-0.1-design': ImageModelCatalogEntry(
     capabilities: _mingImage01DesignCapabilities,
   ),
+  'gpt-image-2.6-sunburst': ImageModelCatalogEntry(
+    capabilities: _gptImage26Capabilities,
+    requestDefaults: _gptImage26Defaults,
+  ),
+  'gpt-image-2.6-flare': ImageModelCatalogEntry(
+    capabilities: _gptImage26Capabilities,
+    requestDefaults: _gptImage26Defaults,
+  ),
   'gpt-image-2.5-sunburst': ImageModelCatalogEntry(
     capabilities: _gptImage25SunburstCapabilities,
   ),
@@ -362,6 +397,14 @@ const imageModelsCatalog = <String, ImageModelCatalogEntry>{
   ),
   'mai-image-2.5-pro': ImageModelCatalogEntry(
     capabilities: _maiImage25ProCapabilities,
+  ),
+  'k3-edit': ImageModelCatalogEntry(
+    capabilities: ImageModelCapabilities(
+      ratios: {'1:1', '4:3', '3:2', '16:9', '4:5', '2:3', '9:16'},
+      resolutions: {'1K', '2K'},
+      minReferences: 1,
+      maxReferences: 8,
+    ),
   ),
   'krea-2-large': ImageModelCatalogEntry(capabilities: _krea2LargeCapabilities),
   'krea-2-medium': ImageModelCatalogEntry(
@@ -448,7 +491,7 @@ const imageModelsCatalog = <String, ImageModelCatalogEntry>{
     capabilities: _recraftV41UtilityProCapabilities,
   ),
   'gpt-5.4-image-2': ImageModelCatalogEntry(
-    capabilities: _gptImage25SunburstCapabilities,
+    capabilities: _gpt54Image2Capabilities,
   ),
   'gemini-3.1-flash-image-preview': ImageModelCatalogEntry(
     capabilities: _gemini31FlashImageCapabilities,
@@ -503,6 +546,16 @@ const imageModelsCatalog = <String, ImageModelCatalogEntry>{
   ),
   'gpt-5-image': ImageModelCatalogEntry(
     capabilities: _gpt5ImageMiniCapabilities,
+  ),
+  // https://platform.minimax.io/docs/api-reference/image-generation-h3-generations
+  // 比例加面积档位出图；显式宽高的总像素为 655360–20000000，宽高比 1:3–3:1。
+  'MiniMax-H3-Image': ImageModelCatalogEntry(
+    capabilities: _minimaxH3ImageCapabilities,
+    requestDefaults: _minimaxH3ImageDefaults,
+  ),
+  'MiniMax-H3-Image-Highspeed': ImageModelCatalogEntry(
+    capabilities: _minimaxH3ImageCapabilities,
+    requestDefaults: _minimaxH3ImageDefaults,
   ),
   'gemini-2.5-flash-image': ImageModelCatalogEntry(
     capabilities: ImageModelCapabilities(
@@ -673,9 +726,28 @@ const _mingImage01DesignCapabilities = ImageModelCapabilities(
 
 const _gptImage25SunburstCapabilities = ImageModelCapabilities(
   ratios: {'1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16', '21:9', 'auto'},
+  resolutions: {'1K', '2K', '4K'},
+  minReferences: 0,
+  maxReferences: 16,
+);
+
+const _gpt54Image2Capabilities = ImageModelCapabilities(
+  ratios: {'1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16', '21:9', 'auto'},
   resolutions: {'auto'},
   minReferences: 0,
   maxReferences: 16,
+);
+
+const _gptImage26Capabilities = ImageModelCapabilities(
+  ratios: {'1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16', '21:9', 'auto'},
+  resolutions: {'1K', '2K', '4K'},
+  minReferences: 0,
+  maxReferences: 16,
+  complexityLevels: {'low', 'medium', 'high'},
+);
+
+const _gptImage26Defaults = ImageRequestDefaults(
+  complexity: ConfigValue('high'),
 );
 
 const _maiImage26Capabilities = ImageModelCapabilities(
@@ -809,6 +881,34 @@ const _gpt5ImageMiniCapabilities = ImageModelCapabilities(
   maxReferences: 16,
 );
 
+const _minimaxH3ImageCapabilities = ImageModelCapabilities(
+  ratios: {
+    'auto',
+    '1:1',
+    '16:9',
+    '9:16',
+    '4:3',
+    '3:4',
+    '3:2',
+    '2:3',
+    '2:1',
+    '1:2',
+    '21:9',
+    '3:1',
+    '1:3',
+  },
+  resolutions: {'1K', '2K', '4K'},
+  maxReferences: 16,
+  minPixels: ConfigValue(655360),
+  maxPixels: ConfigValue(20000000),
+  maxAspectRatio: ConfigValue(3),
+);
+
+const _minimaxH3ImageDefaults = ImageRequestDefaults(
+  responseFormat: ConfigValue('b64_json'),
+  outputFormat: ConfigValue('png'),
+);
+
 const _agnesImage20FlashDefaults = ImageRequestDefaults(
   size: ConfigValue('1024x1024'),
   responseFormat: ConfigValue('b64_json'),
@@ -838,3 +938,24 @@ String? recognizeImageModel(String? modelId) =>
 
 ImageModelCatalogEntry? lookupImageModel(String? modelId) =>
     imageModelsCatalog[recognizeImageModel(modelId)];
+
+const _mossImage = ImageModelCatalogEntry(
+  capabilities: ImageModelCapabilities(
+    ratios: {'1:1', '16:9', '9:16', '4:3', '3:4'},
+    resolutions: {'1K'},
+    sizes: {
+      '1K': {
+        '1:1': '1024x1024',
+        '16:9': '1536x864',
+        '9:16': '864x1536',
+        '4:3': '1024x768',
+        '3:4': '768x1024',
+      },
+    },
+    maxPixels: ConfigValue(2097152),
+  ),
+  requestDefaults: ImageRequestDefaults(
+    size: ConfigValue('1024x1024'),
+    responseFormat: ConfigValue('url'),
+  ),
+);

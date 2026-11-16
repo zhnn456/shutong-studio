@@ -1,4 +1,4 @@
-// 职责: 桌面端首页 — 展示作品库（小说与剧本同库）、最近 AI 会话与全局智能体入口。
+// 职责: 桌面端首页 — 分别展示小说库与剧本库、最近 AI 会话与全局智能体入口。
 // 关联文件:
 //   lib/shared/components/reveric_dialog.dart
 //   lib/shared/widgets/confirm_dialog.dart
@@ -27,7 +27,12 @@
 //   assets/translations/zh-CN/agent_studio.json
 //   assets/translations/en/editor.json
 //   assets/translations/zh-CN/editor.json
+//   assets/translations/en/settings.json
+//   assets/translations/en/provider.json
+//   assets/translations/zh-CN/settings.json
+//   assets/translations/zh-CN/provider.json
 //   lib/shared/widgets/unsaved_changes_dialog.dart
+//   lib/shared/widgets/settings/leave_guard.dart
 // 遵循的 Rules:
 //   .agents/rules/hooks.md
 import 'dart:async' show unawaited;
@@ -53,7 +58,6 @@ import '../../shared/models/novel_agent_skill.dart';
 import '../../shared/models/subagent.dart';
 import '../../shared/providers/ai_mode_processing.dart';
 import '../../shared/models/novel.dart';
-import '../../shared/models/novel_form_prefill.dart';
 import '../../shared/providers/novel_providers.dart';
 import '../../shared/providers/novel_agent_skill_providers.dart';
 import '../../shared/services/novel_import.dart';
@@ -63,23 +67,32 @@ import '../../shared/theme/theme.dart';
 import '../../shared/logger/app_logger.dart';
 import '../../shared/widgets/app_background.dart';
 import '../../shared/widgets/confirm_dialog.dart';
+import '../../shared/widgets/settings/leave_guard.dart';
 import '../../shared/widgets/unsaved_changes_dialog.dart';
 import '../../shared/services/demo_novel.dart';
 import '../widgets/agent_management/ai_shortcut_action_edit_panel.dart';
 import '../widgets/agent_management/agent_model_settings_page.dart';
+import '../widgets/agent_management/plugins_page.dart';
+import '../widgets/agent_management/ai_assistant_page.dart';
+import '../widgets/agent_management/ai_providers_page.dart';
+import '../widgets/agent_management/mcp_page.dart';
 import '../widgets/agent_management/expert_team_page.dart';
 import '../features/agent_skills/setup_panel.dart';
 import '../features/agent_skills/setup_edit_panel.dart';
 import '../features/agent_skills/skill_revision_history_dialog.dart';
 import '../widgets/desktop_window_frame.dart';
 import '../widgets/desktop_save_shortcut.dart';
+import '../widgets/novel_create_submitter.dart';
 import '../widgets/novel_form_dialog.dart';
 import '../widgets/novel_import_dialog.dart';
+import '../../shared/services/screenplay_import.dart';
+import '../../shared/widgets/screenplay/import_dialog.dart';
 import '../widgets/home/library_home_panel.dart';
 import '../widgets/settings/settings_dialog.dart';
 import '../../shared/widgets/support/customer_service_feedback_dialog.dart';
 import '../widgets/agent_management/subagent_edit_panel.dart';
 import '../widgets/agent_management/subagent_prompt_edit_panel.dart';
+import '../widgets/community_row.dart';
 import '../widgets/user_profile_bar.dart';
 import '../widgets/update_entry.dart';
 import 'home_management_lists.dart';
@@ -106,7 +119,10 @@ sealed class _HomeContentSelection {
 }
 
 final class _HomeLibrarySelection extends _HomeContentSelection {
-  const _HomeLibrarySelection();
+  const _HomeLibrarySelection(this.contentKind);
+
+  /// 小说库与剧本库各是一个独立入口。
+  final String contentKind;
 }
 
 final class _HomeSubAgentSelection extends _HomeContentSelection {
@@ -127,6 +143,22 @@ final class _HomeAgentModelSettingsSelection extends _HomeContentSelection {
 
 final class _HomeExpertTeamSelection extends _HomeContentSelection {
   const _HomeExpertTeamSelection();
+}
+
+final class _HomeAiProvidersSelection extends _HomeContentSelection {
+  const _HomeAiProvidersSelection();
+}
+
+final class _HomeAiAssistantSelection extends _HomeContentSelection {
+  const _HomeAiAssistantSelection();
+}
+
+final class _HomeMcpSelection extends _HomeContentSelection {
+  const _HomeMcpSelection();
+}
+
+final class _HomePluginsSelection extends _HomeContentSelection {
+  const _HomePluginsSelection();
 }
 
 final class _HomeSkillListSelection extends _HomeContentSelection {
@@ -251,13 +283,21 @@ class NovelHomePage extends HookConsumerWidget {
     final novelsAsync = ref.watch(novelsProvider);
     final recentSessionsAsync = ref.watch(_recentSessionsProvider(3));
     final selection = useState<_HomeContentSelection>(
-      const _HomeLibrarySelection(),
+      const _HomeLibrarySelection(contentKindNovel),
     );
     final novelSerial = useState(1);
     final isDeletingNovel = useState(false);
     // 顶部问候栏按钮（新建作品、导入 TXT）和 DesktopWindowFrame 的标题栏拖拽层重叠；
     // 将它注册为排除区域，避免双击按钮时触发窗口最大化/还原。
-    final greetingHeaderKey = useMemoized(() => GlobalKey(), []);
+    // 小说库和剧本库同时挂载，各用一个 key，只登记当前可见的那个。
+    final greetingHeaderKeys = useMemoized(
+      () => {
+        contentKindNovel: GlobalKey(),
+        contentKindScreenplay: GlobalKey(),
+        contentKindCanvas: GlobalKey(),
+      },
+      [],
+    );
     // 编辑面板标题栏按钮（Save / Cancel / Delete 等）同样在标题栏拖拽层内；
     // 共用一个 key，因为同一时刻只有一个面板可见。
     final editPanelHeaderKey = useMemoized(() => GlobalKey(), []);
@@ -268,105 +308,10 @@ class NovelHomePage extends HookConsumerWidget {
     final activeAgentPanelHasChanges = useRef<bool Function()?>(null);
     final activeAgentPanelIsBlankCreateDraft = useRef<bool Function()?>(null);
     final pluginPageHasChanges = useRef<bool Function()?>(null);
+    // 供应商草稿、MCP 编辑表单沿用设置区的离开守卫，切换侧栏前由它们自行询问。
+    final settingsLeave = useMemoized(SettingsLeaveController.new);
     final sessionsExpanded = _homeSessionsExpanded;
     useListenable(sessionsExpanded);
-    Future<bool> createNovel({
-      required BuildContext feedbackContext,
-      required String title,
-      required String authorName,
-      required String description,
-      required String category,
-      required String type,
-      required String contentKind,
-      required int? plannedEpisodeCount,
-      required String? sourceNovelId,
-      required String? coverSourcePath,
-      required bool removeCover,
-      required List<String> tags,
-    }) async {
-      final actions = ref.read(novelActionsProvider);
-      final messenger = ScaffoldMessenger.of(feedbackContext);
-      final navigator = Navigator.of(context);
-
-      try {
-        final novelId = await actions.createNovel(
-          title: title,
-          authorName: authorName,
-          description: description,
-          category: category,
-          type: type,
-          contentKind: contentKind,
-          plannedEpisodeCount: plannedEpisodeCount,
-          sourceNovelId: sourceNovelId,
-          coverSourcePath: coverSourcePath,
-          tags: tags,
-        );
-
-        if (!context.mounted) {
-          return true;
-        }
-        novelSerial.value += 1;
-        // Pop the dialog before pushing a new route, otherwise
-        // handleSubmit's Navigator.of(context).pop() would pop
-        // NovelEditorPage instead of the dialog.
-        if (context.mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
-        }
-        if (context.mounted) {
-          navigator.push(
-            MaterialPageRoute(
-              builder: (_) => WorkspaceEditorPage(
-                novelId: novelId,
-                openChatOnEntry: contentKind == contentKindNovel,
-              ),
-            ),
-          );
-        }
-        return true;
-      } on NovelFreeLimitException catch (error) {
-        if (!feedbackContext.mounted) {
-          return false;
-        }
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              context.t(
-                LocaleKeys.settingsLicenseFreeLimitReached,
-                namedArgs: <String, String>{'limit': '${error.limit}'},
-              ),
-            ),
-          ),
-        );
-        return false;
-      } on NovelTitleConflictException catch (error) {
-        _log.error('createNovel title conflict', error: error);
-        if (!feedbackContext.mounted) {
-          return false;
-        }
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              context.t(
-                LocaleKeys.libraryDuplicateName,
-                namedArgs: {'name': error.title},
-              ),
-            ),
-          ),
-        );
-        return false;
-      } catch (error) {
-        _log.error('caught error=$error', error: error);
-        if (!feedbackContext.mounted) {
-          return false;
-        }
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(context.t(LocaleKeys.libraryCreateNovelFailed)),
-          ),
-        );
-        return false;
-      }
-    }
 
     // 快速开书：占位建书后直接进编辑器，其余设定交给创作向导 onboarding。
     // 从首页顶栏直接触发（无对话框可关），故不做 dialog pop。
@@ -544,10 +489,39 @@ class NovelHomePage extends HookConsumerWidget {
       );
     }
 
-    void openCreateNovelDialog({
-      String initialContentKind = contentKindNovel,
-      NovelFormPrefill? prefill,
-    }) {
+    Future<void> createCanvas() async {
+      try {
+        final id = await ref
+            .read(novelActionsProvider)
+            .createCanvas(
+              defaultTitle: context.t(LocaleKeys.libraryDefaultCanvasTitle),
+            );
+        if (context.mounted) {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => WorkspaceEditorPage(novelId: id),
+            ),
+          );
+        }
+      } catch (error, stack) {
+        _log.error('Create canvas failed', error: error, stackTrace: stack);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.t(LocaleKeys.editorSaveNovelFailed)),
+            ),
+          );
+        }
+      }
+    }
+
+    void openCreateNovelDialog(String contentKind) {
+      if (contentKind == contentKindCanvas) {
+        createCanvas();
+        return;
+      }
+
+      final isNovel = contentKind == contentKindNovel;
       final novels = novelsAsync.maybeWhen(
         data: (list) => list,
         orElse: () => <Novel>[],
@@ -558,42 +532,21 @@ class NovelHomePage extends HookConsumerWidget {
         context: context,
         builder: (_) => DialogFeedback.scope(
           builder: (dialogContext) => NovelFormDialog.create(
-            initialContentKind: initialContentKind,
-            prefill: prefill,
-            onSubmit:
-                ({
-                  required title,
-                  required authorName,
-                  required description,
-                  required category,
-                  required type,
-                  required contentKind,
-                  required plannedEpisodeCount,
-                  required sourceNovelId,
-                  required coverSourcePath,
-                  required removeCover,
-                  required tags,
-                }) => createNovel(
-                  feedbackContext: dialogContext,
-                  title: title,
-                  authorName: authorName,
-                  description: description,
-                  category: category,
-                  type: type,
-                  contentKind: contentKind,
-                  plannedEpisodeCount: plannedEpisodeCount,
-                  sourceNovelId: sourceNovelId,
-                  coverSourcePath: coverSourcePath,
-                  removeCover: removeCover,
-                  tags: tags,
-                ),
-            onQuickStart: () {
-              // 先关表单对话框，再走占位建书 + 进编辑器。
-              Navigator.of(context, rootNavigator: true).pop();
-              quickStartNovel();
-            },
-            // 改编入口已经带着原著信息进来，演示小说快捷按钮在这里没有意义。
-            onCreateDemoNovel: hasDemo || prefill != null
+            initialContentKind: contentKind,
+            onSubmit: createWorkSubmitter(
+              context,
+              ref,
+              feedbackContext: dialogContext,
+            ),
+            // 快速开书和演示作品都只建小说，剧本库不提供。
+            onQuickStart: !isNovel
+                ? null
+                : () {
+                    // 先关表单对话框，再走占位建书 + 进编辑器。
+                    Navigator.of(context, rootNavigator: true).pop();
+                    quickStartNovel();
+                  },
+            onCreateDemoNovel: !isNovel || hasDemo
                 ? null
                 : () => createDemoNovelWithNavigation(
                     context,
@@ -605,18 +558,57 @@ class NovelHomePage extends HookConsumerWidget {
       );
     }
 
+    // 导入剧本：以文件名建剧本并把原文存为资料，进编辑器后由 AI 按提示词分段读取改编。
+    Future<void> importScreenplay() async {
+      final request = await showScreenplayImport(context, mobile: false);
+      if (!context.mounted || request == null) {
+        return;
+      }
+      final actions = ref.read(novelActionsProvider);
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context);
+      final kickoffTitle = context.t(LocaleKeys.libraryImportScreenplay);
+      try {
+        final title = request.source.title.isEmpty
+            ? context.t(LocaleKeys.libraryUntitledNovel)
+            : request.source.title;
+        final screenplayId = await actions.createImportedScreenplay(
+          title: title,
+          sourceContent: request.source.content,
+        );
+        if (!context.mounted) {
+          return;
+        }
+        novelSerial.value += 1;
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => WorkspaceEditorPage(
+              novelId: screenplayId,
+              initialChatKickoffPrompt: buildScreenplayImportKickoffPrompt(
+                prompt: request.prompt,
+                materialTitle: title,
+                lineCount: request.source.lineCount,
+              ),
+              initialChatKickoffTitle: kickoffTitle,
+            ),
+          ),
+        );
+      } catch (error) {
+        _log.error('importScreenplay caught error=$error', error: error);
+        if (!context.mounted) {
+          return;
+        }
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(context.t(LocaleKeys.libraryCreateNovelFailed)),
+          ),
+        );
+      }
+    }
+
     /// 从一本小说出发新建改编剧本：类型、来源与原著信息预填，其余交给用户确认。
     void adaptNovel(Novel novel) {
-      openCreateNovelDialog(
-        initialContentKind: contentKindScreenplay,
-        prefill: NovelFormPrefill.adaptationOf(
-          novel,
-          title: context.t(
-            LocaleKeys.libraryAdaptationTitle,
-            namedArgs: {'title': novel.title},
-          ),
-        ),
-      );
+      showNovelAdaptationDialog(context, ref, novel);
     }
 
     Future<void> openImportNovelDialog() async {
@@ -641,9 +633,11 @@ class NovelHomePage extends HookConsumerWidget {
           if (!context.mounted) {
             return;
           }
+          // 提示里带了章节标题的格式要求，多留些时间读完。
           messenger.showSnackBar(
             SnackBar(
               content: Text(context.t(LocaleKeys.libraryImportTxtEmpty)),
+              duration: const Duration(seconds: 8),
             ),
           );
           return;
@@ -701,9 +695,13 @@ class NovelHomePage extends HookConsumerWidget {
           ),
         ),
       );
+
       navigator.push(
         MaterialPageRoute(
-          builder: (_) => WorkspaceEditorPage(novelId: importResult.novelId),
+          builder: (_) => WorkspaceEditorPage(
+            novelId: importResult.novelId,
+            openChatOnEntry: true,
+          ),
         ),
       );
     }
@@ -730,7 +728,11 @@ class NovelHomePage extends HookConsumerWidget {
       _HomeContentSelection nextSelection,
     ) {
       return switch ((currentSelection, nextSelection)) {
-        (_HomeLibrarySelection(), _HomeLibrarySelection()) => true,
+        (
+          _HomeLibrarySelection(contentKind: final currentKind),
+          _HomeLibrarySelection(contentKind: final nextKind),
+        ) =>
+          currentKind == nextKind,
         (
           _HomeSubAgentSelection(agent: final currentAgent),
           _HomeSubAgentSelection(agent: final nextAgent),
@@ -747,6 +749,10 @@ class NovelHomePage extends HookConsumerWidget {
         ) =>
           true,
         (_HomeExpertTeamSelection(), _HomeExpertTeamSelection()) => true,
+        (_HomeAiProvidersSelection(), _HomeAiProvidersSelection()) => true,
+        (_HomeAiAssistantSelection(), _HomeAiAssistantSelection()) => true,
+        (_HomeMcpSelection(), _HomeMcpSelection()) => true,
+        (_HomePluginsSelection(), _HomePluginsSelection()) => true,
         (_HomeSkillListSelection(), _HomeSkillListSelection()) => true,
         (
           _HomeGlobalSkillSelection(skill: final currentSkill),
@@ -820,6 +826,9 @@ class NovelHomePage extends HookConsumerWidget {
 
     /// 返回 true 表示「拦截」（不允许离开）；false 表示放行。
     Future<bool> guardUnsavedChanges() async {
+      if (!await settingsLeave.confirmLeave()) {
+        return true;
+      }
       if (isBlankCreateDraftSelection()) {
         clearActiveAgentHasChanges();
         return false;
@@ -869,7 +878,7 @@ class NovelHomePage extends HookConsumerWidget {
         _HomeGlobalSkillSelection() => const _HomeSkillListSelection(),
         _HomeShortcutActionSelection() =>
           const _HomeShortcutActionListSelection(),
-        _ => const _HomeLibrarySelection(),
+        _ => const _HomeLibrarySelection(contentKindNovel),
       };
     }
 
@@ -903,14 +912,16 @@ class NovelHomePage extends HookConsumerWidget {
 
     final contentSelection = selection.value;
 
-    HomeLibraryPanel buildLibraryPanel() {
+    HomeLibraryPanel buildLibraryPanel(String contentKind) {
       return HomeLibraryPanel(
+        key: ValueKey(contentKind),
+        contentKind: contentKind,
         novelsAsync: novelsAsync,
-        headerGestureExclusionKey: greetingHeaderKey,
+        headerGestureExclusionKey: greetingHeaderKeys[contentKind]!,
         onQuickStart: quickStartNovel,
-        onCreateNovel: (contentKind) =>
-            openCreateNovelDialog(initialContentKind: contentKind),
+        onCreateNovel: () => openCreateNovelDialog(contentKind),
         onImportNovel: openImportNovelDialog,
+        onImportScreenplay: importScreenplay,
         onCreateDemoNovel: () => createDemoNovelWithNavigation(context, ref),
         onDeleteNovel: (novel) => deleteNovel(novel),
         onAdaptNovel: adaptNovel,
@@ -954,6 +965,22 @@ class NovelHomePage extends HookConsumerWidget {
         onEditPrompt: (agent) {
           selectContent(_HomeSubAgentPromptSelection(agent));
         },
+      ),
+      _HomeAiProvidersSelection() => AiProvidersPage(
+        headerGestureExclusionKey: editPanelHeaderKey,
+        headerTrailingInset: DesktopWindowFrame.trailingInset,
+      ),
+      _HomeAiAssistantSelection() => AiAssistantPage(
+        headerGestureExclusionKey: editPanelHeaderKey,
+        headerTrailingInset: DesktopWindowFrame.trailingInset,
+      ),
+      _HomeMcpSelection() => McpPage(
+        headerGestureExclusionKey: editPanelHeaderKey,
+        headerTrailingInset: DesktopWindowFrame.trailingInset,
+      ),
+      _HomePluginsSelection() => PluginsPage(
+        headerGestureExclusionKey: editPanelHeaderKey,
+        headerTrailingInset: DesktopWindowFrame.trailingInset,
       ),
       _HomeExpertTeamSelection() => AgentExpertTeamPage(
         headerGestureExclusionKey: editPanelHeaderKey,
@@ -1055,12 +1082,25 @@ class NovelHomePage extends HookConsumerWidget {
           selectContent(_HomePluginPageSelection(target));
         },
         onUnavailable: () {
-          selection.value = const _HomeLibrarySelection();
+          selection.value = const _HomeLibrarySelection(contentKindNovel);
         },
         onRegisterHasChanges: (hasChanges) =>
             pluginPageHasChanges.value = hasChanges,
       ),
-      _HomeLibrarySelection() => buildLibraryPanel(),
+      // 两个库同时挂载、只切换可见的那个：集合作品流不会随切换被释放重查，
+      // 切换时不再先闪加载态再出内容；搜索、筛选和滚动位置也各自保留。
+      _HomeLibrarySelection(:final contentKind) => IndexedStack(
+        index: contentKind == contentKindCanvas
+            ? 2
+            : contentKind == contentKindScreenplay
+            ? 1
+            : 0,
+        children: [
+          buildLibraryPanel(contentKindNovel),
+          buildLibraryPanel(contentKindScreenplay),
+          buildLibraryPanel(contentKindCanvas),
+        ],
+      ),
     };
 
     final appBackgroundActive = ref.watch(appBackgroundActiveProvider);
@@ -1075,7 +1115,11 @@ class NovelHomePage extends HookConsumerWidget {
           appBackgroundActive,
         ),
         body: DesktopWindowFrame(
-          titleBarGestureExclusionKeys: [greetingHeaderKey, editPanelHeaderKey],
+          titleBarGestureExclusionKeys: [
+            if (contentSelection case _HomeLibrarySelection(:final contentKind))
+              greetingHeaderKeys[contentKind]!,
+            editPanelHeaderKey,
+          ],
           child: Row(
             children: [
               _buildSidebar(
@@ -1096,7 +1140,12 @@ class NovelHomePage extends HookConsumerWidget {
                 width: RevericSizes.dividerThickness,
                 color: colors.border,
               ),
-              Expanded(child: mainContent),
+              Expanded(
+                child: SettingsLeaveScope(
+                  controller: settingsLeave,
+                  child: mainContent,
+                ),
+              ),
             ],
           ),
         ),
@@ -1131,7 +1180,9 @@ class NovelHomePage extends HookConsumerWidget {
       data: (sessions) => sessions,
       orElse: () => <AiChatSession>[],
     );
-    final librarySelected = selection is _HomeLibrarySelection;
+    final libraryKind = selection is _HomeLibrarySelection
+        ? selection.contentKind
+        : null;
     final modelSettingsSelected =
         selection is _HomeAgentModelSettingsSelection ||
         selection is _HomeSubAgentPromptSelection;
@@ -1164,21 +1215,52 @@ class NovelHomePage extends HookConsumerWidget {
                   context,
                   title: context.t(LocaleKeys.homeSectionWorks),
                 ),
-                // 小说和剧本合在一个作品库里：类型是作品的属性，在作品区按类型筛选。
+                // 小说和剧本各是一个独立的库，不在同一个作品区里混排。
                 _buildLeafNavItem(
                   context,
                   icon: RevericIcons.menu_book_rounded,
-                  title: context.t(LocaleKeys.homeNavWorks),
-                  isSelected: librarySelected,
+                  title: context.t(LocaleKeys.libraryContentKindNovel),
+                  isSelected: libraryKind == contentKindNovel,
                   onTap: () {
-                    onContentSelected(const _HomeLibrarySelection());
+                    onContentSelected(
+                      const _HomeLibrarySelection(contentKindNovel),
+                    );
                   },
                 ),
+                _buildLeafNavItem(
+                  context,
+                  icon: RevericIcons.movie_outlined,
+                  title: context.t(LocaleKeys.libraryContentKindScreenplay),
+                  isSelected: libraryKind == contentKindScreenplay,
+                  onTap: () {
+                    onContentSelected(
+                      const _HomeLibrarySelection(contentKindScreenplay),
+                    );
+                  },
+                ),
+                _buildLeafNavItem(
+                  context,
+                  icon: RevericIcons.flow_arrow,
+                  title: context.t(LocaleKeys.libraryContentKindCanvas),
+                  isSelected: libraryKind == contentKindCanvas,
+                  onTap: () => onContentSelected(
+                    const _HomeLibrarySelection(contentKindCanvas),
+                  ),
+                ),
                 const SizedBox(height: RevericSpacing.md),
-                // Section 3: AI
+                // Section 2: 模型
                 _buildSectionGroupHeader(
                   context,
-                  title: context.t(LocaleKeys.homeSectionAi),
+                  title: context.t(LocaleKeys.homeSectionModel),
+                ),
+                _buildLeafNavItem(
+                  context,
+                  icon: RevericIcons.hub_outlined,
+                  title: context.t(LocaleKeys.providerTitle),
+                  isSelected: selection is _HomeAiProvidersSelection,
+                  onTap: () {
+                    onContentSelected(const _HomeAiProvidersSelection());
+                  },
                 ),
                 _buildLeafNavItem(
                   context,
@@ -1187,6 +1269,21 @@ class NovelHomePage extends HookConsumerWidget {
                   isSelected: modelSettingsSelected,
                   onTap: () {
                     onContentSelected(const _HomeAgentModelSettingsSelection());
+                  },
+                ),
+                const SizedBox(height: RevericSpacing.md),
+                // Section 3: 智能体
+                _buildSectionGroupHeader(
+                  context,
+                  title: context.t(LocaleKeys.homeSectionAgent),
+                ),
+                _buildLeafNavItem(
+                  context,
+                  icon: RevericIcons.smart_toy_outlined,
+                  title: context.t(LocaleKeys.settingsAiAgents),
+                  isSelected: selection is _HomeAiAssistantSelection,
+                  onTap: () {
+                    onContentSelected(const _HomeAiAssistantSelection());
                   },
                 ),
                 _buildLeafNavItem(
@@ -1209,6 +1306,21 @@ class NovelHomePage extends HookConsumerWidget {
                 ),
                 _buildLeafNavItem(
                   context,
+                  icon: RevericIcons.hub_outlined,
+                  title: context.t(LocaleKeys.settingsMcp),
+                  isSelected: selection is _HomeMcpSelection,
+                  onTap: () {
+                    onContentSelected(const _HomeMcpSelection());
+                  },
+                ),
+                const SizedBox(height: RevericSpacing.md),
+                // Section 4: 对话
+                _buildSectionGroupHeader(
+                  context,
+                  title: context.t(LocaleKeys.homeSectionChat),
+                ),
+                _buildLeafNavItem(
+                  context,
                   icon: RevericIcons.rocket_launch_outlined,
                   title: context.t(LocaleKeys.agentShortcutTitle),
                   isSelected: shortcutsSelected,
@@ -1216,7 +1328,7 @@ class NovelHomePage extends HookConsumerWidget {
                     onContentSelected(const _HomeShortcutActionListSelection());
                   },
                 ),
-                // 最近对话（AI section 末尾）
+                // 最近对话（对话 section 末尾）
                 if (recentSessions.isNotEmpty) ...[
                   _buildCollapsibleSectionHeader(
                     context,
@@ -1245,6 +1357,7 @@ class NovelHomePage extends HookConsumerWidget {
                                 builder: (_) => WorkspaceEditorPage(
                                   novelId: novel.id,
                                   initialSessionId: session.id,
+                                  openChatOnEntry: true,
                                 ),
                               ),
                             );
@@ -1254,7 +1367,7 @@ class NovelHomePage extends HookConsumerWidget {
                     ),
                   ],
                 ],
-                // 插件页面：放在 AI 分区（含最近对话）之后，避免最近对话被归入插件。
+                // 插件页面：放在对话分区（含最近对话）之后，避免最近对话被归入插件。
                 PluginPageNavigation(
                   builder: (context, views) => Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1282,7 +1395,7 @@ class NovelHomePage extends HookConsumerWidget {
                     ],
                   ),
                 ),
-                // Section 4: 设置
+                // Section 5: 设置
                 const SizedBox(height: RevericSpacing.md),
                 _buildSectionGroupHeader(
                   context,
@@ -1293,6 +1406,15 @@ class NovelHomePage extends HookConsumerWidget {
                   icon: RevericIcons.settings_outlined,
                   title: context.t(LocaleKeys.librarySettings),
                   onTap: onOpenSettings,
+                ),
+                _buildLeafNavItem(
+                  context,
+                  icon: RevericIcons.layers_outlined,
+                  title: context.t(LocaleKeys.settingsPlugins),
+                  isSelected: selection is _HomePluginsSelection,
+                  onTap: () {
+                    onContentSelected(const _HomePluginsSelection());
+                  },
                 ),
                 _buildLeafNavItem(
                   context,
@@ -1308,6 +1430,16 @@ class NovelHomePage extends HookConsumerWidget {
             ),
           ),
           const DesktopUpdateEntry(),
+          Divider(height: 1, thickness: 1, color: colors.border),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(
+              RevericSpacing.x2l,
+              RevericSpacing.md,
+              RevericSpacing.x2l,
+              0,
+            ),
+            child: CommunityRow(),
+          ),
           const UserProfileBar(),
         ],
       ),

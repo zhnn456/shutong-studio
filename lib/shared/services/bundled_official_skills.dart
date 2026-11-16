@@ -61,8 +61,8 @@ class BundledOfficialSkillSpec {
 ///
 /// `listingId` 等于 `name`。version / updatedAt 在规格表中维护。
 ///
-/// 版本维护遵循 AGENTS.md「打包官方技能按发布状态维护版本」：先核对实际发布
-/// 记录与标签代码；当前版本已发布才递增 version，未发布则合并修改并保留版本号。
+/// 版本维护遵循 `.agents/rules/agent-skills.md`「打包官方技能按发布状态维护版本」：
+/// 先核对实际发布记录与标签代码；当前版本已发布才递增 version，未发布则合并修改并保留版本号。
 /// 修改主文件或附件时都更新 contentHash 和 updatedAt。
 /// 自动升级依赖 version 递增；保留版本号时须用 SQLite skill 同步 Debug 数据库
 /// 中已有的官方安装快照与附件，并查询验证，不覆盖本地自定义内容。
@@ -162,27 +162,18 @@ const List<BundledOfficialSkillSpec> bundledOfficialSkillSpecs = [
     name: '剧本写作',
     assetPath: 'assets/official_skills/screenplay-writing/SKILL.md',
     referenceAssetPaths: [
-      'assets/official_skills/screenplay-writing/references/adaptation-decisions.md',
       'assets/official_skills/screenplay-writing/references/adaptation.md',
-      'assets/official_skills/screenplay-writing/references/dialogue-craft.md',
       'assets/official_skills/screenplay-writing/references/dialogue.md',
-      'assets/official_skills/screenplay-writing/references/episode-design.md',
+      'assets/official_skills/screenplay-writing/references/duration-estimation.md',
       'assets/official_skills/screenplay-writing/references/episode-planning.md',
-      'assets/official_skills/screenplay-writing/references/evidence-and-timing.md',
-      'assets/official_skills/screenplay-writing/references/production-constraints.md',
-      'assets/official_skills/screenplay-writing/references/review-rubric.md',
       'assets/official_skills/screenplay-writing/references/review.md',
-      'assets/official_skills/screenplay-writing/references/revision-example.md',
-      'assets/official_skills/screenplay-writing/references/scene-craft.md',
       'assets/official_skills/screenplay-writing/references/scene-writing.md',
-      'assets/official_skills/screenplay-writing/references/series-continuity.md',
-      'assets/official_skills/screenplay-writing/references/source-analysis.md',
     ],
-    version: 1,
+    version: 3,
     contentHash:
-        'e29a3e0daea8c29c742ee7560a45f2d06ab0003c48445a7a8cb263e272425b9a',
+        '8860e7da186e009c9574e80637789cf522bd20613bfcd2bad0775f7de5178998',
     sortOrder: 10,
-    updatedAt: '2026-10-23T12:29:42+08:00',
+    updatedAt: '2026-11-12T01:32:00+08:00',
   ),
   BundledOfficialSkillSpec(
     name: '地图设计指南',
@@ -217,11 +208,11 @@ const List<BundledOfficialSkillSpec> bundledOfficialSkillSpecs = [
       'assets/official_skills/screenplay-production/references/video-prompts.md',
       'assets/official_skills/screenplay-production/references/wan-prompts.md',
     ],
-    version: 1,
+    version: 5,
     contentHash:
-        '660c839e1d7106154d59563fa5b61b1429cccd802562cc39e775592c37fd17db',
+        'afb6d7f8bb687c2a5128a663b63a2832698c0887ba77c1c6880e6b1fb408b865',
     sortOrder: 12,
-    updatedAt: '2026-10-23T19:55:49+08:00',
+    updatedAt: '2026-11-12T13:53:54+08:00',
   ),
 ];
 

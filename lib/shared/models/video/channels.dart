@@ -13,11 +13,15 @@ import 'request.dart';
 
 class VideoProtocolOptions {
   const VideoProtocolOptions({
+    this.requiredMode,
     this.framesRequireAdaptiveRatio = false,
     this.supportsOmniReferenceTaskType = false,
     this.supportsDraft = false,
     this.supportsProviderAssets = false,
   });
+
+  /// 分模式型号只接受该生成方式；空值沿用通用能力校验。
+  final VideoMode? requiredMode;
   final bool framesRequireAdaptiveRatio;
   final bool supportsOmniReferenceTaskType;
   final bool supportsDraft;
@@ -33,6 +37,7 @@ class AtlasCloudVideoOptions extends VideoProtocolOptions {
     this.frames,
     this.firstLastFrames,
     this.reference,
+    super.framesRequireAdaptiveRatio,
     super.supportsProviderAssets,
   });
   final AtlasCloudVideoRoute text;
@@ -1445,6 +1450,372 @@ const videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
         ),
       ),
     ),
+    'kwaivgi/kling-v4.0': VideoChannelModel(
+      catalogId: 'kwaivgi-kling-v4.0',
+      requestDefaults: VideoRequestDefaults(
+        audio: ConfigValue(null),
+        promptExtend: ConfigValue(null),
+      ),
+      protocolOptions: AtlasCloudVideoOptions(
+        framesRequireAdaptiveRatio: true,
+        text: AtlasCloudVideoRoute(
+          modelId: 'kwaivgi/kling-v4.0/text-to-video',
+          resolutions: {'720p', '1080p', '1080p-esr', '2k-esr', '4k-esr'},
+          ratios: {'16:9', '9:16', '1:1', '21:9'},
+          durations: {
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+          },
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'aspect_ratio',
+          },
+        ),
+        frames: AtlasCloudVideoRoute(
+          modelId: 'kwaivgi/kling-v4.0/image-to-video',
+          resolutions: {'720p', '1080p', '1080p-esr', '2k-esr', '4k-esr'},
+          ratios: {'adaptive'},
+          durations: {
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+          },
+          fields: {'duration': 'duration', 'resolution': 'resolution'},
+          mediaFields: {
+            VideoInputRole.first_frame: 'image',
+            VideoInputRole.middle_frame: 'middle_images',
+            VideoInputRole.last_frame: 'last_image',
+          },
+        ),
+        reference: AtlasCloudVideoRoute(
+          modelId: 'kwaivgi/kling-v4.0/reference-to-video',
+          resolutions: {'720p', '1080p', '1080p-esr', '2k-esr', '4k-esr'},
+          ratios: {'16:9', '9:16', '1:1', '21:9'},
+          durations: {
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+          },
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'aspect_ratio',
+          },
+          mediaFields: {
+            VideoInputRole.reference_image: 'reference_images',
+            VideoInputRole.reference_video: 'reference_videos',
+          },
+          referenceCounts: {VideoMediaKind.image: 10, VideoMediaKind.video: 5},
+        ),
+      ),
+    ),
+    'minimax/h3-developer': VideoChannelModel(
+      catalogId: 'MiniMax-H3',
+      capabilities: VideoModelCapabilities(
+        resolutions: {'480P', '768P', '1440p-sr', '4k-sr'},
+        ratios: {'adaptive', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
+        durations: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+        frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
+        maxReferences: 12,
+        allowsReferenceMode: true,
+        supportsAdaptiveTextRatio: false,
+        supportsAudioOnlyReference: false,
+        references: {
+          VideoMediaKind.image: VideoReferenceLimits(maxCount: 9),
+          VideoMediaKind.video: VideoReferenceLimits(maxCount: 3),
+          VideoMediaKind.audio: VideoReferenceLimits(maxCount: 3),
+        },
+      ),
+      requestDefaults: VideoRequestDefaults(
+        audio: ConfigValue(null),
+        promptExtend: ConfigValue(false),
+      ),
+      protocolOptions: AtlasCloudVideoOptions(
+        text: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-developer/text-to-video',
+          resolutions: {'480P', '768P', '1440p-sr', '4k-sr'},
+          ratios: {'21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
+          durations: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+            'prompt_extend': 'prompt_expansion',
+          },
+        ),
+        frames: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-developer/image-to-video',
+          resolutions: {'480P', '768P', '1440p-sr', '4k-sr'},
+          ratios: {'adaptive'},
+          durations: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+            'prompt_extend': 'prompt_expansion',
+          },
+          mediaFields: {
+            VideoInputRole.first_frame: 'image',
+            VideoInputRole.last_frame: 'end_image',
+          },
+        ),
+        reference: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-developer/reference-to-video',
+          resolutions: {'480P', '768P', '1440p-sr', '4k-sr'},
+          ratios: {'adaptive', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
+          durations: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+            'prompt_extend': 'prompt_expansion',
+          },
+          mixedReferences: true,
+          referenceCounts: {
+            VideoMediaKind.image: 9,
+            VideoMediaKind.video: 3,
+            VideoMediaKind.audio: 3,
+          },
+        ),
+      ),
+    ),
+    'minimax/h3-fast': VideoChannelModel(
+      catalogId: 'minimax-h3-fast',
+      requestDefaults: VideoRequestDefaults(
+        audio: ConfigValue(null),
+        promptExtend: ConfigValue(false),
+      ),
+      protocolOptions: AtlasCloudVideoOptions(
+        text: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-fast/text-to-video',
+          resolutions: {'480P'},
+          ratios: {'21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
+          durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+            'prompt_extend': 'prompt_expansion',
+          },
+        ),
+        frames: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-fast/image-to-video',
+          resolutions: {'480P'},
+          ratios: {'adaptive'},
+          durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+            'prompt_extend': 'prompt_expansion',
+          },
+          mediaFields: {
+            VideoInputRole.first_frame: 'image',
+            VideoInputRole.last_frame: 'end_image',
+          },
+        ),
+        reference: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-fast/reference-to-video',
+          resolutions: {'480P'},
+          ratios: {'21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
+          durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+            'prompt_extend': 'prompt_expansion',
+          },
+          mixedReferences: true,
+          referenceCounts: {
+            VideoMediaKind.image: 9,
+            VideoMediaKind.video: 3,
+            VideoMediaKind.audio: 3,
+          },
+        ),
+      ),
+    ),
+    'minimax/h3-max': VideoChannelModel(
+      catalogId: 'hailuo-3-max',
+      capabilities: VideoModelCapabilities(
+        resolutions: {'480P', '768P', '1440p-sr', '4k-sr'},
+        ratios: {'adaptive', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
+        durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+        frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
+        maxReferences: 12,
+        allowsReferenceMode: true,
+        supportsAdaptiveTextRatio: false,
+        supportsAudioOnlyReference: false,
+        references: {
+          VideoMediaKind.image: VideoReferenceLimits(maxCount: 9),
+          VideoMediaKind.video: VideoReferenceLimits(maxCount: 3),
+          VideoMediaKind.audio: VideoReferenceLimits(maxCount: 3),
+        },
+      ),
+      requestDefaults: VideoRequestDefaults(
+        audio: ConfigValue(null),
+        promptExtend: ConfigValue(false),
+      ),
+      protocolOptions: AtlasCloudVideoOptions(
+        text: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-max/text-to-video',
+          resolutions: {'480P', '768P', '1440p-sr', '4k-sr'},
+          ratios: {'21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
+          durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+            'prompt_extend': 'prompt_expansion',
+          },
+        ),
+        frames: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-max/image-to-video',
+          resolutions: {'480P', '768P', '1440p-sr', '4k-sr'},
+          ratios: {'adaptive'},
+          durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+            'prompt_extend': 'prompt_expansion',
+          },
+          mediaFields: {
+            VideoInputRole.first_frame: 'image',
+            VideoInputRole.last_frame: 'end_image',
+          },
+        ),
+        reference: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-max/reference-to-video',
+          resolutions: {'480P', '768P'},
+          ratios: {'adaptive', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
+          durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+            'prompt_extend': 'prompt_expansion',
+          },
+          mixedReferences: true,
+          referenceCounts: {
+            VideoMediaKind.image: 9,
+            VideoMediaKind.video: 3,
+            VideoMediaKind.audio: 3,
+          },
+        ),
+      ),
+    ),
+    'minimax/h3-max-turbo': VideoChannelModel(
+      catalogId: 'minimax-h3-max-turbo',
+      requestDefaults: VideoRequestDefaults(
+        audio: ConfigValue(null),
+        promptExtend: ConfigValue(null),
+      ),
+      protocolOptions: AtlasCloudVideoOptions(
+        text: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-max-turbo/text-to-video',
+          resolutions: {'480P', '768P'},
+          ratios: {'21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
+          durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+          },
+        ),
+        frames: AtlasCloudVideoRoute(
+          modelId: 'minimax/h3-max-turbo/image-to-video',
+          resolutions: {'480P', '768P'},
+          ratios: {'adaptive'},
+          durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+          fields: {
+            'duration': 'duration',
+            'resolution': 'resolution',
+            'ratio': 'ratio',
+          },
+          mediaFields: {
+            VideoInputRole.first_frame: 'image',
+            VideoInputRole.last_frame: 'end_image',
+          },
+        ),
+      ),
+    ),
     'minimax/h3': VideoChannelModel(
       catalogId: 'MiniMax-H3',
       capabilities: VideoModelCapabilities(
@@ -1452,7 +1823,7 @@ const videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
         ratios: {'21:9', '16:9', '4:3', '1:1', '3:4', '9:16', 'adaptive'},
         durations: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
         frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
-        maxReferences: 15,
+        maxReferences: 12,
         allowsReferenceMode: true,
         supportsAdaptiveTextRatio: false,
         supportsAudioOnlyReference: false,
@@ -2019,7 +2390,90 @@ const _metasoH3Capabilities = VideoModelCapabilities(
 );
 
 // Public model catalog and API examples: https://metaso.cn/minimax-h3
-const _providerVideoModels = <String, Map<String, VideoChannelModel>>{
+final _providerVideoModels = <String, Map<String, VideoChannelModel>>{
+  // https://platform.qianwenai.com/docs/api-reference/video-generation/happyhorse-text-to-video/create-task
+  // https://platform.qianwenai.com/docs/api-reference/video-generation/happyhorse-image-to-video/create-task
+  // https://platform.qianwenai.com/docs/api-reference/video-generation/happyhorse-reference-to-video/create-task
+  'qwen_token_plan': {
+    'happyhorse-1.1-t2v': VideoChannelModel(
+      catalogId: 'happyhorse-1.1',
+      capabilities: VideoModelCapabilities(
+        resolutions: {'480P', '720P', '1080P'},
+        ratios: {
+          '16:9',
+          '9:16',
+          '1:1',
+          '4:3',
+          '3:4',
+          '4:5',
+          '5:4',
+          '9:21',
+          '21:9',
+        },
+        frameRoles: {},
+        maxReferences: 0,
+        allowsReferenceMode: false,
+        supportsAudioOnlyReference: false,
+        references: {VideoMediaKind.image: null},
+      ),
+      protocolOptions: VideoProtocolOptions(requiredMode: VideoMode.text),
+    ),
+    'happyhorse-1.1-i2v': VideoChannelModel(
+      catalogId: 'happyhorse-1.1',
+      capabilities: VideoModelCapabilities(
+        resolutions: {'480P', '720P', '1080P'},
+        ratios: {'adaptive'},
+        frameRoles: {VideoInputRole.first_frame},
+        maxReferences: 1,
+        allowsReferenceMode: false,
+        supportsAudioOnlyReference: false,
+        references: {
+          VideoMediaKind.image: VideoReferenceLimits(
+            maxCount: 1,
+            mimeTypes: ConfigValue({'image/jpeg', 'image/png', 'image/webp'}),
+            maxSizeMb: ConfigValue(20),
+            minDimension: ConfigValue(300),
+            minRatio: ConfigValue(0.4),
+            maxRatio: ConfigValue(2.5),
+          ),
+        },
+      ),
+      protocolOptions: VideoProtocolOptions(
+        requiredMode: VideoMode.first_frame,
+        framesRequireAdaptiveRatio: true,
+      ),
+    ),
+    'happyhorse-1.1-r2v': VideoChannelModel(
+      catalogId: 'happyhorse-1.1',
+      capabilities: VideoModelCapabilities(
+        resolutions: {'480P', '720P', '1080P'},
+        ratios: {
+          '16:9',
+          '9:16',
+          '1:1',
+          '4:3',
+          '3:4',
+          '4:5',
+          '5:4',
+          '9:21',
+          '21:9',
+        },
+        frameRoles: {},
+        maxReferences: 9,
+        allowsReferenceMode: true,
+        supportsAudioOnlyReference: false,
+        references: {
+          VideoMediaKind.image: VideoReferenceLimits(
+            maxCount: 9,
+            mimeTypes: ConfigValue({'image/jpeg', 'image/png', 'image/webp'}),
+            maxSizeMb: ConfigValue(20),
+            minDimension: ConfigValue(400),
+          ),
+        },
+      ),
+      protocolOptions: VideoProtocolOptions(requiredMode: VideoMode.reference),
+    ),
+  },
   'metaso': {
     'MiniMax-H3': VideoChannelModel(
       catalogId: 'MiniMax-H3',
@@ -2062,7 +2516,13 @@ const _providerVideoModels = <String, Map<String, VideoChannelModel>>{
       ),
     ),
   },
+  // 站点只接受自己返回的模型 ID；目录在「获取模型」时按 `/v1/models` 登记。
+  'purefox_media': purefoxMediaVideoModels,
 };
+
+/// PureFox 媒体网关的视频型号目录：不预置，填 key 后按站点 `/v1/models`
+/// 返回的 kind / qualities / duration / ref* 登记。
+final purefoxMediaVideoModels = <String, VideoChannelModel>{};
 
 List<String> videoModelsForProvider(String providerType) =>
     (_providerVideoModels[providerType] ??

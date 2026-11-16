@@ -2,8 +2,7 @@
 
 # 书童AI工作台
 
-### AI Native 桌面创作工作台
-**智能体读懂整部作品，和你一起从小说写到成片**
+### AI Native 桌面创作工作台，读懂整部作品，和你一起从小说写到成片
 
 <p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/github/license/zhnn456/shutong-studio?color=brightgreen" alt="license"></a>
@@ -15,10 +14,7 @@
 
 <p align="center">
   <a href="README.md">简体中文</a> •
-  <a href="README.en-US.md">English</a>
-</p>
-
-<p align="center">
+  <a href="README.en-US.md">English</a> ｜
   <a href="#核心特性">核心特性</a> •
   <a href="#全流程展示">全流程展示</a> •
   <a href="#模型支持">模型支持</a> •
@@ -254,28 +250,38 @@
 
 ---
 
+## 反馈与交流
+
+### 客服反馈
+
+使用中遇到问题、想咨询或提供建议？欢迎通过应用内「客服反馈」与我们联系：
+
+- **客服反馈面板**：点击左侧工作栏「客服反馈」入口即可打开，支持：
+  - **写留言**：可选「投诉 / 建议 / 咨询 / 其他」类型，填写留言内容与联系方式（选填），提交后发送至官方邮箱并在本机留档。
+  - **官方客服二维码**：扫码添加官方客服微信，可实现问题反馈、使用咨询、购买授权等。
+  - **联系邮箱**：[282063152@qq.com](mailto:282063152@qq.com)
+
+### QQ 交流群
+
+扫码或[点击链接](https://qm.qq.com/q/Ap8pfOWHDO)加入（群号：924148054），交流 AI 小说与短剧创作、分享使用心得。
+
+### 其他社区
+
+- [LINUX DO 社区](https://linux.do/)：学 AI、交流创作经验
+
+---
+
 ## 开发者指南
 
 书童AI工作台 采用 Flutter 与现代跨平台架构构建，欢迎社区开发者共同探索与改进。
-
-### 技术栈
-
-- **框架与语言**：Flutter 3.8+、Dart SDK
-- **状态管理**：Riverpod (Hooks Riverpod) + Flutter Hooks
-- **本地存储**：Drift (SQLite) Local-First 架构
-- **3D 引擎**：Flutter Scene（3D 场景与镜头渲染）
-- **多媒体处理**：FFmpeg Kit、FVP 视频播放引擎
-
-### 本地编译与运行
 
 ```bash
 # 1. 克隆代码仓库
 git clone https://github.com/zhnn456/shutong-studio.git
 cd shutong-studio
 
-# 2. 安装项目依赖 (推荐使用 FVM 管理 Flutter SDK)
-make deps
-# 或者: fvm flutter pub get
+# 2. 安装依赖
+flutter pub get
 
 # 3. 运行代码生成器 (Drift 数据库与 Riverpod 代码)
 make codegen
@@ -289,17 +295,6 @@ make run-macos     # macOS 客户端
 make build-macos-release   # 构建 macOS 客户端
 make build-windows-release # 构建 Windows 客户端
 ```
-
----
-
-## 客服反馈
-
-使用中遇到问题、想咨询或提供建议？欢迎通过应用内「客服反馈」与我们联系：
-
-- **客服反馈面板**：点击左侧工作栏「客服反馈」入口即可打开，支持：
-  - **写留言**：可选「投诉 / 建议 / 咨询 / 其他」类型，填写留言内容与联系方式（选填），提交后发送至官方邮箱并在本机留档。
-  - **官方客服二维码**：扫码添加官方客服微信，可实现问题反馈、使用咨询、购买授权等。
-  - **联系邮箱**：[282063152@qq.com](mailto:282063152@qq.com)
 
 ---
 

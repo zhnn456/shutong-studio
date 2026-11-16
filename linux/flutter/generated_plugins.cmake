@@ -5,10 +5,10 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links_linux
   file_selector_linux
+  fvp
   irondash_engine_context
   screen_retriever_linux
   super_native_extensions
-  tray_manager
   url_launcher_linux
   window_manager
 )

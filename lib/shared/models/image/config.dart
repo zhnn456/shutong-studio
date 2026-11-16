@@ -9,24 +9,18 @@ export '../model_config.dart' show ConfigValue;
 
 class ImageModelCapabilities {
   const ImageModelCapabilities({
-    Set<String>? ratios,
-    Set<String>? resolutions,
-    Map<String, Map<String, String>>? sizes,
-    int? minReferences,
-    int? maxReferences,
-    ConfigValue<int>? minPixels,
-    ConfigValue<int>? maxPixels,
-    ConfigValue<int>? maxEditPixels,
-    ConfigValue<double>? maxAspectRatio,
-  }) : _ratios = ratios,
-       _resolutions = resolutions,
-       _sizes = sizes,
-       _minReferences = minReferences,
-       _maxReferences = maxReferences,
-       _minPixels = minPixels,
-       _maxPixels = maxPixels,
-       _maxEditPixels = maxEditPixels,
-       _maxAspectRatio = maxAspectRatio;
+    this._ratios,
+    this._resolutions,
+    this._sizes,
+    this._minReferences,
+    this._maxReferences,
+    this._unlimitedReferences,
+    this._minPixels,
+    this._maxPixels,
+    this._maxEditPixels,
+    this._maxAspectRatio,
+    this._complexityLevels,
+  });
 
   final Set<String>? _ratios;
   Set<String> get ratios => _ratios ?? const {'auto'};
@@ -38,6 +32,10 @@ class ImageModelCapabilities {
   int get minReferences => _minReferences ?? 0;
   final int? _maxReferences;
   int get maxReferences => _maxReferences ?? 0;
+  final bool? _unlimitedReferences;
+
+  /// 未登记模型不设本地数量上限，由服务端验证。
+  bool get unlimitedReferences => _unlimitedReferences ?? false;
   final ConfigValue<int>? _minPixels;
   int? get minPixels => _minPixels?.value;
   final ConfigValue<int>? _maxPixels;
@@ -46,6 +44,10 @@ class ImageModelCapabilities {
   int? get maxEditPixels => _maxEditPixels?.value;
   final ConfigValue<double>? _maxAspectRatio;
   double? get maxAspectRatio => _maxAspectRatio?.value;
+  final Set<String>? _complexityLevels;
+
+  /// 空集表示该型号没有复杂度档位。
+  Set<String> get complexityLevels => _complexityLevels ?? const {};
 
   ImageModelCapabilities merge(ImageModelCapabilities overrides) =>
       ImageModelCapabilities(
@@ -54,10 +56,13 @@ class ImageModelCapabilities {
         sizes: overrides._sizes ?? _sizes,
         minReferences: overrides._minReferences ?? _minReferences,
         maxReferences: overrides._maxReferences ?? _maxReferences,
+        unlimitedReferences:
+            overrides._unlimitedReferences ?? _unlimitedReferences,
         minPixels: overrides._minPixels ?? _minPixels,
         maxPixels: overrides._maxPixels ?? _maxPixels,
         maxEditPixels: overrides._maxEditPixels ?? _maxEditPixels,
         maxAspectRatio: overrides._maxAspectRatio ?? _maxAspectRatio,
+        complexityLevels: overrides._complexityLevels ?? _complexityLevels,
       );
 
   String? size(String ratio, String resolution) {
@@ -67,8 +72,11 @@ class ImageModelCapabilities {
     return sizes[resolution]?[ratio];
   }
 
+  bool allowsReferenceCount(int count) =>
+      count >= minReferences && (unlimitedReferences || count <= maxReferences);
+
   void validateReferences(int count) {
-    if (count < minReferences || count > maxReferences) {
+    if (!allowsReferenceCount(count)) {
       throw const FormatException('Unsupported image reference count');
     }
   }
@@ -105,20 +113,15 @@ class ImageModelCapabilities {
 
 class ImageRequestDefaults {
   const ImageRequestDefaults({
-    ConfigValue<String>? size,
-    ConfigValue<String>? responseFormat,
-    ConfigValue<String>? outputFormat,
-    ConfigValue<String>? quality,
-    ConfigValue<bool>? watermark,
-    ConfigValue<bool>? promptExtend,
-    ConfigValue<String>? promptOptimization,
-  }) : _size = size,
-       _responseFormat = responseFormat,
-       _outputFormat = outputFormat,
-       _quality = quality,
-       _watermark = watermark,
-       _promptExtend = promptExtend,
-       _promptOptimization = promptOptimization;
+    this._size,
+    this._responseFormat,
+    this._outputFormat,
+    this._quality,
+    this._watermark,
+    this._promptExtend,
+    this._promptOptimization,
+    this._complexity,
+  });
 
   final ConfigValue<String>? _size;
   String? get size => _size?.value;
@@ -134,6 +137,8 @@ class ImageRequestDefaults {
   bool? get promptExtend => _promptExtend?.value;
   final ConfigValue<String>? _promptOptimization;
   String? get promptOptimization => _promptOptimization?.value;
+  final ConfigValue<String>? _complexity;
+  String? get complexity => _complexity?.value;
 
   ImageRequestDefaults merge(ImageRequestDefaults overrides) =>
       ImageRequestDefaults(
@@ -145,5 +150,6 @@ class ImageRequestDefaults {
         promptExtend: overrides._promptExtend ?? _promptExtend,
         promptOptimization:
             overrides._promptOptimization ?? _promptOptimization,
+        complexity: overrides._complexity ?? _complexity,
       );
 }

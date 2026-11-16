@@ -1,4 +1,4 @@
-// 职责: 验证桌面书架「草稿箱 / 书架」是最外层范围 — 分类与类型筛选、计数都在当前范围内生效。
+// 职责: 验证桌面书架「草稿箱 / 书架」是最外层范围 — 分类筛选、计数都在当前范围内生效，且只看本库的作品类型。
 // 关联文件:
 //   lib/desktop/widgets/home/library_home_panel.dart
 //   lib/desktop/widgets/home/all_works_header.dart
@@ -11,6 +11,7 @@ import 'package:reveric/shared/services/initialization/collection_seeds.dart';
 import 'package:reveric/shared/providers/novel_providers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -65,6 +66,89 @@ void main() {
     await EasyLocalization.ensureInitialized();
   });
 
+  testWidgets(
+    'canvas library lists only canvas works and has direct create without novel shortcuts',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final db = AppDatabase.forTest(NativeDatabase.memory());
+      final works = [
+        _novel('Canvas example', '').copyWith(contentKind: contentKindCanvas),
+        _novel('Screenplay example', ''),
+      ];
+      for (final work in works) {
+        await db.into(db.novels).insert(work.toCompanion(true));
+      }
+      await seedCollections(
+        db,
+        names: {
+          'all': 'All',
+          'in_progress': 'In progress',
+          'finished': 'Finished',
+        },
+      );
+      var creates = 0;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appDatabaseProvider.overrideWithValue(db),
+            appSettingsProvider.overrideWith(_TestAppSettings.new),
+          ],
+          child: EasyLocalization(
+            supportedLocales: const [Locale('en')],
+            path: 'assets/translations',
+            assetLoader: const MergingAssetLoader(),
+            startLocale: const Locale('en'),
+            fallbackLocale: const Locale('en'),
+            child: Builder(
+              builder: (context) => MaterialApp(
+                localizationsDelegates: context.localizationDelegates,
+                supportedLocales: context.supportedLocales,
+                locale: context.locale,
+                theme: RevericThemeData.reveric.toThemeData(),
+                builder: (context, child) =>
+                    RevericTheme(data: RevericThemeData.reveric, child: child!),
+                home: Scaffold(
+                  body: HomeLibraryPanel(
+                    contentKind: contentKindCanvas,
+                    novelsAsync: AsyncData(works),
+                    headerGestureExclusionKey: GlobalKey(),
+                    onQuickStart: () {},
+                    onCreateNovel: () => creates++,
+                    onImportNovel: () {},
+                    onImportScreenplay: () {},
+                    onCreateDemoNovel: () {},
+                    onDeleteNovel: (_) {},
+                    onAdaptNovel: (_) {},
+                    onEditNovel: (_) {},
+                    onOpenNovel: (_) {},
+                    onReadNovel: (_) {},
+                    onUpdateStatus: (_, _) {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Canvas example'), findsWidgets);
+      expect(find.text('Screenplay example'), findsNothing);
+      expect(find.text('Import TXT'), findsNothing);
+      expect(find.text('Quick start'), findsNothing);
+      await tester.tap(find.text('New canvas').first);
+      expect(creates, 1);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      await db.close();
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
   testWidgets('category menu and filtering follow the drafts/shelf scope', (
     tester,
   ) async {
@@ -91,48 +175,55 @@ void main() {
     for (final novel in novels) {
       await db.into(db.novels).insert(novel.toCompanion(true));
     }
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appSettingsProvider.overrideWith(_TestAppSettings.new),
-          appDatabaseProvider.overrideWithValue(db),
-        ],
-        child: EasyLocalization(
-          supportedLocales: const [Locale('en')],
-          path: 'assets/translations',
-          assetLoader: const MergingAssetLoader(),
-          fallbackLocale: const Locale('en'),
-          startLocale: const Locale('en'),
-          child: Builder(
-            builder: (context) => MaterialApp(
-              localizationsDelegates: context.localizationDelegates,
-              supportedLocales: context.supportedLocales,
-              locale: context.locale,
-              theme: RevericThemeData.reveric.toThemeData(),
-              builder: (context, child) =>
-                  RevericTheme(data: RevericThemeData.reveric, child: child!),
-              home: Scaffold(
-                body: HomeLibraryPanel(
-                  novelsAsync: AsyncData(novels),
-                  headerGestureExclusionKey: GlobalKey(),
-                  onQuickStart: () {},
-                  onCreateNovel: (_) {},
-                  onImportNovel: () {},
-                  onCreateDemoNovel: () {},
-                  onDeleteNovel: (_) {},
-                  onAdaptNovel: (_) {},
-                  onEditNovel: (_) {},
-                  onOpenNovel: (_) {},
-                  onReadNovel: (_) {},
-                  onUpdateStatus: (_, _) {},
+    Future<void> pumpPanel(String contentKind) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appSettingsProvider.overrideWith(_TestAppSettings.new),
+            appDatabaseProvider.overrideWithValue(db),
+          ],
+          child: EasyLocalization(
+            supportedLocales: const [Locale('en')],
+            path: 'assets/translations',
+            assetLoader: const MergingAssetLoader(),
+            fallbackLocale: const Locale('en'),
+            startLocale: const Locale('en'),
+            child: Builder(
+              builder: (context) => MaterialApp(
+                localizationsDelegates: context.localizationDelegates,
+                supportedLocales: context.supportedLocales,
+                locale: context.locale,
+                theme: RevericThemeData.reveric.toThemeData(),
+                builder: (context, child) =>
+                    RevericTheme(data: RevericThemeData.reveric, child: child!),
+                home: Scaffold(
+                  body: HomeLibraryPanel(
+                    key: ValueKey(contentKind),
+                    contentKind: contentKind,
+                    novelsAsync: AsyncData(novels),
+                    headerGestureExclusionKey: GlobalKey(),
+                    onQuickStart: () {},
+                    onCreateNovel: () {},
+                    onImportNovel: () {},
+                    onImportScreenplay: () {},
+                    onCreateDemoNovel: () {},
+                    onDeleteNovel: (_) {},
+                    onAdaptNovel: (_) {},
+                    onEditNovel: (_) {},
+                    onOpenNovel: (_) {},
+                    onReadNovel: (_) {},
+                    onUpdateStatus: (_, _) {},
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpPanel(contentKindScreenplay);
 
     // 继续写区也会列出作品，断言只看作品网格。
     Finder inGrid(String title) => find.descendant(
@@ -179,13 +270,11 @@ void main() {
     expect(inGrid('Shelf fantasy'), findsWidgets);
     expect(inGrid('Shelf urban'), findsWidgets);
 
-    // 类型筛选：这些都是剧本，只看小说时网格里没有它们。
-    await tester.tap(find.text('All types'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Novel').last);
-    await tester.pumpAndSettle();
-    expect(inGrid('Shelf fantasy'), findsNothing);
-    expect(inGrid('Shelf urban'), findsNothing);
+    // 这些都是剧本：小说库里既没有作品也没有它们的草稿。
+    await pumpPanel(contentKindNovel);
+    expect(find.text('Shelf fantasy'), findsNothing);
+    expect(find.text('Shelf urban'), findsNothing);
+    expect(find.byTooltip('Drafts'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });

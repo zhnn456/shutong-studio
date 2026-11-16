@@ -16,13 +16,14 @@
 //   assets/translations/zh-CN/common.json
 //   assets/translations/en/history.json
 //   assets/translations/zh-CN/history.json
-//   assets/translations/en/ai.json
-//   assets/translations/zh-CN/ai.json
+//   assets/translations/en/tool.json
+//   assets/translations/zh-CN/tool.json
 //   assets/translations/en/workspace.json
 //   assets/translations/zh-CN/workspace.json
 //   assets/translations/en/relation.json
 //   assets/translations/zh-CN/relation.json
 import 'package:flutter/widgets.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:reveric/shared/entity_graph/labels.dart';
@@ -52,6 +53,7 @@ class AiToolResolvedResource {
     this.subResourceTitle,
     this.field,
     this.queryParameters = const {},
+    this.labelPath,
   });
 
   final Map<String, int> ordinals;
@@ -69,9 +71,53 @@ class AiToolResolvedResource {
   final String? field;
   final Map<String, String> queryParameters;
 
+  /// 画布制作路径。展示时整段本地化，避免只剩集合名。
+  final String? labelPath;
+
+  // 解析结果按实际展示字段比较，正文、字数和更新时间变化不刷新工具行。
+  List<Object?> get _displayFields => [
+    collection,
+    resourceTitle,
+    workTitle,
+    isUnavailableWork,
+    showCollection,
+    resourceMeta,
+    ordinals,
+    isListing,
+    chapterNum,
+    volumeNum,
+    subCollection,
+    subResourceTitle,
+    field,
+    queryParameters,
+    labelPath,
+  ];
+
+  @override
+  bool operator ==(Object other) =>
+      other is AiToolResolvedResource &&
+      const DeepCollectionEquality().equals(
+        _displayFields,
+        other._displayFields,
+      );
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(_displayFields);
+
   String displayLabel(BuildContext context) {
+    if (labelPath != null) {
+      final localized = localizedToolPathLabel(context, labelPath!);
+      final parts = <String>[
+        if (isUnavailableWork) context.t(LocaleKeys.toolWorkUnavailable),
+        if (workTitle != null && workTitle!.trim().isNotEmpty)
+          workTitle!.trim(),
+        if (localized.isNotEmpty) localized,
+        ..._localizedQueryParameters(context, queryParameters),
+      ];
+      return parts.join(' · ');
+    }
     final parts = <String>[
-      if (isUnavailableWork) context.t(LocaleKeys.aiToolWorkUnavailable),
+      if (isUnavailableWork) context.t(LocaleKeys.toolWorkUnavailable),
       if (workTitle != null && workTitle!.trim().isNotEmpty) workTitle!.trim(),
       if (showCollection && (ordinals.isEmpty || isListing))
         _localizedCollection(context, collection, asList: isListing),
@@ -198,52 +244,70 @@ final toolResolvedResourceProvider =
         );
       }
 
+      if (parsed.collection == 'production') {
+        return AiToolResolvedResource(
+          collection: parsed.collection,
+          resourceTitle: '',
+          showCollection: false,
+          isListing: parsed.target.isResourceListing,
+          labelPath: parsed.target.displayPath,
+          queryParameters: parsed.queryParameters,
+        );
+      }
+
       // 多层集合路径由 localizedToolPathLabel 统一处理，避免把子路径当资源名。
       if (const ['screenplay', '_schema'].contains(parsed.collection)) {
         return null;
       }
 
+      final idOrName = parsed.resourceIdOrName;
+      AiToolResolvedResource fallback() => AiToolResolvedResource(
+        collection: parsed.collection,
+        resourceTitle: idOrName ?? '',
+        field: parsed.field,
+        queryParameters: parsed.queryParameters,
+      );
+      if (parsed.collection == 'chapters' || parsed.collection == 'volumes') {
+        final identity = _splitIdentityQueryParams(
+          parsed.collection,
+          parsed.queryParameters,
+        );
+        // 集合标签与树无关；带章号、卷号或标题的查询仍需解析实际节点。
+        if (idOrName == null &&
+            identity.chapterNum == null &&
+            identity.volumeNum == null &&
+            identity.title == null) {
+          return fallback();
+        }
+        return ref.watch(
+          chapterTreeProvider(params.databasePath).selectAsync((nodes) {
+            if (parsed.collection == 'chapters') {
+              if (idOrName != null) {
+                final chapter = _findNodeById(nodes, idOrName);
+                if (chapter != null && chapter.isChapter) {
+                  return _chapterResolvedResource(parsed, chapter);
+                }
+              } else {
+                return _resolveChapterQuery(nodes, parsed) ?? fallback();
+              }
+            } else {
+              if (idOrName != null) {
+                final volume = _findNodeById(nodes, idOrName);
+                if (volume != null && volume.isVolume) {
+                  return _volumeResolvedResource(parsed, volume);
+                }
+              } else {
+                return _resolveVolumeQuery(nodes, parsed) ?? fallback();
+              }
+            }
+            return fallback();
+          }),
+        );
+      }
+
       final service = ref.watch(
         novelContentServiceProvider(params.databasePath),
       );
-      final idOrName = parsed.resourceIdOrName;
-
-      // 章节/卷标签只需 title / chapter_num / volume_num / type，这些字段已随
-      // chapterTreeProvider（watchTree，不含正文）常驻内存。改为对内存树查表，
-      // 避免每张工具卡各自 getChapterById/getChapters 触发昂贵的 `chapters` VIEW
-      // 物化（详见 ChapterDao.watchContentById），否则会在单 DB isolate 上堵住
-      // 编辑器的正文查询。用 watch 而非 read：新建/改名章节时树重发 → 解析自动
-      // 自愈；重跑仅为内存查表，成本可忽略。
-      if (parsed.collection == 'chapters' || parsed.collection == 'volumes') {
-        final nodes = await ref.watch(
-          chapterTreeProvider(params.databasePath).future,
-        );
-        if (parsed.collection == 'chapters') {
-          if (idOrName != null) {
-            final chapter = _findNodeById(nodes, idOrName);
-            if (chapter != null && chapter.isChapter) {
-              return _chapterResolvedResource(parsed, chapter);
-            }
-          } else {
-            final queryResolved = _resolveChapterQuery(nodes, parsed);
-            if (queryResolved != null) {
-              return queryResolved;
-            }
-          }
-        } else {
-          if (idOrName != null) {
-            final volume = _findNodeById(nodes, idOrName);
-            if (volume != null && volume.isVolume) {
-              return _volumeResolvedResource(parsed, volume);
-            }
-          } else {
-            final queryResolved = _resolveVolumeQuery(nodes, parsed);
-            if (queryResolved != null) {
-              return queryResolved;
-            }
-          }
-        }
-      }
 
       if (parsed.collection == 'clips' && idOrName != null) {
         final shot = await StoryboardService(
@@ -361,15 +425,10 @@ final toolResolvedResourceProvider =
         );
       }
 
-      return AiToolResolvedResource(
-        collection: parsed.collection,
-        resourceTitle: idOrName ?? '',
-        field: parsed.field,
-        queryParameters: parsed.queryParameters,
-      );
+      return fallback();
     });
 
-const _screenplayCollections = {'seasons', 'episodes', 'scenes', 'beats'};
+const _screenplayCollections = {'seasons', 'episodes', 'scenes'};
 
 Future<AiToolResolvedResource?> _resolveScreenplayResource(
   Ref ref,
@@ -380,7 +439,6 @@ Future<AiToolResolvedResource?> _resolveScreenplayResource(
   final id = switch (collection) {
     'seasons' => parsed.locator('season_id'),
     'episodes' => parsed.locator('episode_id'),
-    'beats' => parsed.locator('beat_id'),
     'scenes' => parsed.locator('scene_id'),
     _ => null,
   };
@@ -388,20 +446,13 @@ Future<AiToolResolvedResource?> _resolveScreenplayResource(
   String? seasonId = collection == 'seasons' ? id : query['season_id'];
   String? episodeId = collection == 'episodes' ? id : query['episode_id'];
   final sceneId = collection == 'scenes' ? id : query['scene_id'];
-  final beatId = collection == 'beats' ? id : query['beat_id'];
   int? sceneNumber;
-  int? beatNumber;
   String title = '';
   String? detail;
 
   // ref.watch 尽量在 await 之前同步登记：本 provider 是 autoDispose，跨 await 再
   // watch 会在订阅者中途消失时用到已失效的 ref。root 之后的三个 family 都要
   // root.id，没法再往前提，所以集中在下面这一处一次性登记，然后统一 await。
-  final db = ref.watch(novelContentDatabaseProvider(databasePath));
-  // 节拍要先按 ID 查所属集才能订阅该集目录，这一次 DAO 读与 root 并行发起。
-  final beatRowFuture = beatId == null
-      ? null
-      : db.screenplayDao.getBeat(beatId);
   final root = await ref.watch(screenplayRootProvider(databasePath).future);
   if (root == null) {
     return null;
@@ -436,27 +487,6 @@ Future<AiToolResolvedResource?> _resolveScreenplayResource(
     }
     query.remove('scene_id');
   }
-  if (beatId != null) {
-    final row = await beatRowFuture!;
-    if (row == null) {
-      return null;
-    }
-    // 订阅所属集的节拍目录，编号/标题随改名和重排更新。这一处 watch 无法前移：
-    // 目标集要先由上面的 getBeat 查出来。
-    final beats = await ref.watch(
-      screenplayBeatsProvider(databasePath, row.episodeId).future,
-    );
-    final beat = beats.where((entry) => entry.id == beatId).firstOrNull;
-    if (beat == null) {
-      return null;
-    }
-    episodeId ??= beat.episodeId;
-    beatNumber = beat.beatNumber;
-    if (collection == 'beats' && id != null) {
-      title = beat.title;
-    }
-    query.remove('beat_id');
-  }
   final episode = episodes.where((row) => row.id == episodeId).firstOrNull;
   if (episodeId != null && episode == null) {
     return null;
@@ -485,8 +515,8 @@ Future<AiToolResolvedResource?> _resolveScreenplayResource(
       if (season != null) LocaleKeys.screenplaySeason: season.seasonNumber,
       if (episode != null) LocaleKeys.screenplayEpisode: episode.episodeNumber,
       LocaleKeys.screenplayScene: ?sceneNumber,
-      LocaleKeys.aiToolBeatIndexFmt: ?beatNumber,
     },
+    subCollection: _productionStructuralTail(parsed.originalPath, parsed.field),
     field: parsed.field ?? detail,
     queryParameters: query,
   );
@@ -541,7 +571,7 @@ String localizedChapterTypeLabel(BuildContext context, String type) {
     case '正文':
     case 'main':
     case 'main_chapter':
-      return context.t(LocaleKeys.aiToolChapterTypeChapter);
+      return context.t(LocaleKeys.toolChapterTypeChapter);
     case 'extra':
     case '番外':
     case 'side':
@@ -647,9 +677,9 @@ String localizedToolPathLabel(
         ? parsed.field
         : parsed.resourceSegment;
     final sublabel = switch (subcollection) {
-      'nodes' => context.t(LocaleKeys.aiToolPathCanvasNodes),
-      'edges' => context.t(LocaleKeys.aiToolPathCanvasEdges),
-      'layout' => context.t(LocaleKeys.aiToolPathCanvasLayout),
+      'nodes' => context.t(LocaleKeys.toolPathCanvasNodes),
+      'edges' => context.t(LocaleKeys.toolPathCanvasEdges),
+      'layout' => context.t(LocaleKeys.toolPathCanvasLayout),
       null => null,
       _ => aiToolFieldLabel(context, subcollection),
     };
@@ -658,11 +688,20 @@ String localizedToolPathLabel(
         : '$collection · $canvasName · $sublabel';
   }
 
+  // 画布制作 /production/… 与按集 …/production/canvas/…。id 段不展示。
+  if (segments.first == 'production') {
+    return _localizedProductionSegments(
+      context,
+      segments,
+      canvasWork: true,
+    ).join(' · ');
+  }
+
   if (segments.first == '_schema') {
     final target = segments.length > 2 && segments[1] == 'groups'
         ? switch (segments[2]) {
-            'shared' => context.t(LocaleKeys.aiToolSchemaShared),
-            'novel' => context.t(LocaleKeys.aiToolSchemaNovel),
+            'shared' => context.t(LocaleKeys.toolSchemaShared),
+            'novel' => context.t(LocaleKeys.toolSchemaNovel),
             'screenplay' => context.t(LocaleKeys.screenplayScript),
             _ => segments[2],
           }
@@ -670,6 +709,15 @@ String localizedToolPathLabel(
     return '$collection · $target';
   }
   if (_screenplayCollections.contains(segments.first)) {
+    final productionAt = segments.indexOf('production');
+    if (productionAt >= 0) {
+      final tail = _localizedProductionSegments(
+        context,
+        segments.sublist(productionAt),
+        canvasWork: false,
+      ).join(' · ');
+      return [collection, if (tail.isNotEmpty) tail].join(' · ');
+    }
     return [
       collection,
       if (parsed.resourceSegment == 'elements')
@@ -750,9 +798,17 @@ String localizeGlobPattern(BuildContext context, String pattern) {
     return trimmed;
   }
 
+  final canvasWork = segments.first == 'production';
+  final inProduction = canvasWork || segments.contains('production');
   final localizedSegments = <String>[
-    _localizedCollection(context, segments.first),
-    ...segments.skip(1),
+    for (var index = 0; index < segments.length; index++)
+      _localizedGlobSegment(
+        context,
+        segments[index],
+        index: index,
+        inProduction: inProduction,
+        canvasWork: canvasWork,
+      ),
   ];
   final separator = pathPart.endsWith('/') ? '/' : '';
   return '/${localizedSegments.join('/')}$separator$suffix';
@@ -796,7 +852,7 @@ String _localizedSubResourceTitle(BuildContext context, String title) {
   final match = RegExp(r'^#(\d+)$').firstMatch(title.trim());
   if (match != null) {
     return context.t(
-      LocaleKeys.aiToolBeatIndexFmt,
+      LocaleKeys.toolBeatIndexFmt,
       namedArgs: {'index': match.group(1)!},
     );
   }
@@ -809,14 +865,15 @@ String _localizedCollection(
   bool asList = false,
 }) {
   final key = switch (collection) {
-    'works' => LocaleKeys.aiToolRunNovel,
-    'story_state' => LocaleKeys.aiToolStoryState,
-    '_schema' => LocaleKeys.aiToolSchema,
+    'works' => LocaleKeys.toolRunNovel,
+    'story_state' => LocaleKeys.toolStoryState,
+    '_schema' => LocaleKeys.toolSchema,
     'screenplay' => LocaleKeys.screenplayScript,
     'seasons' => LocaleKeys.screenplaySeasons,
     'episodes' => LocaleKeys.screenplayEpisodes,
     'scenes' => LocaleKeys.screenplayScenes,
-    'clips' => LocaleKeys.productionTitle,
+    'clips' => LocaleKeys.productionClips,
+    'production' => LocaleKeys.toolPathProduction,
     'beats' => LocaleKeys.screenplayBeats,
     'profile' => LocaleKeys.workspaceNovelOverview,
     'canvas' => LocaleKeys.workspaceCanvas,
@@ -832,7 +889,7 @@ String _localizedCollection(
     'creatures' => LocaleKeys.workspaceCreatures,
     'foreshadowing' => LocaleKeys.workspaceForeshadowings,
     'relations' => LocaleKeys.workspaceRelations,
-    'locations' => LocaleKeys.aiToolCollectionLocations,
+    'locations' => LocaleKeys.toolCollectionLocations,
     '.agents/rules' => LocaleKeys.agentRuleTitle,
     _ => null,
   };
@@ -845,7 +902,7 @@ String _localizedCollection(
     return label;
   }
   return context.t(
-    LocaleKeys.aiToolCollectionListFmt,
+    LocaleKeys.toolCollectionListFmt,
     namedArgs: {'collection': label},
   );
 }
@@ -887,13 +944,162 @@ String? _outlineBeatTitle(List<OutlineBeatDraft>? beats, String id) {
 
 String? _outlineField(_ParsedToolPath parsed) => parsed.target.field;
 
+const _productionStructuralTokens = {
+  'production',
+  'canvas',
+  'clips',
+  'settings',
+  'nodes',
+  'edges',
+  'generations',
+};
+
+const _productionIdParents = {'clips', 'nodes', 'edges', 'generations'};
+
+String? _productionStructuralTail(String path, String? field) {
+  final segments = path
+      .split('/')
+      .where((segment) => segment.trim().isNotEmpty)
+      .toList();
+  final index = segments.indexOf('production');
+  if (index <= 0) {
+    return null;
+  }
+  final tail = segments.sublist(index);
+  if (field != null && tail.isNotEmpty && tail.last == field) {
+    tail.removeLast();
+  }
+  final structural = <String>[];
+  var expectId = false;
+  for (final segment in tail) {
+    final isStructural = _productionStructuralTokens.contains(segment);
+    if (expectId) {
+      expectId = false;
+      if (!isStructural) {
+        continue;
+      }
+    }
+    if (!isStructural) {
+      continue;
+    }
+    structural.add(segment);
+    expectId = _productionIdParents.contains(segment);
+  }
+  if (structural.isEmpty) {
+    return null;
+  }
+  return structural.join('/');
+}
+
+String? _productionTokenLabel(
+  BuildContext context,
+  String token, {
+  required bool canvasWork,
+}) {
+  final key = switch (token) {
+    'production' =>
+      canvasWork
+          ? LocaleKeys.toolPathProduction
+          : LocaleKeys.toolPathEpisodeProduction,
+    'canvas' => LocaleKeys.productionCanvas,
+    'clips' => LocaleKeys.productionClips,
+    'settings' => LocaleKeys.toolPathProductionSettings,
+    'nodes' => LocaleKeys.toolPathCanvasNodes,
+    'edges' => LocaleKeys.toolPathCanvasEdges,
+    'generations' => LocaleKeys.toolPathProductionGenerations,
+    _ => null,
+  };
+  if (key == null) {
+    return null;
+  }
+  return context.t(key);
+}
+
+List<String> _localizedProductionSegments(
+  BuildContext context,
+  List<String> segments, {
+  required bool canvasWork,
+}) {
+  final labels = <String>[];
+  var expectId = false;
+  for (final segment in segments) {
+    final structural = _productionTokenLabel(
+      context,
+      segment,
+      canvasWork: canvasWork,
+    );
+    if (expectId) {
+      expectId = false;
+      if (structural != null) {
+        labels.add(structural);
+        expectId = _productionIdParents.contains(segment);
+        continue;
+      }
+      final fieldLabel = _productionFieldLabel(context, segment);
+      if (fieldLabel != segment) {
+        labels.add(fieldLabel);
+      }
+      continue;
+    }
+    if (structural != null) {
+      labels.add(structural);
+      expectId = _productionIdParents.contains(segment);
+      continue;
+    }
+    labels.add(_productionFieldLabel(context, segment));
+  }
+  return labels;
+}
+
+String _productionFieldLabel(BuildContext context, String field) {
+  // kind 在查询芯片里只展示取值；路径字段仍要译出字段名。
+  final key = switch (field) {
+    'kind' => LocaleKeys.toolFieldKind,
+    _ => null,
+  };
+  if (key != null) {
+    return context.t(key);
+  }
+  return aiToolFieldLabel(context, field);
+}
+
+String _localizedGlobSegment(
+  BuildContext context,
+  String segment, {
+  required int index,
+  required bool inProduction,
+  required bool canvasWork,
+}) {
+  if (inProduction) {
+    final token = _productionTokenLabel(
+      context,
+      segment,
+      canvasWork: canvasWork,
+    );
+    if (token != null) {
+      return token;
+    }
+  }
+  if (index == 0) {
+    return _localizedCollection(context, segment);
+  }
+  return segment;
+}
+
 String _localizedSubCollection(BuildContext context, String collection) {
+  final parts = collection.split('/');
+  if (parts.first == 'production') {
+    return _localizedProductionSegments(
+      context,
+      parts,
+      canvasWork: false,
+    ).join(' · ');
+  }
   final key = switch (collection) {
     'change_logs' => LocaleKeys.historyTitle,
-    'production' => LocaleKeys.storyboardSettings,
-    'beats' => LocaleKeys.aiToolOutlineBeats,
-    'nodes' => LocaleKeys.aiToolPathCanvasNodes,
-    'edges' => LocaleKeys.aiToolPathCanvasEdges,
+    'beats' => LocaleKeys.toolOutlineBeats,
+    'nodes' => LocaleKeys.toolPathCanvasNodes,
+    'edges' => LocaleKeys.toolPathCanvasEdges,
     _ => null,
   };
   return key == null ? collection : context.t(key);
@@ -969,14 +1175,33 @@ String aiToolFieldLabel(BuildContext context, String field) {
     'parent_id' => 'history.field_parent',
     'volume_id' => LocaleKeys.workspaceVolume,
     'start_chapter_num' => LocaleKeys.workspaceOutlineStartChapter,
-    'source_type' => LocaleKeys.aiToolQuerySourceType,
-    'target_type' => LocaleKeys.aiToolQueryTargetType,
-    'relation_type' => LocaleKeys.aiToolQueryRelationType,
+    'source_type' => LocaleKeys.toolQuerySourceType,
+    'target_type' => LocaleKeys.toolQueryTargetType,
+    'relation_type' => LocaleKeys.toolQueryRelationType,
     'proof' => LocaleKeys.relationProof,
     'reason' => LocaleKeys.relationReason,
     'source_id' => 'history.field_resource',
     'target_id' => 'history.field_resource',
-    'chapter_id' => LocaleKeys.aiToolQueryChapterId,
+    'chapter_id' => LocaleKeys.toolQueryChapterId,
+    'ref_type' => LocaleKeys.toolFieldRefType,
+    'ref_id' => LocaleKeys.toolFieldRefId,
+    'panorama' => LocaleKeys.toolFieldPanorama,
+    'image_method' => LocaleKeys.toolFieldImageMethod,
+    'group' => LocaleKeys.toolFieldGroup,
+    'x' => LocaleKeys.toolFieldX,
+    'y' => LocaleKeys.toolFieldY,
+    'style_id' || 'style_selection' => LocaleKeys.toolFieldStyle,
+    'inputs' => LocaleKeys.toolFieldInputs,
+    'adopted_asset_id' => LocaleKeys.toolFieldAdoptedAsset,
+    'provider_id' => LocaleKeys.toolFieldProvider,
+    'generate_audio' => LocaleKeys.toolFieldGenerateAudio,
+    'data' => LocaleKeys.toolFieldData,
+    'positions' => LocaleKeys.toolFieldPositions,
+    'remove_types' => LocaleKeys.toolFieldRemoveTypes,
+    'cancel_requested_at' => LocaleKeys.toolFieldCancelRequestedAt,
+    'result_asset_id' => LocaleKeys.toolFieldResultAsset,
+    'result_file_path' => LocaleKeys.toolFieldResultFile,
+    'result_applied' => LocaleKeys.toolFieldResultApplied,
     _ => '',
   };
   if (key.isEmpty) {
@@ -1038,7 +1263,7 @@ String? _localizedQueryChip(BuildContext context, String key, String value) {
         return localizedValue;
       }
       return context.t(
-        LocaleKeys.aiToolQueryFilterFmt,
+        LocaleKeys.toolQueryFilterFmt,
         namedArgs: {'label': label, 'value': localizedValue},
       );
   }
@@ -1080,12 +1305,18 @@ AiToolResolvedResource? _crossWorkResolvedResource(
     workTitle: workTitle,
     isUnavailableWork: isUnavailableWork,
     isListing: !target.hasId && !target.hasField,
+    showCollection: target.collection != 'production',
+    labelPath: target.collection == 'production'
+        ? target.localDisplayPath
+        : null,
     subCollection:
         target.collection == 'relations' &&
             target.resourceSegment == 'change_logs'
         ? 'change_logs'
-        : null,
-    field: parsed.field,
+        : target.collection == 'production'
+        ? null
+        : _productionStructuralTail(target.localDisplayPath, parsed.field),
+    field: target.collection == 'production' ? null : parsed.field,
     queryParameters: parsed.queryParameters,
   );
 }

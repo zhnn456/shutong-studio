@@ -4,12 +4,17 @@
 //   lib/shared/models/image/config.dart
 //   lib/shared/services/ai/image.dart
 //   lib/shared/models/ai_provider.dart
+//   lib/shared/localization/locale_keys.dart
+//   assets/translations/en/common.json
+//   assets/translations/zh-CN/common.json
 
+import '../../localization/locale_keys.dart';
 import '../ai_provider.dart' show ModelIdSource, aiProviderTypeConfigFor;
 import 'catalog.dart';
 export 'catalog.dart';
 
 enum ImageProtocol {
+  moss_image,
   agnes_image,
   qwen_image,
   ark_image,
@@ -19,11 +24,20 @@ enum ImageProtocol {
   new_api_images,
   codex_image,
   gemini_image,
+  purefox_media,
+  minimax_image,
 }
 
 /// 只有对应协议才读取的渠道选项，每个协议一种类型。
 sealed class ImageProtocolOptions {
   const ImageProtocolOptions();
+}
+
+enum MidjourneyProtocol { proxy, images, atlascloud }
+
+class MidjourneyImageOptions extends ImageProtocolOptions {
+  const MidjourneyImageOptions(this.protocol);
+  final MidjourneyProtocol protocol;
 }
 
 class AgnesImageOptions extends ImageProtocolOptions {
@@ -66,11 +80,10 @@ class ImageChannelModel {
   const ImageChannelModel({
     required this.catalogId,
     this.includedInPresets = true,
-    ImageModelCapabilities capabilities = const ImageModelCapabilities(),
-    ImageRequestDefaults requestDefaults = const ImageRequestDefaults(),
+    this._capabilities = const ImageModelCapabilities(),
+    this._requestDefaults = const ImageRequestDefaults(),
     this.protocolOptions,
-  }) : _capabilities = capabilities,
-       _requestDefaults = requestDefaults;
+  });
   final String catalogId;
   final bool includedInPresets;
   final ImageModelCapabilities _capabilities;
@@ -92,12 +105,33 @@ const _openrouterDefaults = ImageRequestDefaults(
 
 final imageChannelModels = <ImageProtocol, Map<String, ImageChannelModel>>{
   ..._listedImageChannels,
+  ImageProtocol.moss_image: {
+    for (final id in ['moss-image-base-1.0', 'moss-image-sft-1.0'])
+      id: ImageChannelModel(catalogId: id),
+  },
   ImageProtocol.new_api_images: {
+    'mj_imagine': ImageChannelModel(
+      catalogId: 'midjourney',
+      protocolOptions: MidjourneyImageOptions(MidjourneyProtocol.proxy),
+    ),
+    for (final id in [
+      'midjourney-v8.2',
+      'midjourney-v8.2-fast',
+      'midjourney-v8.2-turbo',
+    ])
+      id: ImageChannelModel(
+        catalogId: 'midjourney-v8.2',
+        protocolOptions: MidjourneyImageOptions(MidjourneyProtocol.images),
+      ),
     ..._pixelSizeChannels,
     for (final id in imageModelsCatalog.keys.where(
       (id) => id.startsWith('gemini-'),
     ))
       id: ImageChannelModel(catalogId: id, includedInPresets: false),
+    'doubao-seedream-5-5': ImageChannelModel(
+      catalogId: 'seedream-5.5',
+      includedInPresets: false,
+    ),
     'doubao-seedream-5-0-pro': ImageChannelModel(
       catalogId: 'seedream-5.0-pro',
       includedInPresets: false,
@@ -106,11 +140,59 @@ final imageChannelModels = <ImageProtocol, Map<String, ImageChannelModel>>{
   ImageProtocol.openai_images: _pixelSizeChannels,
   ImageProtocol.codex_image: _pixelSizeChannels,
   ImageProtocol.gemini_image: _geminiChannels,
+  ImageProtocol.purefox_media: purefoxMediaImageModels,
+  // https://platform.minimax.io/docs/api-reference/image-generation-h3-generations
+  ImageProtocol.minimax_image: {
+    for (final id in ['MiniMax-H3-Image', 'MiniMax-H3-Image-Highspeed'])
+      id: ImageChannelModel(catalogId: id),
+  },
 };
+
+/// PureFox 媒体网关的图片型号目录：不预置，填 key 后按站点 `/v1/models`
+/// 返回的 kind / qualities / refImages 登记。
+final purefoxMediaImageModels = <String, ImageChannelModel>{};
 
 const _listedImageChannels = <ImageProtocol, Map<String, ImageChannelModel>>{
   // https://www.atlascloud.ai/docs/openapi-index
   ImageProtocol.atlascloud_image: {
+    'youchuan/v8.2/text-to-image': ImageChannelModel(
+      catalogId: 'midjourney-v8.2',
+      capabilities: ImageModelCapabilities(
+        resolutions: {'auto', '2K'},
+        ratios: {
+          'auto',
+          '1:1',
+          '16:9',
+          '9:16',
+          '4:3',
+          '3:4',
+          '3:2',
+          '2:3',
+          '21:9',
+          '9:21',
+        },
+      ),
+      protocolOptions: MidjourneyImageOptions(MidjourneyProtocol.atlascloud),
+    ),
+    // https://static.atlascloud.ai/model/schema/openai-gpt-image-2.6-sunburst-text-to-image.json
+    'openai/gpt-image-2.6-sunburst/text-to-image': ImageChannelModel(
+      catalogId: 'gpt-image-2.6-sunburst',
+      capabilities: _atlasGptImage25Capabilities,
+      requestDefaults: _atlasGptImage25Defaults,
+      protocolOptions: AtlasCloudImageOptions(
+        editModel: 'openai/gpt-image-2.6-sunburst/edit',
+        qualityLevels: {'auto', 'low', 'medium', 'high', 'xhigh', 'max'},
+      ),
+    ),
+    'openai/gpt-image-2.6-flare/text-to-image': ImageChannelModel(
+      catalogId: 'gpt-image-2.6-flare',
+      capabilities: _atlasGptImage25Capabilities,
+      requestDefaults: _atlasGptImage25Defaults,
+      protocolOptions: AtlasCloudImageOptions(
+        editModel: 'openai/gpt-image-2.6-flare/edit',
+        qualityLevels: {'auto', 'low', 'medium', 'high', 'xhigh', 'max'},
+      ),
+    ),
     // https://static.atlascloud.ai/model/schema/openai-gpt-image-2.5-sunburst-text-to-image.json
     'openai/gpt-image-2.5-sunburst/text-to-image': ImageChannelModel(
       catalogId: 'gpt-image-2.5-sunburst',
@@ -268,6 +350,7 @@ const _listedImageChannels = <ImageProtocol, Map<String, ImageChannelModel>>{
     'wan2.7-image-pro': ImageChannelModel(catalogId: 'wan2.7-image-pro'),
   },
   ImageProtocol.ark_image: {
+    'doubao-seedream-5-5-261028': ImageChannelModel(catalogId: 'seedream-5.5'),
     'doubao-seedream-5-0-pro-260628': ImageChannelModel(
       catalogId: 'seedream-5.0-pro',
     ),
@@ -288,6 +371,40 @@ const _listedImageChannels = <ImageProtocol, Map<String, ImageChannelModel>>{
     ),
   },
   ImageProtocol.openrouter_image: {
+    // https://openrouter.ai/api/v1/images/models
+    'qwen/qwen-image-2.1-turbo': ImageChannelModel(
+      catalogId: 'qwen-image-2.1-turbo',
+      includedInPresets: false,
+      capabilities: ImageModelCapabilities(
+        ratios: {
+          '1:1',
+          '1:2',
+          '1:4',
+          '2:1',
+          '2:3',
+          '3:2',
+          '3:4',
+          '4:1',
+          '4:3',
+          '4:5',
+          '5:4',
+          '9:16',
+          '16:9',
+        },
+        resolutions: {'1K', '2K'},
+        sizes: {},
+        maxReferences: 4,
+        minPixels: ConfigValue(null),
+        maxPixels: ConfigValue(null),
+        maxAspectRatio: ConfigValue(null),
+      ),
+      requestDefaults: _openrouterDefaults,
+    ),
+    'krea/k3-edit': ImageChannelModel(
+      catalogId: 'k3-edit',
+      includedInPresets: false,
+      requestDefaults: _openrouterDefaults,
+    ),
     'google/gemini-nano-banana-2.1': ImageChannelModel(
       catalogId: 'gemini-nano-banana-2.1',
       requestDefaults: _openrouterDefaults,
@@ -343,6 +460,14 @@ const _listedImageChannels = <ImageProtocol, Map<String, ImageChannelModel>>{
       catalogId: 'ming-image-0.1-design',
       includedInPresets: false,
       requestDefaults: ImageRequestDefaults(outputFormat: ConfigValue('png')),
+    ),
+    'openai/gpt-image-2.6-sunburst': ImageChannelModel(
+      catalogId: 'gpt-image-2.6-sunburst',
+      requestDefaults: _openrouterDefaults,
+    ),
+    'openai/gpt-image-2.6-flare': ImageChannelModel(
+      catalogId: 'gpt-image-2.6-flare',
+      requestDefaults: _openrouterDefaults,
     ),
     'openai/gpt-image-2.5-sunburst': ImageChannelModel(
       catalogId: 'gpt-image-2.5-sunburst',
@@ -760,6 +885,56 @@ ImageChannelModel? lookupImageChannelModel(
       .firstOrNull;
 }
 
+({ImageModelCapabilities capabilities, ImageRequestDefaults defaults})?
+_imageSpec(String providerType, String? modelId) {
+  final channel = lookupImageChannelModel(providerType, modelId);
+  if (channel != null) {
+    return (
+      capabilities: channel.capabilities,
+      defaults: channel.requestDefaults,
+    );
+  }
+  final entry = lookupImageModel(modelId);
+  if (entry == null) {
+    return null;
+  }
+  return (capabilities: entry.capabilities, defaults: entry.requestDefaults);
+}
+
+Set<String> imageComplexityLevels(String providerType, String? modelId) =>
+    _imageSpec(providerType, modelId)?.capabilities.complexityLevels ??
+    const {};
+
+/// 型号没有复杂度档位时返回 null。有档位但没选中、或选中值不在目录里时，用目录默认值。
+String? imageComplexityFor(
+  String providerType,
+  String? modelId,
+  String? selected,
+) {
+  final spec = _imageSpec(providerType, modelId);
+  if (spec == null || spec.capabilities.complexityLevels.isEmpty) {
+    return null;
+  }
+  if (selected != null &&
+      spec.capabilities.complexityLevels.contains(selected)) {
+    return selected;
+  }
+  final fallback = spec.defaults.complexity;
+  if (fallback != null &&
+      spec.capabilities.complexityLevels.contains(fallback)) {
+    return fallback;
+  }
+  return null;
+}
+
+/// 目录外的档位返回 null，由界面直接显示原值。
+String? imageComplexityLabelKey(String level) => switch (level) {
+  'low' => LocaleKeys.commonComplexityLow,
+  'medium' => LocaleKeys.commonComplexityMedium,
+  'high' => LocaleKeys.commonComplexityHigh,
+  _ => null,
+};
+
 List<String> imageModelsForProvider(String providerType) =>
     imageChannelModels[aiProviderTypeConfigFor(providerType)?.imageProtocol]
         ?.entries
@@ -778,24 +953,12 @@ final _pixelSizeChannels = {
       ),
 };
 
-// Gemini 直连适配器只支持自动尺寸的文生图。
+// Gemini 直连与网关共用 generateContent 契约，直接沿用目录登记的 Gemini 能力。
 final _geminiChannels = {
-  for (final id in imageModelsCatalog.keys)
-    id: ImageChannelModel(
-      catalogId: id,
-      includedInPresets: false,
-      capabilities: const ImageModelCapabilities(
-        ratios: {'auto'},
-        resolutions: {'auto'},
-        sizes: {},
-        minReferences: 0,
-        maxReferences: 0,
-        minPixels: ConfigValue(null),
-        maxPixels: ConfigValue(null),
-        maxEditPixels: ConfigValue(null),
-        maxAspectRatio: ConfigValue(null),
-      ),
-    ),
+  for (final id in imageModelsCatalog.keys.where(
+    (id) => id.startsWith('gemini-'),
+  ))
+    id: ImageChannelModel(catalogId: id, includedInPresets: false),
 };
 
 const _atlasBananaRatios = {
@@ -828,6 +991,8 @@ const _atlasGptImage25Capabilities = ImageModelCapabilities(
   maxReferences: 16,
   maxPixels: ConfigValue(8294400),
   maxAspectRatio: ConfigValue(3),
+  // 这组 schema 没有 complexity，空集盖掉目录里 2.6 的复杂度档位。
+  complexityLevels: {},
   sizes: {
     '1K': {
       '1:1': '1024x1024',

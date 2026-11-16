@@ -38,11 +38,13 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:reveric/shared/database/app_database.dart';
 import 'package:reveric/shared/models/ai_provider.dart';
+import 'package:reveric/shared/localization/locale_keys.dart';
 import 'package:reveric/shared/models/provider_asset.dart';
 import 'package:reveric/shared/models/video/request.dart';
 import 'package:reveric/shared/models/video/task_result.dart';
 import 'package:reveric/shared/services/ai/video/task_service.dart';
 import 'package:reveric/shared/services/ai/video/reference_storage_service.dart';
+import 'package:reveric/shared/services/object_storage/service.dart';
 
 const request = VideoRequest(
   modelId: 'doubao-seedance-2-5-260628',
@@ -60,6 +62,7 @@ void main() {
   final services = <VideoTaskService>[];
   var posts = 0;
   var queries = 0;
+  final uploads = <http.BaseRequest>[];
   var probeFails = false;
   setUp(() async {
     root = await Directory.systemTemp.createTemp('video-recovery-');
@@ -70,6 +73,7 @@ void main() {
     await db.aiProviderDao.upsert(provider);
     posts = 0;
     queries = 0;
+    uploads.clear();
     probeFails = false;
   });
   tearDown(() async {
@@ -87,6 +91,7 @@ void main() {
     Future<void> Function(GenerationTask)? beforeSubmit,
     Future<void> Function()? recoverSources,
     DateTime Function()? now,
+    bool useDefaultDownloadTransport = false,
   }) {
     final service = VideoTaskService(
       beforeCreate: beforeCreate,
@@ -109,7 +114,13 @@ void main() {
       database: db,
       rootDirectory: root,
       references: ReferenceStorageService(
+        database: db,
+        storage: ObjectStorageService(database: db),
         probe: (_) => throw StateError('no references expected'),
+        uploadClient: (_) => MockClient((r) async {
+          uploads.add(r);
+          return http.Response('', 401);
+        }),
       ),
       providerTransport: (_) => MockClient((r) async {
         if (r.method == 'POST') {
@@ -132,13 +143,84 @@ void main() {
           200,
         );
       }),
-      downloadTransport: () => MockClient(
-        download ?? ((_) async => http.Response.bytes([1, 2, 3, 4], 200)),
-      ),
+      downloadTransport: useDefaultDownloadTransport
+          ? null
+          : (_) => MockClient(
+              download ?? ((_) async => http.Response.bytes([1, 2, 3, 4], 200)),
+            ),
     );
     services.add(service);
     return service;
   }
+
+  test(
+    'video downloads use current provider proxy and authentication',
+    () async {
+      final requests = <(int, String?, String?)>[];
+      final servers = <HttpServer>[];
+      for (var index = 0; index < 3; index++) {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        servers.add(server);
+        addTearDown(() => server.close(force: true));
+        server.listen((r) async {
+          requests.add((
+            index,
+            r.headers.value(HttpHeaders.proxyAuthorizationHeader),
+            r.headers.value(HttpHeaders.authorizationHeader),
+          ));
+          r.response.add([index, 2, 3, 4]);
+          await r.response.close();
+        });
+      }
+      final service = make(
+        useDefaultDownloadTransport: true,
+        respond: (r) async => http.Response(
+          jsonEncode(
+            r.method == 'POST'
+                ? {'id': 'original'}
+                : {
+                    'status': 'succeeded',
+                    'content': {
+                      'video_url':
+                          'http://127.0.0.1:${servers[2].port}/result.mp4',
+                    },
+                  },
+          ),
+          200,
+        ),
+      );
+      for (var index = 0; index < 2; index++) {
+        await db.aiProviderDao.upsert(
+          provider.copyWith(
+            proxyUrl: 'http://127.0.0.1:${servers[index].port}',
+            proxyUsername: 'user',
+            proxyPassword: 'secret$index',
+          ),
+        );
+        final id = await service.create(
+          providerId: provider.id,
+          novelId: 'work',
+          sourceType: 'production_clip',
+          sourceId: 'proxy$index',
+          request: request,
+        );
+        await service.submit(id);
+        await service.refresh(id);
+        final task = (await service.getTask(id))!;
+        expect(task.status, GenerationTaskStatus.completed);
+        expect(await File('${root.path}/${task.path}').readAsBytes(), [
+          index,
+          2,
+          3,
+          4,
+        ]);
+      }
+      expect(requests, [
+        for (var i = 0; i < 2; i++)
+          (i, 'Basic ${base64Encode(utf8.encode('user:secret$i'))}', null),
+      ]);
+    },
+  );
 
   test(
     'video download rejects cancellation and still registers its result',
@@ -420,19 +502,16 @@ void main() {
           ),
         ],
       );
-      // 测试未配置云存储：走到上传即报配置错误，说明没有换成 asset://。
+      // 未配置云存储时走渠道上传，说明没有换成 asset://。
       await expectLater(
         tasks.submit(id, acknowledgeReferenceUpload: true),
         throwsA(
           isA<VideoException>()
-              .having(
-                (e) => e.code,
-                'code',
-                VideoErrorCode.configuration_required,
-              )
-              .having((e) => e.field, 'field', 'reference_storage'),
+              .having((e) => e.code, 'code', VideoErrorCode.authentication)
+              .having((e) => e.field, 'field', 'reference_upload'),
         ),
       );
+      expect(uploads.single.url.path, '/api/v1/model/uploadMedia');
       expect(posts, 0);
     },
   );
@@ -960,7 +1039,7 @@ void main() {
       final task = (await service.getTask(id))!;
       expect(task.status, GenerationTaskStatus.failed);
       expect(task.errorCode, 'upstream_failed');
-      expect(task.errorMessage, 'private diagnostic');
+      expect(task.errorMessage, LocaleKeys.aiOutputCopyrightRejected);
       expect(
         task.errorDetail,
         'OutputVideoSensitiveContentDetected.PolicyViolation: private diagnostic',
@@ -1679,7 +1758,8 @@ void main() {
       expect(taskLogs.single, contains('[WARN]'));
       expect(lines.join('\n'), isNot(contains('[ERROR]')));
 
-      expect(task.errorMessage, 'No available channel');
+      expect(task.errorMessage, LocaleKeys.aiProviderChannelUnavailable);
+      expect(task.errorDetail, contains('No available channel'));
       expect(task.providerTaskId, isNull);
       expect(GenerationTaskDao.blocksSource(task), false);
       service.dispose();
@@ -1726,7 +1806,8 @@ void main() {
       final task = (await service.getTask(id))!;
       expect(task.status, GenerationTaskStatus.running);
       expect(task.providerTaskId, 'original');
-      expect(task.errorMessage, 'No available channel');
+      expect(task.errorMessage, LocaleKeys.aiProviderChannelUnavailable);
+      expect(task.errorDetail, contains('No available channel'));
       expect(
         task.nextPollAt!.difference(before).inSeconds,
         greaterThanOrEqualTo(119),

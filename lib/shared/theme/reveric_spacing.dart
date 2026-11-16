@@ -84,13 +84,29 @@ class RevericSizes {
   /// 视频节点「裁剪时长」弹窗宽度：画面要看得清切点，比通用弹窗宽。
   static const double productionTrimDialogWidth = 600;
 
+  /// 画布书架卡片：横向画面，宽度上限与固定高度。
+  static const double canvasShelfCardWidth = 280;
+  static const double canvasShelfCardHeight = 250;
+
+  /// 画布书架「继续」区的横向封面宽度。
+  static const double canvasResumeCoverWidth = 224;
+
+  /// 画布作品页头重命名输入框的宽度上限。
+  static const double productionTitleFieldWidth = 320;
+
+  /// 空画布起点卡片的宽度。
+  static const double productionStartTileWidth = 200;
+
   /// 制作画布上贴着图片节点的生成输入框宽度。
   static const double productionComposerWidth = 620;
 
   /// 视频节点底栏多了运镜、时长和生成方式，输入框更宽；窄画布时由锚定布局夹回。
   static const double productionVideoComposerWidth = 800;
 
-  /// 制作画布浮层：结果弹层、比例 · 清晰度弹层。
+  /// 制作画布浮层：结果弹层、比例 · 分辨率弹层。
+  static const double productionInputTileSize = 56;
+  static const double productionTextInputWidth = 160;
+
   static const double productionResultsWidth = 400;
   static const double productionResultsMaxHeight = 360;
   static const double productionSpecWidth = 380;
@@ -157,6 +173,10 @@ class RevericSizes {
   static const double iconButtonIconSize = 20;
   static const double iconButtonIconSizeMobile = 22;
 
+  /// 缩略图角上的圆形移除按钮（悬停时露出的小 ×）。
+  static const double thumbRemoveSize = 22;
+  static const double thumbRemoveIconSize = 12;
+
   /// 移动端图标按钮和筛选项的最小触控区域。
   static const double touchTargetSize = 48;
 
@@ -180,7 +200,11 @@ class RevericSizes {
   static const double statusDotSizeMobile = 9;
 
   /// 设置页 AI 供应商列表栏宽。
-  static const double settingsProviderListWidth = 200;
+  static const double settingsProviderListWidth = 280;
+
+  /// 添加自定义供应商的类型选择弹层宽度与最大高度（桌面）。
+  static const double providerTypePickerWidth = 320;
+  static const double providerTypePickerMaxHeight = 440;
 
   /// 季管理桌面弹窗宽度。
   static const double screenplaySeasonManagerWidth = 640;
@@ -200,6 +224,15 @@ class RevericSizes {
   /// 剧本分区顶栏高度。
   static const double screenplayTopBarHeight = 46;
 
+  /// 浮动工具条低于此宽度时收起右侧工具。
+  static const double screenplayToolbarCompactWidth = 640;
+
+  /// 收起后的工具面板宽度，仍受窗口可用宽度约束。
+  static const double screenplayToolbarPanelWidth = 600;
+
+  /// 场次组头低于此宽度时使用带提示的图标操作。
+  static const double storyboardHeaderCompactWidth = 640;
+
   /// 场次卡 / 镜头卡宽度。
   static const double screenplaySceneCardWidth = 340;
 
@@ -215,16 +248,6 @@ class RevericSizes {
 
   /// 场次板上相邻两张卡的水平间距。
   static const double screenplaySceneCardGap = 44;
-
-  /// 节拍板单幕列宽度。
-  static const double screenplayActColumnWidth = 260;
-
-  /// 节拍板单幕列弹性拉伸上限 —— 幕少时列宽在最小值到该值之间随窗口
-  /// 伸缩，超过该值不再拉宽，避免单列空状态摊成横幅。
-  static const double screenplayActColumnMaxWidth = 360;
-
-  /// 节拍板末尾「新增一幕」虚线列宽度。
-  static const double screenplayAddActColumnWidth = 120;
 
   /// 大纲正文栏宽度。
   static const double screenplayOutlineMaxWidth = 780;

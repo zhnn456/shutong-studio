@@ -2,6 +2,7 @@
 // 关联文件:
 //   lib/shared/services/ai/tools_schema.dart
 //   lib/shared/services/ai/tools.dart
+import 'package:reveric/shared/app_config.dart';
 import 'package:drift/native.dart';
 import 'package:reveric/shared/database/app_database.dart';
 import 'package:reveric/shared/services/working_overlay.dart';
@@ -280,7 +281,12 @@ void main() {
         );
         checkNode(contract, singleton: contract['singleton'] as bool);
       }
-      expect(fieldOnlyWrites, {'canvas/{name}/layout', 'canvas/{name}/open'});
+      expect(fieldOnlyWrites, {
+        if (ideationCanvasEnabled) ...[
+          'canvas/{name}/layout',
+          'canvas/{name}/open',
+        ],
+      });
       final chapters = await manager.executeTool(
         name: 'Read',
         input: {'path': '/_schema/chapters'},
@@ -302,6 +308,10 @@ void main() {
         name: 'Read',
         input: {'path': '/_schema/canvas'},
       );
+      if (!ideationCanvasEnabled) {
+        expect(canvas, contains('error'));
+        return;
+      }
       final fields = canvas['fields'] as Map;
       expect(
         fields.keys,
@@ -581,16 +591,11 @@ void main() {
         final field = singleton['fields'][name] as Map;
         expect(field['read'], isTrue);
         expect(field['read_path'], isTrue);
-        expect(field['create'], isFalse);
-        expect(field['write'], isFalse);
-        expect(field['write_path'], isFalse);
-        expect(field['edit'], isFalse);
+        expect(field['create'], isTrue);
+        expect(field['write'], isTrue);
+        expect(field['write_path'], isTrue);
+        expect(field['edit'], isTrue);
       }
-      final readOnlyWrite = await manager.executeTool(
-        name: 'Write',
-        input: {'path': 'screenplay/ratio', 'value': '9:16'},
-      );
-      expect(readOnlyWrite['error_code'], 'invalid_argument');
       final remove = await manager.executeTool(
         name: 'Remove',
         input: {'path': 'screenplay', 'force': true},
@@ -667,10 +672,12 @@ void main() {
         isEmpty,
       );
       expect(
-        (await read(managers.first, '/_schema/canvas'))['fields'],
-        isNotEmpty,
+        (await read(managers.first, '/_schema/canvas'))[ideationCanvasEnabled
+            ? 'fields'
+            : 'error'],
+        isNotNull,
       );
-      for (final collection in ['seasons', 'episodes', 'beats', 'scenes']) {
+      for (final collection in ['seasons', 'episodes', 'scenes']) {
         final contract = await read(managers.first, '/_schema/$collection');
         final fields = contract['fields'] as Map;
         expect(fields, contains('id'));
@@ -682,7 +689,7 @@ void main() {
       final sceneContract = await read(managers.first, '/_schema/scenes');
       final sceneFields = sceneContract['fields'] as Map;
       expect(sceneFields, contains('episode_id'));
-      expect(sceneFields, contains('beat_id'));
+      expect(sceneFields, isNot(contains('beat_id')));
       final elementContract = (sceneContract['subresources'] as List).single;
       expect(
         elementContract['resource_path'],

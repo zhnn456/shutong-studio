@@ -22,6 +22,7 @@ class VideoCapabilities {
     final channel = lookupVideoChannelModel(providerType, request.modelId);
     if (channel == null) {
       _check(request.prompt.trim().isNotEmpty, 'prompt');
+      _check(!roles.contains(VideoInputRole.middle_frame), 'references');
       return;
     }
     _validateParameters(channel, request, roles);
@@ -33,6 +34,8 @@ class VideoCapabilities {
     List<VideoInputRole> roles,
   ) {
     final model = channel.capabilities;
+    final requiredMode = channel.protocolOptions.requiredMode;
+    _check(requiredMode == null || request.mode == requiredMode, 'references');
     _check(request.prompt.trim().isNotEmpty, 'prompt');
     if (model.maxPromptCharacters != null) {
       _check(
@@ -52,11 +55,16 @@ class VideoCapabilities {
           .where(
             (r) =>
                 r == VideoInputRole.first_frame ||
-                r == VideoInputRole.last_frame,
+                r == VideoInputRole.last_frame ||
+                r == VideoInputRole.middle_frame,
           )
           .every(channel.frameRoles.contains),
       'references',
     );
+    final middleCount = roles
+        .where((r) => r == VideoInputRole.middle_frame)
+        .length;
+    _check(middleCount <= model.maxMiddleFrames, 'middle_frame_count');
     _check(channel.ratios.contains(request.ratio), 'ratio');
     _check((request.audio != null) == channel.requiresAudio, 'audio');
     _check(
@@ -82,7 +90,13 @@ class VideoCapabilities {
         );
       case VideoMode.first_last_frame:
         _check(
-          (roles.length == 2 &&
+          (middleCount > 0 &&
+                  roles.every(channel.frameRoles.contains) &&
+                  roles.where((r) => r == VideoInputRole.first_frame).length ==
+                      1 &&
+                  roles.where((r) => r == VideoInputRole.last_frame).length <=
+                      1) ||
+              (roles.length == 2 &&
                   roles.toSet().containsAll({
                     VideoInputRole.first_frame,
                     VideoInputRole.last_frame,
@@ -102,7 +116,8 @@ class VideoCapabilities {
         _check(
           roles.isNotEmpty &&
               !roles.contains(VideoInputRole.first_frame) &&
-              !roles.contains(VideoInputRole.last_frame),
+              !roles.contains(VideoInputRole.last_frame) &&
+              !roles.contains(VideoInputRole.middle_frame),
           'references',
         );
         _check(
@@ -122,9 +137,55 @@ class VideoCapabilities {
   }
 
   void validate(VideoRequest request, List<VideoReference> references) {
+    for (final ref in references) {
+      if (providerType == 'purefox_media' && isPurefoxUploadKey(ref.url)) {
+        continue;
+      }
+      if (ref.url.startsWith('data:')) {
+        _check(isVideoInlineReference(ref), 'reference_url');
+      } else if (ref.url.startsWith('mm_file://')) {
+        _check(
+          providerType == 'metaso' && ref.url.length > 'mm_file://'.length,
+          'reference_url',
+        );
+      } else {
+        final uri = Uri.tryParse(ref.url);
+        _check(
+          uri != null &&
+              {'http', 'https', 'asset'}.contains(uri.scheme) &&
+              uri.host.isNotEmpty &&
+              uri.userInfo.isEmpty,
+          'reference_url',
+        );
+      }
+    }
+    validateLocal(request, references);
+  }
+
+  /// 上传之前只校验本地媒体属性，不要求已有远端地址。
+  void validateLocal(VideoRequest request, List<VideoReference> references) {
+    if (providerType == 'purefox_media') {
+      for (final ref in references) {
+        final limit = switch (ref.role.kind) {
+          VideoMediaKind.image => 20,
+          VideoMediaKind.audio => 25,
+          VideoMediaKind.video => 64,
+        };
+        _check(
+          ref.fileSize > 0 && ref.fileSize <= limit * 1024 * 1024,
+          'file_size',
+        );
+      }
+
+      _check(
+        references.fold<int>(0, (sum, ref) => sum + ref.fileSize) <=
+            128 * 1024 * 1024,
+        'file_size',
+      );
+    }
     final channel = lookupVideoChannelModel(providerType, request.modelId);
     if (channel == null) {
-      _check(request.prompt.trim().isNotEmpty, 'prompt');
+      validateParameters(request, references.map((r) => r.role).toList());
       return;
     }
     final model = channel.capabilities;
@@ -133,12 +194,6 @@ class VideoCapabilities {
     final durations = <VideoMediaKind, int>{};
     final sizes = <VideoMediaKind, int>{};
     for (final ref in references) {
-      _check(
-        {'http', 'https', 'asset'}.contains(ref.url.scheme) &&
-            ref.url.host.isNotEmpty &&
-            ref.url.userInfo.isEmpty,
-        'reference_url',
-      );
       final kind = ref.role.kind;
       final limits = model.references[kind]!;
       sizes[kind] = (sizes[kind] ?? 0) + ref.fileSize;

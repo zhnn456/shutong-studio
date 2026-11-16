@@ -34,6 +34,7 @@ import 'popover.dart';
 import 'support.dart';
 import 'draft_completion.dart';
 import 'storage_dialog.dart';
+import 'task_status.dart';
 
 class ProductionHistory extends HookConsumerWidget {
   const ProductionHistory({
@@ -91,6 +92,9 @@ class ProductionHistory extends HookConsumerWidget {
           await ensureReferenceStorage(
             context,
             ref.read(referenceStorageServiceProvider),
+            providerId: task.providerId,
+            modelId: task.modelId,
+            inputs: task.videoInputs,
           );
     }
 
@@ -463,7 +467,7 @@ class ProductionResultRow extends StatelessWidget {
               ],
               const TextSpan(text: '  '),
               TextSpan(
-                text: context.t('screenplay.production.task.$status'),
+                text: context.t(productionTaskLabelKey(status)),
                 style: typo.uiTinySemibold.copyWith(
                   color: switch (tone) {
                     ProductionResultTone.error => colors.error,

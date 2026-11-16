@@ -30,7 +30,6 @@ import 'package:reveric/shared/services/novel_actions.dart';
 import 'package:reveric/shared/services/novel_quota_gate.dart';
 import 'package:reveric/shared/services/system_tray_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tray_manager/tray_manager.dart';
 
 String _hexOf(List<int> bytes) =>
     bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
@@ -289,14 +288,9 @@ void main() {
   });
 
   group('托盘「新建小说」菜单路径', () {
-    test('点击 newNovel 菜单项进入 _newNovel（先唤起主窗口），与服务层创建链路同源', () async {
+    test('唤起主窗口链路先 show 再 focus，与服务层创建链路同源', () async {
       SharedPreferences.setMockInitialValues({});
-      final tray = SystemTrayService();
-
-      tray.onTrayMenuItemClick(
-        MenuItem(key: 'newNovel', label: '新建小说'),
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await SystemTrayService().showMainWindow();
 
       expect(trayCalls, containsAllInOrder(['window.show', 'window.focus']));
     });

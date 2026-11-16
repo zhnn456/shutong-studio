@@ -21,7 +21,7 @@
 //   .agents/rules/db-migration.md
 // ⚠️ 修改此文件后必须运行 `make codegen`，否则 .drift.dart / .g.dart 不会更新
 // ⚠️ 新增字段时需要同步更新：DB → service → AI tools（schema/read/write/create/edit） → tool card i18n（fieldLabel/translation）
-import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -54,7 +54,6 @@ import '../utils/storage_paths.dart';
 import '../utils/windows_safe_path.dart';
 import 'novel_content_daos/agent_rule_dao.dart';
 import 'novel_content_daos/ai_chat_message_dao.dart';
-import 'novel_content_daos/ai_embedding_document_dao.dart';
 import 'novel_content_daos/canvas_dao.dart';
 import 'novel_content_daos/change_commit_dao.dart';
 import 'novel_content_daos/chapter_dao.dart';
@@ -84,10 +83,6 @@ const String characterGenderOther = 'other';
 const String characterGenderUnknown = 'unknown';
 
 const String chapterEmbeddingSyncStatusPending = 'pending';
-const String chapterEmbeddingSyncStatusSyncing = 'syncing';
-const String chapterEmbeddingSyncStatusSynced = 'synced';
-const String chapterEmbeddingSyncStatusError = 'error';
-const String novelStateKeyEmbeddingSync = 'embedding_sync';
 const String novelStateStatusIdle = 'idle';
 const String novelStateStatusRunning = 'running';
 const String novelStateStatusPaused = 'paused';
@@ -203,10 +198,16 @@ const String canvasNodeTypeMedia = 'media';
 const String canvasNodeTypeStaging = 'staging';
 // 制作画布分组；成员用 parent_id 指向它，布局参数在 style.group。
 const String canvasNodeTypeGroup = 'group';
+const String canvasNodeTypeText = 'text';
+const String canvasNodeTypeEditing = 'editing';
+// 制作画布场次：每场一个，refType 为 screenplay_scene，x / y 是场次框内第一张卡片的左上角。
+// 场内片段由 production_clips.scene_id 决定并按成片顺序排在它下方，不用 parent_id 挂靠。
+const String canvasNodeTypeScene = 'scene';
 // 制作画布节点用 refType/refId 指向内容；不进构思画布的 [canvasNodeRefTypes]。
 const String canvasNodeRefTypeProductionClip = 'production_clip';
 const String canvasNodeRefTypeAsset = 'asset';
 const String canvasNodeRefTypeStaging = 'staging';
+const String canvasNodeRefTypeEditing = 'editing';
 const String canvasEdgeTypeInput = 'generation_input';
 // 导演台节点到它导出结果节点的连线，只由导出生成。
 const String canvasEdgeTypeStagingOutput = 'staging_output';
@@ -223,6 +224,8 @@ extension ProductionCanvasNodeRef on CanvasNode {
       refType == canvasNodeRefTypeProductionClip ? refId : null;
   String? get mediaAssetId => refType == canvasNodeRefTypeAsset ? refId : null;
   String? get stagingId => refType == canvasNodeRefTypeStaging ? refId : null;
+  String? get editingId => refType == canvasNodeRefTypeEditing ? refId : null;
+  String? get sceneId => type == canvasNodeTypeScene ? refId : null;
 }
 
 const List<String> canvasKinds = <String>[canvasKindUser];
@@ -433,82 +436,6 @@ const List<String> characterGenders = <String>[
   characterGenderOther,
   characterGenderUnknown,
 ];
-
-class EmbeddingSyncState {
-  final String? providerId;
-  final String? modelId;
-  final int totalChapters;
-  final int syncedChapters;
-  final String? errorMessage;
-  final DateTime? startedAt;
-
-  const EmbeddingSyncState({
-    this.providerId,
-    this.modelId,
-    this.totalChapters = 0,
-    this.syncedChapters = 0,
-    this.errorMessage,
-    this.startedAt,
-  });
-
-  factory EmbeddingSyncState.fromJson(Map<String, dynamic> json) {
-    return EmbeddingSyncState(
-      providerId: json['provider_id'] as String?,
-      modelId: json['model_id'] as String?,
-      totalChapters: (json['total'] as num?)?.toInt() ?? 0,
-      syncedChapters: (json['synced'] as num?)?.toInt() ?? 0,
-      errorMessage: json['error'] as String?,
-      startedAt: json['started_at'] != null
-          ? DateTime.tryParse(json['started_at'] as String)
-          : null,
-    );
-  }
-
-  factory EmbeddingSyncState.fromJsonString(String? json) {
-    if (json == null || json.isEmpty) {
-      return const EmbeddingSyncState();
-    }
-    try {
-      final decoded = jsonDecode(json) as Map<String, dynamic>;
-      return EmbeddingSyncState.fromJson(decoded);
-    } catch (_) {
-      return const EmbeddingSyncState();
-    }
-  }
-
-  Map<String, dynamic> toJson() => {
-    if (providerId != null) 'provider_id': providerId,
-    if (modelId != null) 'model_id': modelId,
-    'total': totalChapters,
-    'synced': syncedChapters,
-    if (errorMessage != null) 'error': errorMessage,
-    if (startedAt != null) 'started_at': startedAt!.toIso8601String(),
-  };
-
-  String? toJsonString() {
-    final json = toJson();
-    if (json.isEmpty) return null;
-    return jsonEncode(json);
-  }
-
-  EmbeddingSyncState copyWith({
-    String? providerId,
-    String? modelId,
-    int? totalChapters,
-    int? syncedChapters,
-    String? errorMessage,
-    DateTime? startedAt,
-  }) {
-    return EmbeddingSyncState(
-      providerId: providerId ?? this.providerId,
-      modelId: modelId ?? this.modelId,
-      totalChapters: totalChapters ?? this.totalChapters,
-      syncedChapters: syncedChapters ?? this.syncedChapters,
-      errorMessage: errorMessage ?? this.errorMessage,
-      startedAt: startedAt ?? this.startedAt,
-    );
-  }
-}
 
 class CharacterProfiles extends Table {
   TextColumn get id => text()();
@@ -1630,7 +1557,6 @@ class ProductionClips extends Table {
     ChapterDao,
     ForeshadowingDao,
     AiChatMessageDao,
-    AiEmbeddingDocumentDao,
     WorkingChangeDao,
     ChangeCommitDao,
     NovelStateDao,
@@ -1674,6 +1600,20 @@ class NovelContentDatabase extends _$NovelContentDatabase {
   static final Map<String, _CachedNovelContentDatabase> _databaseCache = {};
 
   final String filePath;
+
+  final Object _transactionContext = Object();
+
+  /// 需要在提交后更新内存状态的操作据此确保自己拥有最外层事务。
+  bool get isInTransaction => Zone.current[_transactionContext] == true;
+
+  @override
+  Future<T> transaction<T>(
+    Future<T> Function() action, {
+    bool requireNew = false,
+  }) => super.transaction(
+    () => runZoned(action, zoneValues: {_transactionContext: true}),
+    requireNew: requireNew,
+  );
 
   late final chapterDao = ChapterDao(this);
 
@@ -1874,6 +1814,18 @@ class NovelContentDatabase extends _$NovelContentDatabase {
   }
 
   Future<void> _closeExecutorImmediately() => executor.close();
+
+  /// 删除 [filePath] 对应的内容库文件及 `-wal` / `-shm` / `-journal` 伴随文件。
+  /// 调用方须先关闭该库的连接（见 [closeCached]）。
+  static Future<void> deleteFiles(String filePath) async {
+    final resolved = RevericPaths.resolveDatabasePath(filePath);
+    for (final suffix in const ['', '-wal', '-shm', '-journal']) {
+      final file = File('$resolved$suffix');
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
+  }
 
   @visibleForTesting
   static bool isCachedForTesting(String filePath) {

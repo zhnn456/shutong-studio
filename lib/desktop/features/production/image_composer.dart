@@ -24,7 +24,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../../shared/components/reveric_context_menu.dart';
-import '../../../shared/components/reveric_icon_button.dart';
 import '../../../shared/components/reveric_select.dart';
 import '../../../shared/database/novel_content_database.dart';
 import '../../../shared/database/app_database.dart' show AssetRow;
@@ -33,6 +32,7 @@ import '../../../shared/localization/app_localization.dart';
 import '../../../shared/localization/locale_keys.dart';
 import '../../../shared/logger/app_logger.dart';
 import '../../../shared/models/ai_provider.dart';
+import '../../../shared/models/image/channels.dart';
 import '../../../shared/models/production/image_request.dart';
 import '../../../shared/models/production/view_presets.dart';
 import '../../../shared/models/video/request.dart';
@@ -42,6 +42,7 @@ import '../../../shared/theme/theme.dart';
 import '../canvas/widgets/glass.dart';
 import '../storyboard/edit_form.dart' show ShotField;
 import 'edit_session.dart';
+import 'history_region.dart';
 import 'image_submit.dart';
 import 'input_preview.dart';
 import 'prompt_controller.dart';
@@ -53,7 +54,7 @@ import 'spec_panel.dart';
 import 'support.dart';
 import 'upload.dart';
 import 'view/method.dart';
-import '../../widgets/settings/settings_dialog.dart';
+import '../../widgets/agent_management/ai_providers_page.dart';
 
 final _log = AppLogger.forModule('ProductionImage');
 
@@ -157,6 +158,9 @@ class _ImageForm extends HookConsumerWidget {
     final capability = provider == null
         ? null
         : ProductionImageCapabilities(provider, model.$2);
+    final complexities = provider == null
+        ? const <String>[]
+        : imageComplexityLevels(provider.type, model.$2).toList();
     String? blockedReason;
     if (!providers.hasData) {
       blockedReason = context.t(
@@ -173,7 +177,7 @@ class _ImageForm extends HookConsumerWidget {
     }
     if (blockedReason == null &&
         referenceRequiredMethods.contains(preset.method) &&
-        inputs.value.isEmpty) {
+        inputs.value.every((input) => input.isPrompt)) {
       blockedReason = context.t(LocaleKeys.productionViewImageRequired);
     }
     if (blockedReason == null &&
@@ -281,6 +285,9 @@ class _ImageForm extends HookConsumerWidget {
     prompt.inputIds = inputs.value.map((i) => i.id).toSet();
     prompt.onPreview = (id) => productionRun(context, () async {
       final input = inputs.value.firstWhere((i) => i.id == id);
+      if (input.isPrompt) {
+        return;
+      }
       final asset = await service.inputAsset(input);
       if (context.mounted) {
         await previewProductionAsset(context, service, asset.id);
@@ -298,7 +305,9 @@ class _ImageForm extends HookConsumerWidget {
           .firstOrNull;
       if (input == null) {
         input = ProductionInput.asset(asset.id, VideoInputRole.reference_image);
-        inputs.value = [...inputs.value, input];
+        await changeProductionInputs(context, node.id, save, () {
+          inputs.value = [...inputs.value, input!];
+        });
       }
       if (reference) {
         prompt.insertReference(input.id, asset.name);
@@ -375,52 +384,71 @@ class _ImageForm extends HookConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              ProductionComposerTools(
+                expanded: expanded.value,
+                onExpand: () => expanded.value = !expanded.value,
                 children: [
-                  Expanded(
-                    child: Wrap(
-                      spacing: RevericSpacing.sm,
-                      runSpacing: RevericSpacing.sm,
-                      children: [
-                        for (var i = 0; i < inputs.value.length; i++)
-                          ProductionInputTile(
-                            service: service,
-                            input: inputs.value[i],
-                            valid: i < (capability?.maxReferences ?? 0),
-                            onRole: null,
-                            onMove: inputs.value.length < 2
-                                ? null
-                                : (delta) {
-                                    final target = i + delta;
-                                    if (target >= 0 &&
-                                        target < inputs.value.length) {
-                                      final next = [...inputs.value];
-                                      next.insert(target, next.removeAt(i));
-                                      inputs.value = next;
-                                    }
-                                  },
-                            onRemove: () =>
-                                inputs.value = [...inputs.value]..removeAt(i),
-                          ),
-                      ],
-                    ),
+                  ProductionAddInputButton(
+                    service: service,
+                    types: const {'image'},
+                    onPicked: attach,
                   ),
-                  RevericIconButton(
-                    icon: expanded.value
-                        ? RevericIcons.arrows_in
-                        : RevericIcons.arrows_out,
-                    tooltip: context.t(
-                      expanded.value
-                          ? LocaleKeys.commonCollapse
-                          : LocaleKeys.commonExpand,
-                    ),
-                    onPressed: () => expanded.value = !expanded.value,
+                  ProductionToolChip(
+                    icon: RevericIcons.at,
+                    label: context.t(LocaleKeys.productionMention),
+                    tooltip: context.t(LocaleKeys.productionReference),
+                    onTap: () => productionRun(context, reference),
                   ),
+                  const ProductionImageMethodButton(),
                 ],
               ),
+              if (inputs.value.isNotEmpty) ...[
+                const SizedBox(height: RevericSpacing.sm),
+                Wrap(
+                  spacing: RevericSpacing.sm,
+                  runSpacing: RevericSpacing.sm,
+                  children: [
+                    for (var i = 0; i < inputs.value.length; i++)
+                      ProductionInputTile(
+                        service: service,
+                        input: inputs.value[i],
+                        valid:
+                            inputs.value[i].isPrompt ||
+                            (capability?.allowsReferenceCount(
+                                  inputs.value
+                                      .take(i + 1)
+                                      .where((input) => !input.isPrompt)
+                                      .length,
+                                ) ??
+                                false),
+                        onRole: null,
+                        onMove: inputs.value.length < 2
+                            ? null
+                            : (delta) => changeProductionInputs(
+                                context,
+                                node.id,
+                                save,
+                                () {
+                                  final target = i + delta;
+                                  if (target >= 0 &&
+                                      target < inputs.value.length) {
+                                    final next = [...inputs.value];
+                                    next.insert(target, next.removeAt(i));
+                                    inputs.value = next;
+                                  }
+                                },
+                              ),
+                        onRemove: () =>
+                            changeProductionInputs(context, node.id, save, () {
+                              inputs.value = [...inputs.value]..removeAt(i);
+                            }),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: RevericSpacing.sm),
-              ProductionImageMethod(
+              // 画布留给输入框的高度不够时，提示词区先收缩，在框内滚动。
+              Flexible(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: expanded.value ? 200 : 60,
@@ -457,26 +485,7 @@ class _ImageForm extends HookConsumerWidget {
                   blockedReason: blockedReason,
                 ),
                 children: [
-                  ProductionAddInputButton(
-                    service: service,
-                    types: const {'image'},
-                    onPicked: attach,
-                  ),
-                  ProductionToolButton(
-                    icon: RevericIcons.at,
-                    tooltip: context.t(LocaleKeys.productionReference),
-                    onTap: () => productionRun(context, reference),
-                  ),
-                  const ProductionImageMethodButton(),
                   ProductionStylePill(service: service, clipId: node.clipId!),
-                  Container(
-                    width: 1,
-                    height: 18,
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: RevericSpacing.xxs,
-                    ),
-                    color: colors.borderSubtle,
-                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: RevericSpacing.sm,
@@ -491,6 +500,7 @@ class _ImageForm extends HookConsumerWidget {
                               value: value,
                               compact: true,
                               dropUp: true,
+                              searchable: true,
                               height: 30,
                               menuWidth: 240,
                               leadingIcon: RevericIcons.auto_awesome,
@@ -563,6 +573,23 @@ class _ImageForm extends HookConsumerWidget {
                         capability?.resolutions ?? [initial.clip.resolution],
                     ratio: ratio,
                     resolution: resolution,
+                    complexities: complexities,
+                    complexity: provider == null
+                        ? null
+                        : imageComplexityFor(
+                            provider.type,
+                            model.$2,
+                            preset.complexity,
+                          ),
+                    onComplexity: (value) {
+                      form.updateValue(
+                        ShotField.imagePreset,
+                        ImageGenerationPreset(
+                          method: preset.method,
+                          complexity: value,
+                        ),
+                      );
+                    },
                     onChanged: ({ratio, resolution}) {
                       if (ratio != null) {
                         form.updateValue(ShotField.ratio, ratio);

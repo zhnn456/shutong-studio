@@ -1,4 +1,4 @@
-// 职责: 桌面端书库主面板编排问候、继续写与作品区；小说和剧本同库，作品区按类型筛选，切换集合只替换作品网格。
+// 职责: 桌面端书库主面板编排问候、继续写与作品区；小说库和剧本库各用一个实例，切换集合只替换作品网格。
 // 关联文件:
 //   lib/desktop/pages/home.dart
 //   lib/desktop/widgets/home/greeting_header.dart
@@ -37,11 +37,13 @@ import '../../../shared/widgets/collections/work_menu.dart';
 class HomeLibraryPanel extends HookConsumerWidget {
   const HomeLibraryPanel({
     super.key,
+    required this.contentKind,
     required this.novelsAsync,
     required this.headerGestureExclusionKey,
     required this.onQuickStart,
     required this.onCreateNovel,
     required this.onImportNovel,
+    required this.onImportScreenplay,
     required this.onCreateDemoNovel,
     required this.onDeleteNovel,
     required this.onAdaptNovel,
@@ -51,13 +53,16 @@ class HomeLibraryPanel extends HookConsumerWidget {
     required this.onUpdateStatus,
   });
 
+  /// 本库呈现的作品类型（[contentKindNovel] / [contentKindScreenplay]），继续写、草稿和作品区都只看这一类。
+  final String contentKind;
   final AsyncValue<List<Novel>> novelsAsync;
   final GlobalKey headerGestureExclusionKey;
   final VoidCallback onQuickStart;
 
-  /// 参数是新作品的类型：按类型筛选时跟随筛选，否则默认小说。
-  final ValueSetter<String> onCreateNovel;
+  /// 新建本库类型的作品。
+  final VoidCallback onCreateNovel;
   final VoidCallback onImportNovel;
+  final VoidCallback onImportScreenplay;
   final VoidCallback onCreateDemoNovel;
   final ValueSetter<Novel> onDeleteNovel;
   final ValueSetter<Novel> onAdaptNovel;
@@ -72,24 +77,14 @@ class HomeLibraryPanel extends HookConsumerWidget {
     final showDrafts = useState(false);
     final selectedCategory = useState<String?>(null);
     final sortOrder = useState(LibrarySortOrder.updated);
-    final typeFilter = useState<String?>(null);
     final searchController = useTextEditingController();
     final rawQuery = useValueListenable(searchController).text;
     final debouncedQuery = useDebounced(
       rawQuery,
       const Duration(milliseconds: 250),
     );
-    // 换类型时分类可能不再存在，清掉；离开小说时字数排序失效，回到最近编辑。
-    void changeType(String? next) {
-      typeFilter.value = next;
-      selectedCategory.value = null;
-      if (!librarySortOrdersFor(next).contains(sortOrder.value)) {
-        sortOrder.value = LibrarySortOrder.updated;
-      }
-    }
-
-    final contentKind = typeFilter.value;
-    void createWork() => onCreateNovel(contentKind ?? contentKindNovel);
+    final isScreenplay = contentKind == contentKindScreenplay;
+    final isCanvas = contentKind == contentKindCanvas;
     final settingsAsync = ref.watch(appSettingsProvider);
     final username = settingsAsync.maybeWhen(
       data: (s) => s.username.isNotEmpty ? s.username : null,
@@ -97,7 +92,7 @@ class HomeLibraryPanel extends HookConsumerWidget {
     );
 
     return novelsAsync.when(
-      data: (all) => LibraryCollectionRegion(
+      data: (everything) => LibraryCollectionRegion(
         contentKind: contentKind,
         // 切集合清掉临时分类筛选，搜索保留、继续在新集合里搜。
         onChange: () {
@@ -105,13 +100,12 @@ class HomeLibraryPanel extends HookConsumerWidget {
           showDrafts.value = false;
         },
         builder: (context, location) {
-          // 继续写不受筛选影响；作品区的空状态和草稿箱跟着类型筛选走。
-          final recent = all.shelfVisible.sortedForShelf(
+          final allNovels = everything
+              .where((n) => n.contentKind == contentKind)
+              .toList();
+          final recent = allNovels.shelfVisible.sortedForShelf(
             LibrarySortOrder.updated,
           );
-          final allNovels = contentKind == null
-              ? all
-              : all.where((n) => n.contentKind == contentKind).toList();
           final novels = allNovels.shelfVisible;
           final drafts = allNovels.drafts;
           // 草稿箱只挂在全部下；最后一份草稿加入书架后入口会隐藏，此时自动回到书架。
@@ -151,9 +145,28 @@ class HomeLibraryPanel extends HookConsumerWidget {
                   ),
                   sliver: SliverToBoxAdapter(
                     child: GreetingHeader(
-                      onQuickStart: onQuickStart,
-                      onCreateNovel: createWork,
-                      onImportNovel: onImportNovel,
+                      // 快速开书只落在小说库；剧本库导入走 AI 改编。
+                      onQuickStart: contentKind == contentKindNovel
+                          ? onQuickStart
+                          : null,
+                      onCreateNovel: onCreateNovel,
+                      createLabel: context.t(
+                        isCanvas
+                            ? LocaleKeys.libraryCreateCanvas
+                            : isScreenplay
+                            ? LocaleKeys.libraryCreateScreenplay
+                            : LocaleKeys.libraryCreateNovel,
+                      ),
+                      onImport: isCanvas
+                          ? null
+                          : isScreenplay
+                          ? onImportScreenplay
+                          : onImportNovel,
+                      importLabel: context.t(
+                        isScreenplay
+                            ? LocaleKeys.libraryImportScreenplay
+                            : LocaleKeys.libraryImportTxt,
+                      ),
                       username: username,
                       featuredTitle: recent.firstOrNull?.title,
                       headerGestureExclusionKey: headerGestureExclusionKey,
@@ -177,7 +190,7 @@ class HomeLibraryPanel extends HookConsumerWidget {
                     ),
                   ),
                 // 整个库都空时连工具栏一起省掉，只留空状态。
-                if (all.shelfVisible.isNotEmpty || all.drafts.isNotEmpty)
+                if (novels.isNotEmpty || drafts.isNotEmpty)
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(
                       RevericSpacing.x6l,
@@ -192,10 +205,7 @@ class HomeLibraryPanel extends HookConsumerWidget {
                         searchHint: context.t(
                           LocaleKeys.librarySearchPlaceholder,
                         ),
-                        typeFilter: WorksTypeFilter(
-                          value: contentKind,
-                          onChanged: changeType,
-                        ),
+                        contentKind: contentKind,
                         hasDrafts:
                             location.current?.builtin == true &&
                             drafts.isNotEmpty,
@@ -226,10 +236,25 @@ class HomeLibraryPanel extends HookConsumerWidget {
                 else if (!isDraftFilter && novels.isEmpty)
                   SliverFillRemaining(
                     hasScrollBody: false,
-                    child: contentKind == contentKindScreenplay
-                        ? EmptyScreenplayState(onCreate: createWork)
+                    child: isCanvas
+                        ? RevericPlaceholder.empty(
+                            icon: RevericIcons.flow_arrow,
+                            title: context.t(LocaleKeys.libraryCreateCanvas),
+                            description: context.t(
+                              LocaleKeys.homeCreateCanvasCardSubtitle,
+                            ),
+                            action: RevericButton.primary(
+                              label: context.t(LocaleKeys.libraryCreateCanvas),
+                              onPressed: onCreateNovel,
+                            ),
+                          )
+                        : isScreenplay
+                        ? EmptyScreenplayState(
+                            onCreate: onCreateNovel,
+                            onImport: onImportScreenplay,
+                          )
                         : EmptyLibraryState(
-                            onCreate: createWork,
+                            onCreate: onCreateNovel,
                             onImport: onImportNovel,
                             onCreateDemo: onCreateDemoNovel,
                           ),
@@ -245,7 +270,7 @@ class HomeLibraryPanel extends HookConsumerWidget {
                           label: context.t(LocaleKeys.libraryClearFilters),
                           onPressed: () {
                             searchController.clear();
-                            changeType(null);
+                            selectedCategory.value = null;
                           },
                         ),
                       ),
@@ -262,7 +287,7 @@ class HomeLibraryPanel extends HookConsumerWidget {
                     contentKind: contentKind,
                     showCreateCard:
                         !isDraftFilter && location.current?.builtin == true,
-                    onCreateNovel: createWork,
+                    onCreateNovel: onCreateNovel,
                     onDeleteNovel: onDeleteNovel,
                     onAdaptNovel: onAdaptNovel,
                     onEditNovel: onEditNovel,
@@ -390,9 +415,14 @@ class EmptyLibraryState extends StatelessWidget {
 }
 
 class EmptyScreenplayState extends StatelessWidget {
-  const EmptyScreenplayState({super.key, required this.onCreate});
+  const EmptyScreenplayState({
+    super.key,
+    required this.onCreate,
+    required this.onImport,
+  });
 
   final VoidCallback onCreate;
+  final VoidCallback onImport;
 
   @override
   Widget build(BuildContext context) {
@@ -419,6 +449,12 @@ class EmptyScreenplayState extends StatelessWidget {
             FilledButton(
               onPressed: onCreate,
               child: Text(context.t(LocaleKeys.libraryCreateScreenplay)),
+            ),
+            const SizedBox(height: RevericSpacing.lg),
+            OutlinedButton.icon(
+              onPressed: onImport,
+              icon: const RevericIcon(RevericIcons.upload, size: 16),
+              label: Text(context.t(LocaleKeys.libraryImportScreenplay)),
             ),
           ],
         ),

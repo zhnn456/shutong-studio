@@ -25,6 +25,7 @@ import '../../../shared/localization/app_localization.dart';
 import '../../../shared/localization/locale_keys.dart';
 import '../../../shared/models/screenplay.dart';
 import '../../../shared/models/novel_workspace.dart';
+import '../../../shared/providers/production_view.dart';
 import '../../../shared/providers/screenplay_workspace_state_provider.dart';
 import '../../../shared/providers/workspace_navigation_provider.dart';
 import '../../../shared/providers/maps_providers.dart';
@@ -223,13 +224,6 @@ class _ScreenplaySceneListRowState extends State<ScreenplaySceneListRow> {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         ScreenplayStageBadge(stage: scene.stage),
-                        if (widget.entry.beatTitle case final beatTitle?)
-                          ScreenplayChip(
-                            icon: RevericIcons.alt_route_outlined,
-                            label: beatTitle.trim().isEmpty
-                                ? context.t(LocaleKeys.screenplayUntitledBeat)
-                                : beatTitle,
-                          ),
                         ScreenplayChip(
                           icon: RevericIcons.clock,
                           label:
@@ -272,6 +266,13 @@ class _ScreenplaySceneListRowState extends State<ScreenplaySceneListRow> {
                                     .read(provider)
                                     .copyWith(sceneId: widget.entry.scene.id),
                               );
+                          ref
+                              .read(
+                                productionViewProvider(
+                                  widget.novel.id,
+                                ).notifier,
+                              )
+                              .set(ProductionViewMode.segments);
                           ref
                               .read(workspaceNavigationProvider.notifier)
                               .request(
@@ -319,7 +320,7 @@ class _SceneListRowMenu extends StatelessWidget {
           position: box.localToGlobal(Offset(0, box.size.height)),
           entries: [
             RevericMenuItem(
-              label: context.t(LocaleKeys.productionTitle),
+              label: context.t(LocaleKeys.storyboardBoard),
               onTap: onOpenStoryboard,
             ),
             RevericMenuItem(
