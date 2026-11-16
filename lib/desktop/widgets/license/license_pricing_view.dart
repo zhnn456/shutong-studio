@@ -45,7 +45,11 @@ class _LicensePricingViewState extends State<LicensePricingView> {
   }
 
   Future<void> _reload() async {
-    final state = await LicenseService.load();
+    var state = await LicenseService.load();
+    if (state.isActivated && state.needsCheckIn) {
+      // token 到期时联网刷新；失败时保留本地状态走离线宽限。
+      state = await LicenseService.refreshIfNeeded();
+    }
     if (!mounted) {
       return;
     }
@@ -79,12 +83,40 @@ class _LicensePricingViewState extends State<LicensePricingView> {
         ),
       );
     } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(context.t(LocaleKeys.settingsLicenseActivateFailed)),
-        ),
-      );
+      final messageKey = result.message;
+      final text = messageKey == null
+          ? context.t(LocaleKeys.settingsLicenseActivateFailed)
+          : context.t(
+              messageKey,
+              namedArgs: <String, String>{
+                'current': '${result.state?.features['max_activations'] ?? ''}',
+                'message': '',
+              },
+            );
+      messenger.showSnackBar(SnackBar(content: Text(text)));
     }
+  }
+
+  Future<void> _deactivate() async {
+    if (_activating) {
+      return;
+    }
+    setState(() => _activating = true);
+    await LicenseService.deactivateCurrentDevice();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _activating = false);
+    final messenger = ScaffoldMessenger.of(context);
+    await _reload();
+    if (!mounted) {
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(context.t(LocaleKeys.settingsLicenseDeactivateDone)),
+      ),
+    );
   }
 
   Future<void> _openPurchase() async {
@@ -136,6 +168,14 @@ class _LicensePricingViewState extends State<LicensePricingView> {
       LocaleKeys.settingsLicenseExpiresAt,
       namedArgs: <String, String>{'date': date},
     );
+  }
+
+  String _deviceLabel() {
+    final id = _state.deviceId;
+    if (id == null || id.isEmpty) {
+      return '';
+    }
+    return id.length <= 8 ? id : id.substring(0, 8);
   }
 
   @override
@@ -202,26 +242,57 @@ class _LicensePricingViewState extends State<LicensePricingView> {
                     context.t(LocaleKeys.settingsLicenseLoading),
                     style: typo.ui.copyWith(color: colors.textSecondary),
                   )
-                : Row(
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          context.t(
-                            LocaleKeys.settingsLicenseCurrentTier,
-                            namedArgs: <String, String>{
-                              'tier': _tierLabel(context),
-                            },
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              context.t(
+                                LocaleKeys.settingsLicenseCurrentTier,
+                                namedArgs: <String, String>{
+                                  'tier': _tierLabel(context),
+                                },
+                              ),
+                              style: typo.uiSemibold.copyWith(
+                                color: colors.textPrimary,
+                              ),
+                            ),
                           ),
-                          style: typo.uiSemibold.copyWith(
-                            color: colors.textPrimary,
-                          ),
-                        ),
+                          if (_expiryText(context) != null)
+                            Text(
+                              _expiryText(context)!,
+                              style: typo.ui.copyWith(color: colors.textSecondary),
+                            ),
+                        ],
                       ),
-                      if (_expiryText(context) != null)
-                        Text(
-                          _expiryText(context)!,
-                          style: typo.ui.copyWith(color: colors.textSecondary),
+                      if (_state.isActivated) ...[
+                        const SizedBox(height: RevericSpacing.sm),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                context.t(
+                                  LocaleKeys.settingsLicenseDeviceBound,
+                                  namedArgs: <String, String>{
+                                    'device': _deviceLabel(),
+                                  },
+                                ),
+                                style: typo.ui.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _activating ? null : _deactivate,
+                              child: Text(
+                                context.t(LocaleKeys.settingsLicenseDeactivate),
+                              ),
+                            ),
+                          ],
                         ),
+                      ],
                     ],
                   ),
           ),

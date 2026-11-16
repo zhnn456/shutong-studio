@@ -1111,6 +1111,9 @@ class BackupSettingsSection extends HookConsumerWidget {
       RestoreFailureReason.novelTitleConflict => context.t(
         LocaleKeys.settingsBackupRestoreFailedTitleConflict,
       ),
+      RestoreFailureReason.novelQuotaExceeded => context.t(
+        LocaleKeys.settingsBackupRestoreFailedNovelQuota,
+      ),
       RestoreFailureReason.rollbackFailed => context.t(
         LocaleKeys.settingsBackupRestoreFailedRollback,
         namedArgs: {'path': safetyBackupPath ?? ''},

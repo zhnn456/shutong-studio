@@ -20,6 +20,7 @@ import '../utils/short_entity_id.dart';
 import '../utils/short_entity_id_allocator.dart';
 import '../logger/app_logger.dart';
 import 'novel_content.dart';
+import 'novel_quota_gate.dart';
 import 'image_library_service.dart';
 
 const _demoChapterOneContent = '''柜台上的水位尺升到第三格时，沈砚开始退信。
@@ -196,6 +197,9 @@ Future<String> createDemoNovel(
   if (existingNovel != null) {
     return existingNovel.id;
   }
+
+  // 示例小说同样计入免费版作品数量：已有作品时免费用户不能再靠示例"多开"。
+  await NovelQuotaGate.ensureCanAdd(database);
 
   final novelId = idBuilder(ShortEntityIdType.novel);
   final now = DateTime.now();

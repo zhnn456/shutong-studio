@@ -62,6 +62,7 @@ import 'shared/providers/settings_providers.dart';
 import 'shared/services/ai/prompt_template.dart';
 import 'shared/services/app_initialization.dart';
 import 'shared/services/crash_reporting/crash_sentinel.dart';
+import 'shared/services/license_service.dart';
 import 'shared/services/lifecycle_visibility_guard.dart';
 import 'shared/services/window_lifecycle_channel.dart';
 import 'shared/services/crash_reporting/native_crash_reporting.dart';
@@ -266,6 +267,11 @@ Future<void> _initializeAppData() async {
   await _runStartupStep(
     'Notifications',
     () => SystemNotificationService.initialize(),
+  );
+  // 授权 token 到期时静默联网刷新；断网不影响启动（本地 token 仍有离线宽限）。
+  await _runStartupStep(
+    'License check-in',
+    () async => LicenseService.refreshIfNeeded(),
   );
 
   _log.checkpoint('App initialization tasks START');

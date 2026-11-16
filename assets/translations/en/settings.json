@@ -430,6 +430,7 @@
   "settings.backup_restore_failed_unsupported": "This backup uses a newer or unsupported data format. Update the app and try again.",
   "settings.backup_restore_failed_safety_backup": "Restore was stopped because a complete safety backup of the current data could not be created.",
   "settings.backup_restore_failed_title_conflict": "A selected backup work has the same title as a different current work. Rename one of them before restoring.",
+  "settings.backup_restore_failed_novel_quota": "The free plan keeps 1 work only, and this backup contains more than that. Upgrade to restore the full library.",
   "settings.backup_restore_failed_rolled_back": "Restore failed. The current data was rolled back safely. Restart Reveric before continuing.",
   "settings.backup_restore_failed_rollback": "Restore and automatic rollback both failed. Do not continue editing. Restart Reveric, then recover from the safety backup at {path}.",
   "settings.backup_restore_invalid": "Invalid backup file. Please select a valid Reveric backup (.zip).",
@@ -688,5 +689,16 @@
   "settings.license_buy_standard": "Buy Standard ¥299",
   "settings.license_pro_tagline": "Multiple devices, longer updates",
   "settings.license_pro_features": "Unlimited novels\nPerpetual use, no time limit\n2 years of free updates\n3 devices\nPriority support",
-  "settings.license_buy_pro": "Buy Pro ¥699"
+  "settings.license_buy_pro": "Buy Pro ¥699",
+  "settings.license_service_not_configured": "License service is not configured yet. Contact Shutong for a license key.",
+  "settings.license_signature_invalid": "License token verification failed. Please enter the key again.",
+  "settings.license_error_not_found": "This license key is not valid or no longer works.",
+  "settings.license_error_limit": "All device slots are in use. Deactivate another device first.",
+  "settings.license_error_expired": "This license has expired. Renew and activate again.",
+  "settings.license_error_suspended": "This license is suspended. Contact Shutong for help.",
+  "settings.license_error_locked": "Too many attempts. Please try again later.",
+  "settings.license_error_network": "Cannot reach the license server. Check your network and retry.",
+  "settings.license_device_bound": "This device is licensed · ID {device}",
+  "settings.license_deactivate": "Deactivate this device",
+  "settings.license_deactivate_done": "This device is deactivated. You can activate it on a new device."
 }

@@ -1555,6 +1555,20 @@ class NovelHomePage extends HookConsumerWidget {
           builder: (_) => WorkspaceEditorPage(novelId: novelId),
         ),
       );
+    } on NovelFreeLimitException catch (error) {
+      if (!errorContext.mounted) {
+        return;
+      }
+      errorMessenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            errorContext.t(
+              LocaleKeys.settingsLicenseFreeLimitReached,
+              namedArgs: <String, String>{'limit': '${error.limit}'},
+            ),
+          ),
+        ),
+      );
     } catch (error) {
       if (!errorContext.mounted) {
         return;

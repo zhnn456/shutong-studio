@@ -430,6 +430,7 @@
   "settings.backup_restore_failed_unsupported": "此备份的数据或备份格式版本不受当前应用支持，请升级应用后重试。",
   "settings.backup_restore_failed_safety_backup": "无法为当前数据创建完整的安全备份，恢复操作已停止。",
   "settings.backup_restore_failed_title_conflict": "所选备份作品与当前另一部作品同名，请先重命名其中一部再恢复。",
+  "settings.backup_restore_failed_novel_quota": "免费版只能保留 1 部作品，这个备份里的作品超过了当前额度。升级后可完整恢复全部作品。",
   "settings.backup_restore_failed_rolled_back": "恢复失败，当前数据已安全回滚。继续使用前请重启 书童AI写作。",
   "settings.backup_restore_failed_rollback": "恢复和自动回滚均失败。请勿继续编辑，重启 书童AI写作 后使用安全备份 {path} 恢复。",
   "settings.backup_restore_invalid": "无效的备份文件，请选择有效的 书童AI写作 备份包（.zip）。",
@@ -688,5 +689,16 @@
   "settings.license_buy_standard": "购买标准版 ¥299",
   "settings.license_pro_tagline": "多设备 + 长期更新",
   "settings.license_pro_features": "无限作品\n永久使用，不限时长\n2 年免费更新\n3 台设备同时授权\n优先技术支持",
-  "settings.license_buy_pro": "购买专业版 ¥699"
+  "settings.license_buy_pro": "购买专业版 ¥699",
+  "settings.license_service_not_configured": "授权服务尚未配置，请联系书童获取正式版授权码",
+  "settings.license_signature_invalid": "授权凭证校验失败，请重新输入授权码",
+  "settings.license_error_not_found": "授权码无效，或该授权已不再可用",
+  "settings.license_error_limit": "设备名额已满，请先在原设备上解绑",
+  "settings.license_error_expired": "授权已到期，请续费后重新激活",
+  "settings.license_error_suspended": "该授权已被停用，请联系书童",
+  "settings.license_error_locked": "尝试过于频繁，请稍后再试",
+  "settings.license_error_network": "无法连接授权服务器，请检查网络后重试",
+  "settings.license_device_bound": "本机已绑定 · 设备标识 {device}",
+  "settings.license_deactivate": "解绑本机",
+  "settings.license_deactivate_done": "已解绑本机，可在新设备上激活"
 }

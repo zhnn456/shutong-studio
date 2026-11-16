@@ -15,15 +15,14 @@ import 'package:flutter/foundation.dart';
 import '../database/app_database.dart';
 import '../database/novel_content_database.dart';
 import '../models/content_kind.dart';
-import '../models/license.dart';
 import '../models/novel_type.dart';
 import '../models/production/default_style.dart';
 import '../logger/app_logger.dart';
 import '../utils/short_entity_id.dart';
 import '../utils/storage_paths.dart';
 import 'image_library_service.dart';
-import 'license_service.dart';
 import 'novel_content.dart';
+import 'novel_quota_gate.dart';
 import 'screenplay_service.dart';
 
 final _log = AppLogger.forModule('NovelActions');
@@ -88,19 +87,10 @@ class NovelActionsService {
     bool setNovelOnboardingEligible = true,
     bool draft = false,
   }) async {
-    // 免费版作品数量门禁：未授权/已过期时，小说作品数量（含快速开书占位草稿）达到上限即拒绝创建。
-    // 剧本不计入小说额度。
+    // 免费版作品数量门禁（含快速开书占位草稿）；剧本不计入小说额度。
+    // 判定逻辑集中在 NovelQuotaGate，种子作品与备份恢复走同一入口。
     if (contentKind == contentKindNovel) {
-      final license = await LicenseService.load();
-      if (!license.isUsable) {
-        final existing = await _database.novelDao.getAll();
-        final novelCount = existing
-            .where((novel) => novel.contentKind == contentKindNovel)
-            .length;
-        if (novelCount >= kFreeTierNovelLimit) {
-          throw const NovelFreeLimitException(kFreeTierNovelLimit);
-        }
-      }
+      await NovelQuotaGate.ensureCanAdd(_database);
     }
     if (!draft) {
       await _ensureShelfTitleAvailable(title);

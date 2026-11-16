@@ -12,6 +12,7 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import '../database/app_database.dart' show AppDatabase;
 import '../database/novel_content_database.dart' show NovelContentDatabase;
+import 'novel_quota_gate.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -21,6 +22,7 @@ import 'production/backup_media.dart';
 import 'plugins/host.dart';
 import 'plugins/runtime.dart';
 import '../logger/app_logger.dart';
+import '../models/license.dart';
 import '../models/mcp/config.dart';
 import '../utils/storage_paths.dart';
 import '../utils/windows_safe_path.dart';
@@ -93,6 +95,9 @@ enum RestoreFailureReason {
   safetyBackupFailed,
   applyFailed,
   rollbackFailed,
+
+  /// 本次恢复的作品数超过当前授权的作品额度（免费版只能 1 部）。
+  novelQuotaExceeded,
 }
 
 class BackupNovelSummary {
@@ -434,8 +439,18 @@ class BackupService {
         }
       }
 
-      safetyBackupPath = await _createRestoreSafetyBackup(appSupportDir);
-      if (safetyBackupPath == null) {
+      // 免费版作品额度：一次恢复的作品数不能超过额度，
+      // 避免用备份文件绕过"免费版只能 1 部作品"的限制。
+      try {
+        await NovelQuotaGate.ensureIncomingWithinLimit(selectedIds.length);
+      } on NovelFreeLimitException {
+        return const RestoreResult(
+          success: false,
+          failureReason: RestoreFailureReason.novelQuotaExceeded,
+        );
+      }
+
+      safetyBackupPath = await _createRestoreSafetyBackup(appSupportDir);      if (safetyBackupPath == null) {
         return const RestoreResult(
           success: false,
           failureReason: RestoreFailureReason.safetyBackupFailed,

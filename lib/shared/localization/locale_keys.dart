@@ -4221,6 +4221,8 @@ abstract final class LocaleKeys {
   static const settingsBackupRestoreFailed = 'settings.backup_restore_failed';
   static const settingsBackupRestoreFailedRolledBack =
       'settings.backup_restore_failed_rolled_back';
+  static const settingsBackupRestoreFailedNovelQuota =
+      'settings.backup_restore_failed_novel_quota';
   static const settingsBackupRestoreFailedRollback =
       'settings.backup_restore_failed_rollback';
   static const settingsBackupRestoreFailedSafetyBackup =
@@ -4959,6 +4961,28 @@ abstract final class LocaleKeys {
       'settings.license_activate_success';
   static const settingsLicenseActivateFailed =
       'settings.license_activate_failed';
+  static const settingsLicenseServiceNotConfigured =
+      'settings.license_service_not_configured';
+  static const settingsLicenseSignatureInvalid =
+      'settings.license_signature_invalid';
+  static const settingsLicenseErrorNotFound =
+      'settings.license_error_not_found';
+  static const settingsLicenseErrorLimit =
+      'settings.license_error_limit';
+  static const settingsLicenseErrorExpired =
+      'settings.license_error_expired';
+  static const settingsLicenseErrorSuspended =
+      'settings.license_error_suspended';
+  static const settingsLicenseErrorLocked =
+      'settings.license_error_locked';
+  static const settingsLicenseErrorNetwork =
+      'settings.license_error_network';
+  static const settingsLicenseDeviceBound =
+      'settings.license_device_bound';
+  static const settingsLicenseDeactivate =
+      'settings.license_deactivate';
+  static const settingsLicenseDeactivateDone =
+      'settings.license_deactivate_done';
   static const settingsLicenseBuy = 'settings.license_buy';
   static const settingsLicenseCopyLinkDone = 'settings.license_copy_link_done';
   static const settingsLicenseFreeLimitReached =
