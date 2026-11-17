@@ -168,6 +168,10 @@ final class _HomeSettingsSelection extends _HomeContentSelection {
   const _HomeSettingsSelection();
 }
 
+final class _HomeLicenseSelection extends _HomeContentSelection {
+  const _HomeLicenseSelection();
+}
+
 final class _HomeSkillListSelection extends _HomeContentSelection {
   const _HomeSkillListSelection();
 }
@@ -784,6 +788,7 @@ class NovelHomePage extends HookConsumerWidget {
         (_HomeMcpSelection(), _HomeMcpSelection()) => true,
         (_HomePluginsSelection(), _HomePluginsSelection()) => true,
         (_HomeSettingsSelection(), _HomeSettingsSelection()) => true,
+        (_HomeLicenseSelection(), _HomeLicenseSelection()) => true,
         (_HomeSkillListSelection(), _HomeSkillListSelection()) => true,
         (
           _HomeGlobalSkillSelection(skill: final currentSkill),
@@ -1016,6 +1021,10 @@ class NovelHomePage extends HookConsumerWidget {
         headerTrailingInset: DesktopWindowFrame.trailingInset,
       ),
       _HomeSettingsSelection() => DesktopSettingsPage(
+        headerGestureExclusionKey: editPanelHeaderKey,
+        headerTrailingInset: DesktopWindowFrame.trailingInset,
+      ),
+      _HomeLicenseSelection() => license_page.DesktopLicensePage(
         headerGestureExclusionKey: editPanelHeaderKey,
         headerTrailingInset: DesktopWindowFrame.trailingInset,
       ),
@@ -1436,12 +1445,9 @@ class NovelHomePage extends HookConsumerWidget {
                   context,
                   icon: RevericIcons.crown,
                   title: context.t(LocaleKeys.settingsLicense),
+                  isSelected: selection is _HomeLicenseSelection,
                   onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const license_page.LicensePage(),
-                      ),
-                    );
+                    onContentSelected(const _HomeLicenseSelection());
                   },
                 ),
                 _buildLeafNavItem(

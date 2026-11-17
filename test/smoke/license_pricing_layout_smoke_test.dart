@@ -1,4 +1,4 @@
-// 职责: 冒烟测试 — 授权页在宽中窄三档宽度下都能完整布局，
+// 职责: 冒烟测试 — 授权页（首页内嵌形态）在宽中窄三档宽度下都能完整布局，
 //   且三档方案卡片的购买按钮落在同一条水平线上。
 // 关联文件:
 //   lib/desktop/pages/license_page.dart
@@ -26,6 +26,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    final headerKey = GlobalKey();
 
     await tester.pumpWidget(
       ProviderScope(
@@ -49,7 +50,13 @@ void main() {
               theme: RevericThemeData.reveric.toThemeData(),
               home: RevericTheme(
                 data: RevericThemeData.reveric,
-                child: const LicensePage(),
+                // 真实首页中授权页位于 HomePage 的 Scaffold 内，测试同样补一层
+                // Scaffold，提供 Material / ScaffoldMessenger 祖先。
+                child: Scaffold(
+                  body: DesktopLicensePage(
+                    headerGestureExclusionKey: headerKey,
+                  ),
+                ),
               ),
             ),
           ),

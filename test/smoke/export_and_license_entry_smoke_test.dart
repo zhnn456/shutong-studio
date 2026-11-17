@@ -1,15 +1,15 @@
 // 职责: 冒烟测试 6 — 导出服务模型与授权页入口可达性。
 // 关联文件:
 //   lib/shared/services/novel_export.dart（NovelExportOptions / Labels / Payload / Bundle）
-//   lib/desktop/pages/license_page.dart（LicensePage）
+//   lib/desktop/pages/license_page.dart（DesktopLicensePage 内嵌形态）
 //   lib/desktop/widgets/license/license_pricing_view.dart（LicensePricingView）
 //
 // 说明:
 //   - NovelExportService.buildBundle 需要 NovelContentService（内容库 DAO 依赖），
 //     完整打包流程由既有 test/shared/services/novel_export_test.dart 覆盖；
 //     本文件只做导出选项/标签/载荷的纯模型断言，不触碰真实 sqlite 与临时目录。
-//   - LicensePage 通过 ProviderScope + EasyLocalization + RevericTheme 包裹后 pump，
-//     断言 Scaffold / AppBar / LicensePricingView 三个入口组件均可挂载；
+//   - DesktopLicensePage 通过 ProviderScope + EasyLocalization + RevericTheme 包裹后 pump，
+//     断言页头容器 / LicensePricingView 均可挂载；
 //     授权码激活的网络/校验路径由 license_gate_smoke_test.dart 与既有设置页测试覆盖。
 
 import 'package:easy_localization/easy_localization.dart';
@@ -17,6 +17,7 @@ import 'package:flutter/material.dart' hide LicensePage;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reveric/desktop/pages/license_page.dart';
+import 'package:reveric/desktop/widgets/agent_management/home_management_cards.dart';
 import 'package:reveric/desktop/widgets/license/license_pricing_view.dart';
 import 'package:reveric/shared/localization/merging_asset_loader.dart';
 import 'package:reveric/shared/services/novel_export.dart';
@@ -92,9 +93,10 @@ void main() {
   });
 
   group('授权页入口可达性', () {
-    testWidgets('LicensePage 挂载出 Scaffold / AppBar / LicensePricingView', (
+    testWidgets('DesktopLicensePage 挂载出页头容器 / LicensePricingView', (
       tester,
     ) async {
+      final headerKey = GlobalKey();
       await tester.pumpWidget(
         ProviderScope(
           child: EasyLocalization(
@@ -112,7 +114,13 @@ void main() {
                 theme: RevericThemeData.reveric.toThemeData(),
                 home: RevericTheme(
                   data: RevericThemeData.reveric,
-                  child: const LicensePage(),
+                  // 真实首页中授权页位于 HomePage 的 Scaffold 内，测试同样补一层
+                  // Scaffold，提供 Material / ScaffoldMessenger 祖先。
+                  child: Scaffold(
+                    body: DesktopLicensePage(
+                      headerGestureExclusionKey: headerKey,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -123,9 +131,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
 
       expect(find.byType(Scaffold), findsWidgets);
-      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.byType(HomeManagementScaffold), findsOneWidget);
       expect(find.byType(LicensePricingView), findsOneWidget);
-      expect(find.byType(LicensePage), findsOneWidget);
+      expect(find.byType(DesktopLicensePage), findsOneWidget);
     });
   });
 }
