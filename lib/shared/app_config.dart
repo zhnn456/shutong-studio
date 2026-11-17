@@ -33,8 +33,13 @@ const revericAttribution = 'Based on Reveric by looplj.';
 /// 接收私下反馈的邮箱；诊断文件含作品内容，只通过邮件而非公开 Issue 发送。
 const revericFeedbackEmail = '282063152@qq.com';
 
-/// 产品线编码，通过 X-Product-Code 请求头发送给匿名诊断接收端。
+/// 产品线编码，通过 X-Product-Code 请求头发送给匿名诊断接收端；
+/// 客服留言的 `product` 字段也复用该编码，便于后台按软件/产品区分留言。
+/// 书童AI写作 = writer；鲸喜AI = whale；后续新产品在此追加稳定编码。
 const revericProductCode = 'writer';
+
+/// 产品线展示名（提交留言时随 `product_name` 上报，供后台分组展示）。
+const revericProductName = '书童AI写作';
 
 /// 匿名诊断 API 公共请求头。
 final revericApiHeaders = <String, String>{

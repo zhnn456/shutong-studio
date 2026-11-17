@@ -1,5 +1,5 @@
-// 职责: 客服反馈弹窗 — 展示官方客服二维码与联系邮箱，并提供「客户投诉 / 建议 / 咨询」的写留言功能。
-// 留言通过邮件提交至官方邮箱，并在本机应用目录留档，避免邮件客户端不可用时留言丢失。
+// 职责: 客服反馈弹窗 — 展示官方客服二维码与联系邮箱，并提供「投诉 / 建议 / 咨询 / 其他」的写留言功能。
+// 留言直连 Keygate 后台提交；本机保存留言会话并同步客服回复，网络失败时在本机应用目录留档兜底。
 // 关联文件:
 //   lib/shared/components/reveric_dialog.dart
 //   lib/shared/components/reveric_button.dart
@@ -14,13 +14,19 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:reveric/shared/app_config.dart'
-    show appVersion, revericFeedbackEmail;
+    show appVersion,
+        revericFeedbackEmail,
+        revericProductCode,
+        revericProductName;
 import 'package:reveric/shared/localization/app_localization.dart';
 import 'package:reveric/shared/localization/locale_keys.dart';
 import 'package:reveric/shared/logger/app_logger.dart';
+import 'package:reveric/shared/services/feedback/feedback_store.dart';
+import 'package:reveric/shared/services/license_service.dart';
 import 'package:reveric/shared/theme/theme.dart';
 import '../../components/dialog_feedback.dart';
 import '../../components/reveric_button.dart';
@@ -83,12 +89,16 @@ class _CustomerServiceFeedbackDialogState
   late final TextEditingController _contactController;
   _MessageType _selectedType = _MessageType.complaint;
   bool _submitting = false;
+  bool _historyLoading = false;
+  List<FeedbackLocalMessage> _history = <FeedbackLocalMessage>[];
+  final _uuid = const Uuid();
 
   @override
   void initState() {
     super.initState();
     _contentController = TextEditingController();
     _contactController = TextEditingController();
+    _loadHistory();
   }
 
   @override
@@ -98,16 +108,69 @@ class _CustomerServiceFeedbackDialogState
     super.dispose();
   }
 
-  String _typeLabel(BuildContext context, _MessageType type) {
-    return switch (type) {
-      _MessageType.complaint => context.t(LocaleKeys.supportTypeComplaint),
-      _MessageType.suggestion => context.t(LocaleKeys.supportTypeSuggestion),
-      _MessageType.inquiry => context.t(LocaleKeys.supportTypeInquiry),
-      _MessageType.other => context.t(LocaleKeys.supportTypeOther),
+  /// 先展示本地会话，再联网同步已回复条目；打开弹窗即清掉未读红点。
+  Future<void> _loadHistory() async {
+    final local = await FeedbackStore.loadAll();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _history = local;
+      _historyLoading = true;
+    });
+    await FeedbackStore.markAllSeen();
+
+    final result = await LicenseService.fetchFeedbackReplies();
+    if (!mounted) {
+      return;
+    }
+    if (result.success) {
+      final replies = _asMapList(result.data['replies']);
+      if (replies.isNotEmpty) {
+        await FeedbackStore.mergeReplies(replies);
+        final merged = await FeedbackStore.loadAll();
+        if (!mounted) {
+          return;
+        }
+        setState(() => _history = merged);
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() => _historyLoading = false);
+  }
+
+  List<Map<String, dynamic>> _asMapList(dynamic raw) {
+    if (raw is! List) {
+      return const [];
+    }
+    return raw
+        .whereType<Map>()
+        .map((e) => e.cast<String, dynamic>())
+        .toList();
+  }
+
+  String _typeLabelOf(BuildContext context, String name) {
+    return switch (name) {
+      'suggestion' => context.t(LocaleKeys.supportTypeSuggestion),
+      'bug' || 'complaint' => context.t(LocaleKeys.supportTypeComplaint),
+      'feedback' || 'inquiry' => context.t(LocaleKeys.supportTypeInquiry),
+      _ => context.t(LocaleKeys.supportTypeOther),
     };
   }
 
-  /// 打开默认邮件客户端，把留言发给官方邮箱；同时本地留档。
+  String _typeLabel(BuildContext context, _MessageType type) =>
+      _typeLabelOf(context, type.name);
+
+  String _formatTime(DateTime time) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${time.year}-${two(time.month)}-${two(time.day)} '
+        '${two(time.hour)}:${two(time.minute)}';
+  }
+
+  /// 留言直接提交到 Keygate 后台（不跳转邮件客户端）；
+  /// 网络或服务端失败时在本机留档兜底，避免留言丢失。
   Future<void> _submit() async {
     final content = _contentController.text.trim();
     if (content.isEmpty) {
@@ -120,61 +183,67 @@ class _CustomerServiceFeedbackDialogState
     if (_submitting) {
       return;
     }
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _submitting = true);
     final contact = _contactController.text.trim();
     final typeLabel = _typeLabel(context, _selectedType);
 
-    // 先在本机留档，确保邮件客户端不可用或发送失败时留言也不丢失。
-    await _saveMessageLocally(typeLabel, content, contact);
+    final result = await LicenseService.submitFeedback(
+      type: _selectedType.name,
+      content: content,
+      contact: contact,
+      appVersion: appVersion,
+    );
 
-    final subject = Uri.encodeComponent(
-      context.t(
-        LocaleKeys.supportEmailSubject,
-        namedArgs: {'type': typeLabel},
-      ),
-    );
-    final body = Uri.encodeComponent(
-      context.t(
-        LocaleKeys.supportEmailBody,
-        namedArgs: {
-          'type': typeLabel,
-          'content': content,
-          'contact': contact.isEmpty
-              ? context.t(LocaleKeys.supportContactNone)
-              : contact,
-          'version': appVersion,
-        },
-      ),
-    );
-    final uri = Uri.parse(
-      'mailto:$revericFeedbackEmail?subject=$subject&body=$body',
-    );
-    try {
-      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (mounted) {
-        setState(() => _submitting = false);
-      }
-      if (opened) {
-        _showToast(
-          context.t(LocaleKeys.supportSubmitSuccess),
-          DialogToastVariant.success,
-        );
-      } else {
-        _showToast(
-          context.t(LocaleKeys.supportSubmitFallbackSaved),
-          DialogToastVariant.info,
-        );
-      }
-    } catch (error, stackTrace) {
-      _log.error('launch mailto failed', error: error, stackTrace: stackTrace);
-      if (mounted) {
-        setState(() => _submitting = false);
-        _showToast(
-          context.t(LocaleKeys.supportSubmitFallbackSaved),
-          DialogToastVariant.info,
-        );
-      }
+    if (!mounted) {
+      return;
     }
+    setState(() => _submitting = false);
+
+    if (result.success) {
+      final serverId = result.data['id']?.toString();
+      final message = FeedbackLocalMessage(
+        id: (serverId != null && serverId.isNotEmpty)
+            ? serverId
+            : 'local-${_uuid.v4()}',
+        type: _selectedType.name,
+        content: content,
+        contact: contact,
+        status: FeedbackStatus.open,
+        createdAt: DateTime.now(),
+        product: revericProductCode,
+        productName: revericProductName,
+      );
+      await FeedbackStore.upsert(message);
+      if (!mounted) {
+        return;
+      }
+      final merged = await FeedbackStore.loadAll();
+      setState(() {
+        _history = merged;
+        _contentController.clear();
+      });
+      messenger.showSnackBar(
+        SnackBar(
+          content: DialogToast(
+            variant: DialogToastVariant.success,
+            child: Text(context.t(LocaleKeys.supportSubmitSuccess)),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // 提交失败：先在本机留档，联网后可由用户重新提交。
+    await _saveMessageLocally(typeLabel, content, contact);
+    messenger.showSnackBar(
+      SnackBar(
+        content: DialogToast(
+          variant: DialogToastVariant.info,
+          child: Text(context.t(LocaleKeys.supportSubmitFallbackSaved)),
+        ),
+      ),
+    );
   }
 
   /// 把留言写成本地文本，落到应用目录的 support_messages 下。
@@ -207,13 +276,169 @@ class _CustomerServiceFeedbackDialogState
         encoding: utf8,
       );
     } catch (error, stackTrace) {
-      // 留档失败不阻断邮件通道，只记录日志。
+      // 留档失败不阻断提交流程，只记录日志。
       _log.error(
         'save support message locally failed',
         error: error,
         stackTrace: stackTrace,
       );
     }
+  }
+
+  Widget _buildHistory(
+    BuildContext context,
+    RevericColors colors,
+    RevericTypography typo,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              context.t(LocaleKeys.supportHistoryTitle),
+              style: typo.uiSemibold.copyWith(color: colors.textPrimary),
+            ),
+            const Spacer(),
+            if (_historyLoading)
+              Text(
+                context.t(LocaleKeys.supportHistoryLoading),
+                style: typo.uiTiny.copyWith(color: colors.textMuted),
+              ),
+          ],
+        ),
+        const SizedBox(height: RevericSpacing.sm),
+        if (_history.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: RevericSpacing.md),
+            child: Text(
+              context.t(LocaleKeys.supportHistoryEmpty),
+              style: typo.uiSmall.copyWith(color: colors.textMuted),
+            ),
+          )
+        else
+          for (final message in _history) ...[
+            _buildHistoryItem(context, colors, typo, message),
+            const SizedBox(height: RevericSpacing.sm),
+          ],
+      ],
+    );
+  }
+
+  Widget _buildHistoryItem(
+    BuildContext context,
+    RevericColors colors,
+    RevericTypography typo,
+    FeedbackLocalMessage message,
+  ) {
+    final replied = message.status == FeedbackStatus.replied && message.hasReply;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(RevericSpacing.lg),
+      decoration: BoxDecoration(
+        color: colors.surfaceDim,
+        borderRadius: BorderRadius.circular(RevericRadius.medium),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _historyChip(
+                context,
+                colors,
+                typo,
+                _typeLabelOf(context, message.type),
+              ),
+              const SizedBox(width: RevericSpacing.xs),
+              _historyChip(
+                context,
+                colors,
+                typo,
+                replied
+                    ? context.t(LocaleKeys.supportStatusReplied)
+                    : context.t(LocaleKeys.supportStatusOpen),
+              ),
+              const Spacer(),
+              Text(
+                _formatTime(message.createdAt),
+                style: typo.uiTiny.copyWith(color: colors.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: RevericSpacing.sm),
+          Text(
+            message.content,
+            style: typo.uiSmall.copyWith(
+              color: colors.textPrimary,
+              height: 1.5,
+            ),
+          ),
+          if (message.contact.isNotEmpty) ...[
+            const SizedBox(height: RevericSpacing.xxs),
+            Text(
+              message.contact,
+              style: typo.uiTiny.copyWith(color: colors.textMuted),
+            ),
+          ],
+          if (replied) ...[
+            const SizedBox(height: RevericSpacing.md),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(RevericSpacing.md),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainer,
+                borderRadius: BorderRadius.circular(RevericRadius.small),
+                border: Border(
+                  left: BorderSide(color: colors.border, width: 2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.t(LocaleKeys.supportReplyLabel),
+                    style: typo.uiTiny.copyWith(color: colors.textMuted),
+                  ),
+                  const SizedBox(height: RevericSpacing.xxs),
+                  Text(
+                    message.reply!,
+                    style: typo.uiSmall.copyWith(
+                      color: colors.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _historyChip(
+    BuildContext context,
+    RevericColors colors,
+    RevericTypography typo,
+    String label,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: RevericSpacing.sm,
+        vertical: RevericSpacing.xxs,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(RevericRadius.small),
+        border: Border.all(color: colors.border),
+      ),
+      child: Text(
+        label,
+        style: typo.uiTiny.copyWith(color: colors.textSecondary),
+      ),
+    );
   }
 
   Future<void> _openEmail() async {
@@ -340,6 +565,8 @@ class _CustomerServiceFeedbackDialogState
                 label: context.t(LocaleKeys.supportContactLabel),
                 hintText: context.t(LocaleKeys.supportContactHint),
               ),
+              const SizedBox(height: RevericSpacing.xl),
+              _buildHistory(context, colors, typo),
               const SizedBox(height: RevericSpacing.xl),
               // 联系邮箱
               InkWell(

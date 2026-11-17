@@ -13,11 +13,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'device_id_service.dart';
 import 'keygate/keygate_client.dart';
 import 'keygate/keygate_token.dart';
+import '../app_config.dart';
 import '../models/license.dart';
 
 /// 授权操作结果。message 为本地化 key，由 UI 侧翻译。
@@ -216,6 +218,62 @@ class LicenseService {
     }
     await clear();
     return true;
+  }
+
+  /// 提交客服留言到 Keygate 后台（匿名，试用用户也可留言）。
+  /// 自动附带本机设备指纹与授权码哈希（明文授权码不上传）；
+  /// 网络失败/5xx 由上层做本地留档兜底。
+  static Future<KeygateResult> submitFeedback({
+    required String type,
+    required String content,
+    String? contact,
+    String? appVersion,
+  }) async {
+    final deviceId = await DeviceIdService().getOrCreate();
+    final state = await load();
+    final licenseKeyHash = _hashLicenseKey(state.licenseKey);
+    return _withFailover(
+      (client) => client.submitFeedback(
+        type: _serverFeedbackType(type),
+        content: content,
+        contact: contact,
+        deviceId: deviceId,
+        licenseKeyHash: licenseKeyHash,
+        appVersion: appVersion,
+        os: Platform.operatingSystem,
+        product: revericProductCode,
+        productName: revericProductName,
+      ),
+    );
+  }
+
+  /// 本地四分类映射到服务端留言类型白名单（suggestion / bug / feedback）。
+  static String _serverFeedbackType(String localType) => switch (localType) {
+        'complaint' => 'bug',
+        'suggestion' => 'suggestion',
+        'inquiry' => 'feedback',
+        'other' => 'feedback',
+        _ => 'feedback',
+      };
+
+  /// 拉取本机已收到回复的留言（仅 replied 且回复非空）。
+  static Future<KeygateResult> fetchFeedbackReplies() async {
+    final deviceId = await DeviceIdService().getOrCreate();
+    return _withFailover((client) => client.fetchFeedbackReplies(deviceId));
+  }
+
+  /// 拉取本机完整留言会话（备用；默认以本地会话 + check 回复同步为准）。
+  static Future<KeygateResult> fetchFeedbackThread() async {
+    final deviceId = await DeviceIdService().getOrCreate();
+    return _withFailover((client) => client.fetchFeedbackThread(deviceId));
+  }
+
+  /// 授权码只上传 SHA-256 hex，服务端与本地均不保留明文之外的额外副本。
+  static String? _hashLicenseKey(String? licenseKey) {
+    if (licenseKey == null || licenseKey.trim().isEmpty) {
+      return null;
+    }
+    return sha256.convert(utf8.encode(licenseKey.trim())).toString();
   }
 
   // ---------------- 内部 ----------------

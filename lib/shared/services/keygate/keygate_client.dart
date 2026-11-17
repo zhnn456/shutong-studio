@@ -124,6 +124,58 @@ class KeygateClient {
     });
   }
 
+  /// 提交客服留言到 Keygate 后台（匿名，无需授权码）。
+  /// 服务端约定：`POST /api/v1/feedback`，返回 `{success: true, data: {id}}`。
+  /// [type] 必须是服务端白名单值：suggestion / bug / feedback（由上层映射）。
+  /// [deviceId] 为本机稳定标识，用于后台回溯与客户端拉回回复；
+  /// [licenseKeyHash] 为授权码的 SHA-256 hex（明文授权码不上传），可为空。
+  Future<KeygateResult> submitFeedback({
+    required String type,
+    required String content,
+    String? contact,
+    String? deviceId,
+    String? licenseKeyHash,
+    String? appVersion,
+    String? os,
+    String? product,
+    String? productName,
+  }) {
+    return _post('/api/v1/feedback', <String, dynamic>{
+      'type': type,
+      'content': content,
+      'source': 'desktop',
+      if (contact != null && contact.trim().isNotEmpty)
+        'contact': contact.trim(),
+      if (deviceId != null && deviceId.trim().isNotEmpty)
+        'device_id': deviceId.trim(),
+      if (licenseKeyHash != null && licenseKeyHash.trim().isNotEmpty)
+        'license_key_hash': licenseKeyHash.trim(),
+      if (appVersion != null && appVersion.trim().isNotEmpty)
+        'app_version': appVersion.trim(),
+      if (os != null && os.trim().isNotEmpty) 'os': os.trim(),
+      // 产品标识：后台据此区分鲸喜AI / 书童AI写作 / 后续其他产品。
+      if (product != null && product.trim().isNotEmpty)
+        'product': product.trim(),
+      if (productName != null && productName.trim().isNotEmpty)
+        'product_name': productName.trim(),
+    });
+  }
+
+  /// 拉取本机已收到回复的留言：`GET /api/v1/feedback/check?device_id=…`。
+  /// 仅返回状态为 replied、回复非空的条目；未回复的不回传，避免噪音。
+  Future<KeygateResult> fetchFeedbackReplies(String deviceId) {
+    return _get('/api/v1/feedback/check', query: <String, String>{
+      'device_id': deviceId,
+    });
+  }
+
+  /// 拉取本机完整留言会话：`GET /api/v1/feedback?device_id=…`。
+  Future<KeygateResult> fetchFeedbackThread(String deviceId) {
+    return _get('/api/v1/feedback', query: <String, String>{
+      'device_id': deviceId,
+    });
+  }
+
   Future<KeygateResult> _post(
     String path,
     Map<String, dynamic> body,
@@ -195,6 +247,59 @@ class KeygateClient {
       message: _extractMessage(json),
       currentDevices: current,
       maxDevices: max,
+    );
+  }
+
+  Future<KeygateResult> _get(
+    String path, {
+    Map<String, String>? query,
+  }) async {
+    if (!isConfigured) {
+      return const KeygateResult.failure(KeygateErrorCode.notConfigured);
+    }
+    var uri = Uri.tryParse('$_baseUrl$path');
+    if (uri == null) {
+      return const KeygateResult.failure(KeygateErrorCode.notConfigured);
+    }
+    if (query != null && query.isNotEmpty) {
+      uri = uri.replace(queryParameters: query);
+    }
+
+    http.Response response;
+    try {
+      response = await _http
+          .get(
+            uri,
+            headers: const <String, String>{'Accept': 'application/json'},
+          )
+          .timeout(timeout);
+    } catch (error) {
+      return KeygateResult.failure(
+        KeygateErrorCode.network,
+        message: error.toString(),
+      );
+    }
+
+    Map<String, dynamic> json = const <String, dynamic>{};
+    try {
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is Map) {
+        json = decoded.cast<String, dynamic>();
+      }
+    } catch (_) {
+      json = const <String, dynamic>{};
+    }
+
+    if (json['success'] == true) {
+      final dataRaw = json['data'];
+      final data = dataRaw is Map
+          ? dataRaw.cast<String, dynamic>()
+          : const <String, dynamic>{};
+      return KeygateResult(success: true, data: data);
+    }
+    return KeygateResult.failure(
+      _classify(response.statusCode, _extractCode(json)),
+      message: _extractMessage(json),
     );
   }
 

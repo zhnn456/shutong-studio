@@ -1333,6 +1333,12 @@ abstract final class LocaleKeys {
   static const supportOpenEmailFailed = 'support.open_email_failed';
   static const supportEmailSubject = 'support.email_subject';
   static const supportEmailBody = 'support.email_body';
+  static const supportHistoryTitle = 'support.history_title';
+  static const supportHistoryEmpty = 'support.history_empty';
+  static const supportReplyLabel = 'support.reply_label';
+  static const supportStatusOpen = 'support.status_open';
+  static const supportStatusReplied = 'support.status_replied';
+  static const supportHistoryLoading = 'support.history_loading';
   static const aiFork = 'ai.fork';
   static const aiForkTooltip = 'ai.fork_tooltip';
   static const aiForkSuffix = 'ai.fork_suffix';
