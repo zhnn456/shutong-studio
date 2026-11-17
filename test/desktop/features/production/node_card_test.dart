@@ -630,7 +630,7 @@ void main() {
         await tester.pumpAndSettle();
         await db.close();
         await main.close();
-        await tester.runAsync(() => root.delete(recursive: true));
+        await tester.runAsync(() => removeTempRoot(root));
       }
     },
     variant: TargetPlatformVariant({
@@ -759,7 +759,7 @@ void main() {
         await tester.pumpAndSettle();
         await db.close();
         await main.close();
-        await tester.runAsync(() => root.delete(recursive: true));
+        await tester.runAsync(() => removeTempRoot(root));
       }
     },
   );
@@ -1071,7 +1071,7 @@ void main() {
         await tester.pumpAndSettle();
         await db.close();
         await main.close();
-        await tester.runAsync(() => root.delete(recursive: true));
+        await tester.runAsync(() => removeTempRoot(root));
       }
     },
   );
@@ -1142,7 +1142,7 @@ void main() {
         await tester.pumpAndSettle();
         await db.close();
         await main.close();
-        await tester.runAsync(() => root.delete(recursive: true));
+        await tester.runAsync(() => removeTempRoot(root));
       }
     },
   );
@@ -1216,7 +1216,7 @@ void main() {
         await tester.pumpAndSettle();
         await db.close();
         await main.close();
-        await tester.runAsync(() => root.delete(recursive: true));
+        await tester.runAsync(() => removeTempRoot(root));
       }
     },
   );
@@ -1242,5 +1242,21 @@ class _ThumbnailMedia extends MediaService {
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
       ),
     );
+  }
+}
+
+/// 删除测试临时根目录。Windows 上系统索引/预览组件可能短暂占用文件，
+/// 直接删除会抛 errno=32；这里重试若干次后放弃，不影响断言结论。
+Future<void> removeTempRoot(Directory root) async {
+  for (var attempt = 0; attempt < 5; attempt++) {
+    try {
+      await root.delete(recursive: true);
+      return;
+    } on PathNotFoundException {
+      return;
+    } on PathAccessException {
+      if (attempt == 4) return;
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
   }
 }
