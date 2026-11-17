@@ -32,7 +32,6 @@ import '../../desktop/widgets/novel_form_dialog.dart';
 import '../providers/novel_providers.dart';
 import '../../desktop/pages/workspace_editor_page.dart';
 import '../components/reveric_dialog.dart';
-import '../components/reveric_button.dart';
 import '../widgets/confirm_dialog.dart';
 
 final _log = AppLogger.forModule('SystemTray');
@@ -138,7 +137,6 @@ class SystemTrayService {
     }
 
     addItem('新建小说', _newNovel);
-    addItem('关于 Reveric', _about);
     menu.addSeparator();
     addItem('隐藏', _hideWindow);
     addItem('显示', showMainWindow);
@@ -267,67 +265,52 @@ class SystemTrayService {
     );
   }
 
-  Future<void> _about() async {
-    await showMainWindow();
-    final context = navigatorKey.currentState?.context;
-    if (context == null || !context.mounted) {
-      return;
-    }
-    showRevericDialog(
-      context: context,
-      builder: (ctx) {
-        return RevericDialog(
-          title: 'Reveric',
-          content: Text('版本 1.0.0\nAI 辅助写作工具'),
-          actions: [
-            RevericButton.secondary(
-              label: '关闭',
-              onPressed: () => Navigator.of(ctx).pop(),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _quit() async {
-    var phase = 'activate_window';
     _log.checkpoint('tray quit selected');
+
+    // 唤起窗口仅用于展示确认弹窗；窗口隐藏在托盘、或原生可见性校验失败时，
+    // 都不能阻断退出——否则表现为"点了退出没反应"。
+    BuildContext? ctx;
     try {
       await showMainWindow();
+      ctx = navigatorKey.currentState?.context;
+    } catch (error, stackTrace) {
+      _log.warning(
+        '[EXIT] show window before quit failed (non-fatal) '
+        'error=$error\n$stackTrace',
+      );
+    }
 
-      final ctx = navigatorKey.currentState?.context;
-      if (ctx == null || !ctx.mounted) {
-        phase = 'exit_without_navigator';
-        _log.checkpoint('tray quit without mounted navigator');
-        await _exitApplication();
+    if (ctx != null && ctx.mounted) {
+      bool confirmed = false;
+      try {
+        _log.checkpoint('tray quit opening confirmation');
+        confirmed = await showConfirmDialog(
+          ctx,
+          title: '确认退出',
+          message: '确定要退出吗？',
+          confirmLabel: '退出',
+          cancelLabel: '取消',
+          variant: ConfirmDialogVariant.warning,
+        );
+        _log.checkpoint('tray quit confirmation result=$confirmed');
+      } catch (error, stackTrace) {
+        // 确认弹窗异常不应把退出流程一起拖住：视为未取消，继续走退出清理。
+        _log.warning(
+          '[EXIT] confirmation dialog failed; proceeding with shutdown '
+          'error=$error\n$stackTrace',
+        );
+        confirmed = true;
+      }
+      if (confirmed != true) {
+        _log.checkpoint('tray quit cancelled by user');
         return;
       }
-
-      phase = 'confirm_exit';
-      _log.checkpoint('tray quit opening confirmation');
-      final confirmed = await showConfirmDialog(
-        ctx,
-        title: '确认退出',
-        message: '确定要退出吗？',
-        confirmLabel: '退出',
-        cancelLabel: '取消',
-        variant: ConfirmDialogVariant.warning,
-      );
-      _log.checkpoint('tray quit confirmation result=$confirmed');
-
-      if (confirmed == true) {
-        phase = 'exit_application';
-        await _exitApplication();
-      }
-    } catch (error, stackTrace) {
-      _log.error(
-        'Tray quit failed phase=$phase',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      rethrow;
+    } else {
+      _log.checkpoint('tray quit without mounted navigator; exiting directly');
     }
+
+    await _exitApplication();
   }
 
   /// CrashSentinel 落盘失败不能阻断退出，统一降级为日志。
