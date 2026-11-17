@@ -699,7 +699,7 @@
   "settings.license_activate_title": "I already have a code",
   "settings.license_contact_email": "Email us",
   "settings.license_step_buy": "1 Scan the QR code and add us on WeChat",
-  "settings.license_step_pay": "2 Tell us the plan and pay",
+  "settings.license_step_pay": "2 Tell us the plan, provide your email and pay",
   "settings.license_step_code": "3 Paste the activation code you receive",
   "settings.license_current_badge": "Current",
   "settings.license_free_price": "¥0",
