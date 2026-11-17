@@ -217,6 +217,12 @@ class PluginProviderManifest {
       throw const FormatException('Invalid provider settings');
     }
     final config = settings as Map<String, dynamic>?;
+    final actionsRaw = config?['actions'];
+    // 显式声明 `actions: {}` 的 provider 没有任何可调用动作，属于无效声明；
+    // 省略该字段才是「不提供动作」的合法写法。
+    if (actionsRaw is Map && actionsRaw.isEmpty) {
+      throw const FormatException('provider.actions must not be empty');
+    }
     final fields = parsePluginSettingFields(config?['fields']);
     return PluginProviderManifest(
       parsePluginText(value['name'], 'provider.name'),
