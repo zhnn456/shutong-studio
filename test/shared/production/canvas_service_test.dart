@@ -2143,8 +2143,15 @@ void main() {
       expect((history['entries'] as List).single['result_applied'], false);
       final entry = (history['entries'] as List).single as Map;
       expect(entry, isNot(contains('request')));
-      final generationDetail = resourceContractTreeForTesting(entry['path'] as String);
-      expect(generationDetail['request'], generation.requestJson.toJson());
+      // 契约助手只接受 _schema 路径；实例路径在这里返回 error map。
+      // generation 的 request 只在详情按字段路径读出，列表不带，此处断言声明。
+      final generationContract = resourceContractTreeForTesting(
+        '/_schema/clips/generations',
+      );
+      final requestField =
+          (generationContract['fields'] as Map)['request'] as Map;
+      expect(requestField['read_path'], true);
+      expect(requestField['listing'], false);
       final snapshot = await tools.executeTool(
         name: 'Read',
         input: {'path': '${entry['path']}/request'},

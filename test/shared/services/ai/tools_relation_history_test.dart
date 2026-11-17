@@ -13,8 +13,6 @@ import 'package:reveric/shared/services/novel_actions.dart';
 import 'package:reveric/shared/services/novel_content.dart';
 import 'package:reveric/shared/services/working_overlay.dart';
 
-import '../../../helpers/resource_contract.dart';
-
 void main() {
   late NovelContentDatabase db;
   late AppDatabase app;
