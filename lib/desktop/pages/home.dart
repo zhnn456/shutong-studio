@@ -48,6 +48,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../shared/components/dialog_feedback.dart';
 import '../../shared/database/app_database.dart';
 import '../../shared/models/license.dart';
+import '../../shared/services/feedback/feedback_store.dart';
+import '../../shared/services/license_service.dart';
 import '../../shared/localization/app_localization.dart';
 import '../../shared/localization/locale_keys.dart';
 import '../../shared/widgets/quick_start_idea.dart';
@@ -274,6 +276,23 @@ Widget _buildGlobalSkillEditor({
   );
 }
 
+/// 启动时静默拉取已回复留言并合并进本地会话；网络失败不影响首页使用。
+Future<void> _syncFeedbackReplies() async {
+  final result = await LicenseService.fetchFeedbackReplies();
+  if (!result.success) {
+    return;
+  }
+  final raw = result.data['replies'];
+  if (raw is! List || raw.isEmpty) {
+    return;
+  }
+  final replies = raw
+      .whereType<Map>()
+      .map((e) => e.cast<String, dynamic>())
+      .toList();
+  await FeedbackStore.mergeReplies(replies);
+}
+
 class NovelHomePage extends HookConsumerWidget {
   const NovelHomePage({super.key});
 
@@ -312,6 +331,12 @@ class NovelHomePage extends HookConsumerWidget {
     final settingsLeave = useMemoized(SettingsLeaveController.new);
     final sessionsExpanded = _homeSessionsExpanded;
     useListenable(sessionsExpanded);
+
+    // 启动后静默同步一次客服回复，驱动侧边栏红点；失败保留本地会话。
+    useEffect(() {
+      unawaited(_syncFeedbackReplies());
+      return null;
+    }, const []);
 
     // 快速开书：占位建书后直接进编辑器，其余设定交给创作向导 onboarding。
     // 从首页顶栏直接触发（无对话框可关），故不做 dialog pop。
@@ -1204,6 +1229,7 @@ class NovelHomePage extends HookConsumerWidget {
       child: Column(
         children: [
           SizedBox(height: DesktopWindowFrame.sidebarTopInset),
+          _buildBrandHeader(context),
           // 作品搜索在书库作品区那一行（只搜当前集合），侧栏不再放。
           const SizedBox(height: RevericSpacing.md),
           Expanded(
@@ -1432,6 +1458,22 @@ class NovelHomePage extends HookConsumerWidget {
                   context,
                   icon: RevericIcons.chat_rounded,
                   title: context.t(LocaleKeys.homeNavCustomerService),
+                  trailing: ValueListenableBuilder<int>(
+                    valueListenable: FeedbackStore.unread,
+                    builder: (context, count, _) {
+                      if (count <= 0) {
+                        return const SizedBox.shrink();
+                      }
+                      return Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      );
+                    },
+                  ),
                   onTap: () {
                     unawaited(
                       showCustomerServiceFeedbackDialog(context: context),
@@ -1443,6 +1485,63 @@ class NovelHomePage extends HookConsumerWidget {
           ),
           const DesktopUpdateEntry(),
           const UserProfileBar(),
+        ],
+      ),
+    );
+  }
+
+  /// 侧边栏顶部品牌区：左侧为 Logo 预留位（后续替换为品牌图标资源），
+  /// 右侧为主标题「书童写作」与副标题「A工作台 · 小说 · 剧本 · 短剧」。
+  Widget _buildBrandHeader(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        RevericSpacing.lg,
+        0,
+        RevericSpacing.lg,
+        RevericSpacing.md,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Logo 预留位：当前用占位框，后续把品牌图标放进 assets 后替换此处。
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: colors.surfaceDim,
+              borderRadius: BorderRadius.circular(RevericRadius.medium),
+              border: Border.all(color: colors.border),
+            ),
+            child: RevericIcon(
+              RevericIcons.menu_book_rounded,
+              size: 18,
+              color: colors.textMuted,
+            ),
+          ),
+          const SizedBox(width: RevericSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '书童写作',
+                  style: typo.uiSemibold.copyWith(color: colors.textPrimary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'A工作台 · 小说 · 剧本 · 短剧',
+                  style: typo.uiTiny.copyWith(
+                    color: colors.textMuted,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1476,6 +1575,7 @@ class NovelHomePage extends HookConsumerWidget {
     required String icon,
     required String title,
     bool isSelected = false,
+    Widget? trailing,
     required VoidCallback onTap,
   }) {
     final colors = RevericTheme.colorsOf(context);
@@ -1513,6 +1613,10 @@ class NovelHomePage extends HookConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (trailing != null) ...[
+                  const SizedBox(width: RevericSpacing.sm),
+                  trailing,
+                ],
                 RevericIcon(
                   RevericIcons.keyboard_arrow_right,
                   size: 18,
