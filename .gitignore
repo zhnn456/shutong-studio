@@ -85,6 +85,13 @@ dist/
 
 designs/pitch/
 
+# 本地 GUI 走查产物：截图与导出样例只留在本机，不进版本库
+/docs/testing/
+
+# 打包用第三方二进制与机器生成的锁文件，随构建重新获取
+windows/packaging/exe/vc_redist.x64.exe
+third/fvp/windows/fvp-deps.lock
+
 site/screenshots/
 
 .wrangler/
