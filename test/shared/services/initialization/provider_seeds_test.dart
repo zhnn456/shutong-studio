@@ -63,7 +63,7 @@ void main() {
       await ensureAppInitializationTasks(database: database, tasks: tasks);
       final provider = (await database.aiProviderDao.getById('api88'))!;
       expect(provider.type, 'api88');
-      expect(provider.name, '88API');
+      expect(provider.name, '星辰AI');
       expect(provider.effectiveBaseUrl, 'https://api.88api.ai/v1');
       expect(provider.enabled, false);
       expect(provider.apiKey, isEmpty);
