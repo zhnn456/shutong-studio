@@ -9,6 +9,9 @@
 //   assets/translations/zh-CN/ai.json
 //   assets/translations/en/production.json
 //   assets/translations/zh-CN/production.json
+import 'dart:io';
+
+import 'package:sqlite3/sqlite3.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
