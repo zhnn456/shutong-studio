@@ -267,12 +267,15 @@ void main() {
     );
   }
   test('MiniMax exposes only explicitly configured chat and video models', () {
+    // 夹具从 openai 内置项派生：书童分支的内置项预置了 gpt-image 系列图像模型，
+    // 必须清空 imageModels，否则测的就不是「只暴露显式配置的模型」。
     final provider = aiProviderBuiltinById('openai')!.copyWith(
       type: 'minimax',
       baseUrl: '',
       apiKey: 'key',
       enabled: true,
       models: const [],
+      imageModels: const [],
       videoModels: ['MiniMax-H3'],
     );
     expect(provider.effectiveBaseUrl, 'https://api.minimax.cn');

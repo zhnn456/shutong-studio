@@ -545,7 +545,7 @@ void _draftFlowTests() {
       await tester.tap(find.text('Add Custom'));
       await tester.pumpAndSettle();
       expect(find.byType(ProviderTypePickerPanel), findsOneWidget);
-      expect(find.text('88API'), findsOneWidget);
+      expect(find.text('星辰AI'), findsOneWidget);
       expect(find.text('OpenAI Compatible'), findsNothing);
       await tester.tap(find.text('API formats'));
       await tester.pumpAndSettle();
@@ -646,7 +646,7 @@ void _draftFlowTests() {
       await tester.tap(find.byTooltip('Add'));
       await tester.pumpAndSettle();
       expect(find.text('Add provider'), findsOneWidget);
-      expect(find.text('88API'), findsOneWidget);
+      expect(find.text('星辰AI'), findsOneWidget);
       expect(find.text('OpenAI Compatible'), findsNothing);
       await tester.tap(find.text('API formats'));
       await tester.pumpAndSettle();
