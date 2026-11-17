@@ -92,12 +92,12 @@ import '../../shared/widgets/screenplay/import_dialog.dart';
 import '../features/production/package_actions.dart';
 import '../widgets/home/library_home_panel.dart';
 import '../widgets/settings/settings_dialog.dart';
-import '../../shared/widgets/support/customer_service_feedback_dialog.dart';
 import '../widgets/agent_management/subagent_edit_panel.dart';
 import '../widgets/agent_management/subagent_prompt_edit_panel.dart';
 import '../widgets/user_profile_bar.dart';
 import '../widgets/update_entry.dart';
 import 'license_page.dart' as license_page;
+import 'customer_service_page.dart';
 import 'home_management_lists.dart';
 import '../features/reading/reading_page.dart';
 import 'workspace_editor_page.dart';
@@ -170,6 +170,10 @@ final class _HomeSettingsSelection extends _HomeContentSelection {
 
 final class _HomeLicenseSelection extends _HomeContentSelection {
   const _HomeLicenseSelection();
+}
+
+final class _HomeCustomerServiceSelection extends _HomeContentSelection {
+  const _HomeCustomerServiceSelection();
 }
 
 final class _HomeSkillListSelection extends _HomeContentSelection {
@@ -789,6 +793,11 @@ class NovelHomePage extends HookConsumerWidget {
         (_HomePluginsSelection(), _HomePluginsSelection()) => true,
         (_HomeSettingsSelection(), _HomeSettingsSelection()) => true,
         (_HomeLicenseSelection(), _HomeLicenseSelection()) => true,
+        (
+          _HomeCustomerServiceSelection(),
+          _HomeCustomerServiceSelection(),
+        ) =>
+          true,
         (_HomeSkillListSelection(), _HomeSkillListSelection()) => true,
         (
           _HomeGlobalSkillSelection(skill: final currentSkill),
@@ -1025,6 +1034,10 @@ class NovelHomePage extends HookConsumerWidget {
         headerTrailingInset: DesktopWindowFrame.trailingInset,
       ),
       _HomeLicenseSelection() => license_page.DesktopLicensePage(
+        headerGestureExclusionKey: editPanelHeaderKey,
+        headerTrailingInset: DesktopWindowFrame.trailingInset,
+      ),
+      _HomeCustomerServiceSelection() => DesktopCustomerServicePage(
         headerGestureExclusionKey: editPanelHeaderKey,
         headerTrailingInset: DesktopWindowFrame.trailingInset,
       ),
@@ -1472,6 +1485,7 @@ class NovelHomePage extends HookConsumerWidget {
                   context,
                   icon: RevericIcons.chat_rounded,
                   title: context.t(LocaleKeys.homeNavCustomerService),
+                  isSelected: selection is _HomeCustomerServiceSelection,
                   trailing: ValueListenableBuilder<int>(
                     valueListenable: FeedbackStore.unread,
                     builder: (context, count, _) {
@@ -1489,9 +1503,7 @@ class NovelHomePage extends HookConsumerWidget {
                     },
                   ),
                   onTap: () {
-                    unawaited(
-                      showCustomerServiceFeedbackDialog(context: context),
-                    );
+                    onContentSelected(const _HomeCustomerServiceSelection());
                   },
                 ),
               ],
