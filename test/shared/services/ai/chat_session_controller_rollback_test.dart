@@ -2466,6 +2466,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(appDb),
+          appSettingsDatabaseProvider.overrideWithValue(appDb),
           novelActionsProvider.overrideWithValue(NovelActionsService(appDb)),
 
           // fake provider 是自定义 provider，Pro 门禁会在 AiClient.initialize 兜底拦下。
@@ -2637,6 +2638,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(appDb),
+          appSettingsDatabaseProvider.overrideWithValue(appDb),
           novelActionsProvider.overrideWithValue(NovelActionsService(appDb)),
 
           // fake provider 是自定义 provider，Pro 门禁会在 AiClient.initialize 兜底拦下。
@@ -2798,6 +2800,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(appDb),
+          appSettingsDatabaseProvider.overrideWithValue(appDb),
           novelActionsProvider.overrideWithValue(NovelActionsService(appDb)),
 
           // fake provider 是自定义 provider，Pro 门禁会在 AiClient.initialize 兜底拦下。
