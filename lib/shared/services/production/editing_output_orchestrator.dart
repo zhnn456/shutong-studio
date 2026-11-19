@@ -20,6 +20,7 @@ class EditingOutputOrchestrator {
     final canvasId = await EditingService(
       service.db,
       service.library,
+      novelId: service.novelId,
     ).canvasForEditing(editingId);
     final nodes = await service.db.canvasDao.getNodesByCanvas(canvasId);
     final source = nodes.singleWhere((node) => node.editingId == editingId);

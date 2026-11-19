@@ -926,7 +926,9 @@ class NovelEditorPage extends HookConsumerWidget {
     );
     final workingOverlayService = databasePath == null
         ? null
-        : ref.watch(workingOverlayServiceProvider(databasePath));
+        : ref.watch(
+            workOverlayServiceProvider((path: databasePath, novelId: novelId)),
+          );
     final activeAiSessionId = useState<String?>(null);
     final isCreatingAiChatSession = useRef(false);
     final nameAssistantAiService = ref
@@ -975,7 +977,7 @@ class NovelEditorPage extends HookConsumerWidget {
       if (path == null) return;
 
       await ref
-          .read(novelContentServiceProvider(path))
+          .read(workContentServiceProvider((path: path, novelId: novelId)))
           .updateChapterStat(chapterId: chapterId, stat: chapterStatPublished);
 
       if (!useChronicler) return;
@@ -1191,6 +1193,7 @@ class NovelEditorPage extends HookConsumerWidget {
       await PendingChangesDetailDialog.showFromChanges(
         context,
         databasePath: path,
+        novelId: novelId,
         changes: activeChanges,
       );
     }
@@ -1346,6 +1349,7 @@ class NovelEditorPage extends HookConsumerWidget {
         await showResourceHistoryDialog(
           context,
           databasePath: path,
+          novelId: novelId,
           resourceId: selectedResourceId,
           resourceLabel: historyResourceLabel(),
         );
@@ -1362,6 +1366,7 @@ class NovelEditorPage extends HookConsumerWidget {
               height: 720,
               child: DialogFeedback(
                 builder: (context) => ChangeHistoryPanel(
+                  novelId: novelId,
                   databasePath: path,
                   onClose: () => Navigator.of(dialogContext).pop(),
                 ),
@@ -1480,7 +1485,9 @@ class NovelEditorPage extends HookConsumerWidget {
       if (path == null) {
         return null;
       }
-      final service = ref.read(novelContentServiceProvider(path));
+      final service = ref.read(
+        workContentServiceProvider((path: path, novelId: novelId)),
+      );
       final nextOrder = await service.getNextSiblingOrderAtRoot();
       return service.createChapter(siblingOrder: nextOrder, title: '');
     }
@@ -1490,7 +1497,9 @@ class NovelEditorPage extends HookConsumerWidget {
       if (path == null) {
         return null;
       }
-      final service = ref.read(novelContentServiceProvider(path));
+      final service = ref.read(
+        workContentServiceProvider((path: path, novelId: novelId)),
+      );
       final nextOrder = await service.getNextSiblingOrderInVolume(volumeId);
       return service.createChapter(
         siblingOrder: nextOrder,
@@ -1550,7 +1559,9 @@ class NovelEditorPage extends HookConsumerWidget {
         return null;
       }
 
-      final service = ref.read(novelContentServiceProvider(path));
+      final service = ref.read(
+        workContentServiceProvider((path: path, novelId: novelId)),
+      );
       return service.createVolume(title: title);
     }
 
@@ -1592,7 +1603,7 @@ class NovelEditorPage extends HookConsumerWidget {
       try {
         await commitChapterManualSave(
           overlay,
-          ref.read(novelContentServiceProvider(path)),
+          ref.read(workContentServiceProvider((path: path, novelId: novelId))),
           chapterId: chapterId,
           newTitle: title,
           newOutline: outline,
@@ -1734,7 +1745,9 @@ class NovelEditorPage extends HookConsumerWidget {
       }
 
       final untitledName = context.t(LocaleKeys.commonUntitled);
-      final service = ref.read(novelContentServiceProvider(path));
+      final service = ref.read(
+        workContentServiceProvider((path: path, novelId: novelId)),
+      );
       String? parentId;
       if (selection.value.itemId != null && targetSectionOverride == null) {
         final currentDoc = await service.documentsService.getDocumentById(
@@ -1860,7 +1873,9 @@ class NovelEditorPage extends HookConsumerWidget {
         return;
       }
 
-      final service = ref.read(novelContentServiceProvider(path));
+      final service = ref.read(
+        workContentServiceProvider((path: path, novelId: novelId)),
+      );
       String? createdId;
       NovelWorkspaceSection? createdSection;
 
@@ -2018,7 +2033,9 @@ class NovelEditorPage extends HookConsumerWidget {
       );
 
       try {
-        final service = ref.read(novelContentServiceProvider(path));
+        final service = ref.read(
+          workContentServiceProvider((path: path, novelId: novelId)),
+        );
         final importResult = switch (source) {
           _DocumentImportSource.file =>
             await service.documentsService.importFiles(
@@ -2099,7 +2116,9 @@ class NovelEditorPage extends HookConsumerWidget {
       );
 
       try {
-        final service = ref.read(novelContentServiceProvider(path));
+        final service = ref.read(
+          workContentServiceProvider((path: path, novelId: novelId)),
+        );
         // 多文件导入完成后打开第一个大纲，其余按顺序保留在列表中。
         final fallbackTitle = context.t(LocaleKeys.workspaceNewOutline);
         String? firstOutlineId;
@@ -2311,7 +2330,9 @@ class NovelEditorPage extends HookConsumerWidget {
         return Future<bool>.value(false);
       }
       entryTitleFieldError.value = null;
-      final service = ref.read(novelContentServiceProvider(path));
+      final service = ref.read(
+        workContentServiceProvider((path: path, novelId: novelId)),
+      );
       final previousSave = outlineSaveChain.value.catchError((
         Object error,
         StackTrace stackTrace,
@@ -2363,7 +2384,9 @@ class NovelEditorPage extends HookConsumerWidget {
         return;
       }
 
-      final service = ref.read(novelContentServiceProvider(path));
+      final service = ref.read(
+        workContentServiceProvider((path: path, novelId: novelId)),
+      );
 
       if (selection.value.isCreating) {
         isSavingEntry.value = true;
@@ -2734,7 +2757,7 @@ class NovelEditorPage extends HookConsumerWidget {
       if (dbPath == null) return;
       try {
         await ref
-            .read(novelContentServiceProvider(dbPath))
+            .read(workContentServiceProvider((path: dbPath, novelId: novelId)))
             .updateCharacterAvatarAndPhotos(
               entryId: characterId,
               avatarAssetId: avatarAssetId,
@@ -2751,7 +2774,7 @@ class NovelEditorPage extends HookConsumerWidget {
       if (dbPath == null) return;
       try {
         await ref
-            .read(novelContentServiceProvider(dbPath))
+            .read(workContentServiceProvider((path: dbPath, novelId: novelId)))
             .updateItemPhotos(entryId: itemId, assetIds: photos);
       } catch (e, s) {
         _log.error('saveItemPhotos FAILED: $e', error: e, stackTrace: s);
@@ -2810,7 +2833,9 @@ class NovelEditorPage extends HookConsumerWidget {
       if (dbPath == null) {
         throw StateError('Novel content database is unavailable');
       }
-      final service = ref.read(novelContentServiceProvider(dbPath));
+      final service = ref.read(
+        workContentServiceProvider((path: dbPath, novelId: novelId)),
+      );
       await service.addItemPhotos(itemId, [assetId]);
       if (selection.value.section == NovelWorkspaceSection.items &&
           selection.value.itemId == itemId) {
@@ -2958,7 +2983,9 @@ class NovelEditorPage extends HookConsumerWidget {
             throw StateError('Novel content database is unavailable');
           }
           await ref
-              .read(novelContentServiceProvider(dbPath))
+              .read(
+                workContentServiceProvider((path: dbPath, novelId: novelId)),
+              )
               .addCharacterPhotos(characterId, [assetId]);
         } else if (itemId != null && itemId.isNotEmpty) {
           await addItemPhotoFromAsset(assetId, itemId);
@@ -3548,7 +3575,9 @@ class NovelEditorPage extends HookConsumerWidget {
       }
       isSavingEntry.value = true;
       try {
-        return await saveNewEntry(ref.read(novelContentServiceProvider(path)));
+        return await saveNewEntry(
+          ref.read(workContentServiceProvider((path: path, novelId: novelId))),
+        );
       } finally {
         isSavingEntry.value = false;
       }
@@ -4052,7 +4081,14 @@ class NovelEditorPage extends HookConsumerWidget {
     // 清理自动保存定时器
     final outlineServiceForExit = databasePath == null
         ? null
-        : ref.watch(novelContentServiceProvider(databasePath)).outlineService;
+        : ref
+              .watch(
+                workContentServiceProvider((
+                  path: databasePath,
+                  novelId: novelId,
+                )),
+              )
+              .outlineService;
     useEffect(
       () => () {
         autoSaveTimer.value?.cancel();
@@ -4678,6 +4714,7 @@ class NovelEditorPage extends HookConsumerWidget {
                     onRegisterSave: (save) => activeAgentPanelSave.value = save,
                   ),
                   _EditorAgentRulesListSelection() => AgentRulesGridPage(
+                    novelId: novelId,
                     databasePath: databasePath,
                     headerGestureExclusionKey: workspaceHeaderToolbarKey,
                     onBack: () {
@@ -5288,7 +5325,10 @@ class NovelEditorPage extends HookConsumerWidget {
                                     final path = databasePath;
 
                                     final service = ref.read(
-                                      novelContentServiceProvider(path),
+                                      workContentServiceProvider((
+                                        path: path,
+                                        novelId: novelId,
+                                      )),
                                     );
                                     final doc = await service.documentsService
                                         .getDocumentById(documentId);
@@ -5315,7 +5355,10 @@ class NovelEditorPage extends HookConsumerWidget {
                                         final path = databasePath;
 
                                         final service = ref.read(
-                                          novelContentServiceProvider(path),
+                                          workContentServiceProvider((
+                                            path: path,
+                                            novelId: novelId,
+                                          )),
                                         );
                                         final doc = await service
                                             .documentsService
@@ -5364,7 +5407,10 @@ class NovelEditorPage extends HookConsumerWidget {
                                   onDeleteItem: (section, itemId) async {
                                     final path = databasePath;
                                     final service = ref.read(
-                                      novelContentServiceProvider(path),
+                                      workContentServiceProvider((
+                                        path: path,
+                                        novelId: novelId,
+                                      )),
                                     );
                                     // 侧边栏中通过 onDeleteItem 删除的 section 必须在这里显式分派。
                                     // 新增 workspace 页面若复用 onDeleteItem，必须补充对应 case；
@@ -5425,7 +5471,10 @@ class NovelEditorPage extends HookConsumerWidget {
                                   onDeleteChapter: (chapterId) async {
                                     final path = databasePath;
                                     final service = ref.read(
-                                      novelContentServiceProvider(path),
+                                      workContentServiceProvider((
+                                        path: path,
+                                        novelId: novelId,
+                                      )),
                                     );
                                     final deletingIds = {
                                       chapterId,
@@ -5493,13 +5542,23 @@ class NovelEditorPage extends HookConsumerWidget {
                                   onMoveToVolume: (chapterId, volumeId) async {
                                     final path = databasePath;
                                     await ref
-                                        .read(novelContentServiceProvider(path))
+                                        .read(
+                                          workContentServiceProvider((
+                                            path: path,
+                                            novelId: novelId,
+                                          )),
+                                        )
                                         .moveToVolume(chapterId, volumeId);
                                   },
                                   onUpdateChapterStat: (chapterId, stat) async {
                                     final path = databasePath;
                                     await ref
-                                        .read(novelContentServiceProvider(path))
+                                        .read(
+                                          workContentServiceProvider((
+                                            path: path,
+                                            novelId: novelId,
+                                          )),
+                                        )
                                         .updateChapterStat(
                                           chapterId: chapterId,
                                           stat: stat,

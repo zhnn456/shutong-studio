@@ -163,7 +163,9 @@ class _DocumentEditorBody extends HookConsumerWidget {
       screenplayServiceProvider(path, novelId: host.novel.id),
     );
     final database = ref.watch(novelContentDatabaseProvider(path));
-    final overlay = ref.watch(workingOverlayServiceProvider(path));
+    final overlay = ref.watch(
+      workOverlayServiceProvider((path: path, novelId: host.novel.id)),
+    );
     final session = useMemoized(() {
       final id = host.scope.sceneId;
       final initial = id == null
@@ -242,8 +244,9 @@ class _DocumentEditorBody extends HookConsumerWidget {
         host.pickCharacter,
         host.mobile,
         path,
+        host.novel.id,
       ),
-      [session, host.pickCharacter, host.mobile, path],
+      [session, host.pickCharacter, host.mobile, path, host.novel.id],
     );
     // 选中场次只用于滚动定位，走 notifier 而不是构造参数：进 memo deps 会让
     // 高亮每跟随一次就重建整棵正文。

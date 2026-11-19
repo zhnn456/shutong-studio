@@ -1398,6 +1398,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
     }
 
     return EntityGraphPanel(
+      novelId: novel.id,
       databasePath: databasePath!,
       selectedEntityKey: selection.itemId,
       onSelectedEntityKeyChanged: (entityKey) {
@@ -1545,6 +1546,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
           ],
           if (showHistoryButton) ...[
             ResourceHistoryButton(
+              novelId: novel.id,
               databasePath: dbPath,
               resourceId: resourceId,
               resourceLabel: _resourceHistoryLabel(context),
@@ -1838,6 +1840,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
             controller: chapterContentController,
             onSave: onSaveChapter,
             databasePath: databasePath,
+            novelId: novel.id,
           ),
           const SizedBox(width: RevericSpacing.md),
         ],
@@ -2965,11 +2968,13 @@ class _StatusBarAutoFormatButton extends ConsumerStatefulWidget {
   const _StatusBarAutoFormatButton({
     required this.controller,
     required this.onSave,
+    required this.novelId,
     this.databasePath,
   });
 
   final TextEditingController controller;
   final Future<void> Function() onSave;
+  final String novelId;
 
   /// 当前小说内容库路径。为 null 时「格式化全部章节」不可用。
   final String? databasePath;
@@ -3012,7 +3017,9 @@ class _StatusBarAutoFormatButtonState
     if (!mounted) {
       return;
     }
-    final service = ref.read(novelContentServiceProvider(databasePath));
+    final service = ref.read(
+      workContentServiceProvider((path: databasePath, novelId: widget.novelId)),
+    );
     final indentCount = ref.read(editorFormatIndentCountProvider);
     final blankLineBetweenParagraphs =
         ref.read(editorFormatParagraphSpacingProvider) ==
