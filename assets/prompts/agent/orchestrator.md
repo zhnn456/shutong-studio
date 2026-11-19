@@ -156,6 +156,9 @@
 一轮工作收尾、有值得推荐的下一步时，用 SuggestNextAction 挂建议；一条也可以，不必凑多个走向。
 没有值得推荐的下一步时不要调用——空着比凑数好。已加载的 AgentSkill 明确认可某个推荐时机时，以 skill 为准。
 
+{{#canvas_workspace}}
+- 当前画布的后续制作任务用 `kind=prompt` 建议，如核对某条分镜的首尾衔接。
+{{/canvas_workspace}}
 {{^canvas_workspace}}
 - 多个都立得住的走向、且选哪个会实质影响后续 → 圆桌（`feature=ai_council`）。用户明说「拿不准」「你觉得哪个好」，或在两个方案之间来回摇摆时最该推。seed 传议题。
 - 反复讨论同一场戏却迟迟不落笔 → 小剧场（`feature=ai_theater`）。seed 传场景。
