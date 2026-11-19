@@ -61,6 +61,7 @@ import '../../models/canvas_ai_activity.dart';
 import '../../models/canvas_layout.dart';
 import '../../models/content_status.dart';
 import '../../models/content_kind.dart';
+import '../../models/novel_type.dart';
 import '../../models/map_agent.dart';
 import '../../models/screenplay.dart';
 import '../../models/production/settings.dart';
@@ -1087,74 +1088,6 @@ Set<String> readableResourceIdPathsForTesting() {
 
 const _resourceDefinitions = <String, _ResourceDefinition>{
   'production': _canvasProductionDefinition,
-  'profile': _ResourceDefinition(
-    segment: 'profile',
-    address: _ResourceAddress(_AddressKind.singleton),
-    description: '作品信息',
-    hidden: false,
-    fields: {
-      'title': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        write: _FieldInputUse(field: true),
-        edit: _FieldEdit(),
-        search: {_FieldSearch.short_text},
-      ),
-      'author_name': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(path: true),
-        write: _FieldInputUse(field: true),
-        edit: _FieldEdit(),
-        search: {_FieldSearch.body},
-      ),
-      'description': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        write: _FieldInputUse(field: true),
-        edit: _FieldEdit(),
-        search: {_FieldSearch.body},
-      ),
-      'category': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(listing: true, path: true),
-        write: _FieldInputUse(field: true),
-        edit: _FieldEdit(),
-        search: {_FieldSearch.body},
-      ),
-      'status': _ResourceField(
-        value: _ValueSchema(
-          _ValueType.string,
-          enumAliases: _ChineseEnumMappings.novelStatusZh,
-          enumValues: _aiNovelStatuses,
-        ),
-        read: _FieldRead(listing: true, path: true),
-        write: _FieldInputUse(field: true),
-      ),
-      'tags': _ResourceField(
-        value: _ValueSchema(_ValueType.string),
-        read: _FieldRead(path: true),
-        write: _FieldInputUse(field: true),
-        edit: _FieldEdit(),
-        description: '逗号分隔字符串',
-        search: {_FieldSearch.body},
-      ),
-    },
-    operations: [
-      _ResourceOperation(
-        _ResourceTool.read,
-        _ResourceTargetKind.resource,
-        result: _ResourceResult(
-          _ResourceResultKind.entity,
-          references: ['path'],
-        ),
-      ),
-      _ResourceOperation(
-        _ResourceTool.write,
-        _ResourceTargetKind.resource,
-        input: _ResourceInput(_ResourceInputKind.resource_fields),
-      ),
-    ],
-  ),
   'story_state': _ResourceDefinition(
     segment: 'story_state',
     address: _ResourceAddress(_AddressKind.singleton),
@@ -3463,12 +3396,17 @@ const _resourceDefinitions = <String, _ResourceDefinition>{
   ),
 };
 
+const _toolResourceDefinitions = <String, _ResourceDefinition>{
+  'works': _worksDefinition,
+  ..._resourceDefinitions,
+};
+
 ParsedPath parseAiToolPath(String rawPath) {
-  return ParsedPath.parse(
-    rawPath,
-    schemaLookup: (name) => _resourceDefinitions[name],
-  );
+  return ParsedPath.parse(rawPath, schemaLookup: _toolResourceDefinition);
 }
+
+_ResourceDefinition? _toolResourceDefinition(String name) =>
+    _toolResourceDefinitions[name];
 
 typedef AiToolEventCallback =
     void Function(
@@ -3481,9 +3419,6 @@ typedef AiToolEventCallback =
 
 typedef AiNovelReader = Future<Map<String, dynamic>?> Function();
 typedef AiNovelWriter = Future<void> Function(Map<String, dynamic> fields);
-// 清除快速开书占位标记（「加入书架」）：由 Run 的 add-to-library 命令显式触发，
-// 不耦合任何写入动作。内部预检测，已非 draft 时无 DB 写入。
-typedef AiNovelDraftClearer = Future<void> Function();
 
 typedef AiToolCallRequestedCallback =
     void Function(
@@ -3565,6 +3500,7 @@ abstract class _AiToolManagerBase {
   AiNovelReader? get _primaryNovelReader;
   NovelContentService get _contentService;
   CrossWorkAccess? get crossWorkAccess;
+  NovelActionsService? get workCreationService;
   Future<List<AiProvider>> Function()? get providerReader;
   WorkingOverlayService get workingOverlayService;
   String? get sessionId;
@@ -3587,7 +3523,6 @@ abstract class _AiToolManagerBase {
 
   AiNovelReader? get novelReader;
   AiNovelWriter? get novelWriter;
-  AiNovelDraftClearer? get novelDraftClearer;
   AiImageGenerationCallback? get imageGenerationCallback;
   AiImageEditCallback? get imageEditCallback;
   AiAgentSkillsCommandCallback? get agentSkillsCommandCallback;
@@ -3618,7 +3553,7 @@ abstract class _AiToolManagerBase {
   AiCreateLocationCallback? createLocationCallback;
 
   _ResourceDefinition? _getCollectionSchema(String name) =>
-      _resourceDefinitions[name];
+      _toolResourceDefinition(name);
 
   /// Publish after the outermost tool-owned transaction commits. A failed
   /// savepoint discards only its own compact capture, never earlier commits.
@@ -3877,7 +3812,6 @@ class AiToolManager extends _AiToolManagerBase
     this.crossWorkAccess,
     this.providerReader,
     this.novelWriter,
-    this.novelDraftClearer,
     this.onToolCallRequested,
     this.onToolStarted,
     this.onToolFinished,
@@ -3957,7 +3891,7 @@ class AiToolManager extends _AiToolManagerBase
   final AiNovelWriter? novelWriter;
 
   @override
-  final AiNovelDraftClearer? novelDraftClearer;
+  NovelActionsService? workCreationService;
 
   final AiToolCallRequestedCallback? onToolCallRequested;
 
@@ -4217,11 +4151,17 @@ class AiToolManager extends _AiToolManagerBase
             ),
           );
         },
-        run: () => _handleCrossWorkMutation(
-          toolName: 'Create',
-          input: input,
-          run: (localInput) => _handleCreate(localInput),
-        ),
+        run: () {
+          final path = parseAiToolPath(_parseStringArgument(input['path']));
+          if (path.isWorksListing) {
+            return _handleCreate(input, worksPath: path);
+          }
+          return _handleCrossWorkMutation(
+            toolName: 'Create',
+            input: input,
+            run: _handleCreate,
+          );
+        },
         ref: callId,
       ),
     );

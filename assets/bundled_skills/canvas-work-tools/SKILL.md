@@ -12,6 +12,8 @@ description: 维护画布作品的制作资源、节点布局、素材输入和�
 
 ## 路径与定位
 
+- `/works/{work_id}`：作品资料。用系统提示「当前作品工作路径」中的地址读取，字段见 `/_schema/works`。
+- `characters`：角色档案。“补全主角信息”默认指角色档案：先读取已有角色，找到主角后用 Write 补充其档案；首次建档用 Create。人物设定以已有档案、用户提供的剧本、素材和文本节点为依据。
 - `production/settings`：作品默认风格、比例与清晰度。
 - `production/canvas`：画布及其 `nodes`、`edges`。
 - `production/clips`：制作片段，其 `generations` 保存生成记录。

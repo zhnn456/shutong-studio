@@ -555,10 +555,6 @@ void main() {
                 }
                 return {'ok': true, 'received': command};
               },
-
-              novelDraftClearer: () async {
-                throw const NovelTitleConflictException('同名作品');
-              },
             )
             ..mapDraftCommandCallback = (draft) async {
               mapDrafts.add(draft);
@@ -850,25 +846,22 @@ void main() {
       expect(oldTipResult['error_code'], 'not_found');
     });
 
-    test(
-      'returns a title conflict when adding a duplicate draft to library',
-      () async {
-        final result = await toolManager.executeTool(
-          name: 'Run',
-          input: {
-            'command': 'novel',
-            'subcommand': 'add-to-library',
-            'options': const <String, dynamic>{},
-          },
-          callId: 'call_run_novel_title_conflict',
-        );
+    test('rejects the retired novel command', () async {
+      final result = await toolManager.executeTool(
+        name: 'Run',
+        input: {
+          'command': 'novel',
+          'subcommand': 'add-to-library',
+          'options': const <String, dynamic>{},
+        },
+        callId: 'call_run_novel_title_conflict',
+      );
 
-        expect(result['ok'], isFalse);
-        expect(result['exit_code'], 1);
-        expect(result['error_code'], 'already_exists');
-        expect(result['output'], contains('同名作品'));
-      },
-    );
+      expect(result['ok'], isFalse);
+      expect(result['exit_code'], 127);
+      expect(result['error_code'], 'invalid_argument');
+      expect(result['error'], 'unknown command: novel');
+    });
 
     Future<AiToolApprovalController> useSubjectImageHost({
       required bool approval,
@@ -1467,7 +1460,6 @@ void main() {
           listed,
           unorderedEquals([
             'providers',
-            'novel',
             'sessions',
             'map',
             'notify',
