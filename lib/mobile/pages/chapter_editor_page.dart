@@ -1222,6 +1222,7 @@ class _HeaderIconButton extends StatelessWidget {
 /// [ScrollController.offset] 同步平移。
 class _MobileChapterBodyField extends StatefulWidget {
   const _MobileChapterBodyField({
+    required this.chapterId,
     required this.controller,
     required this.onChanged,
     required this.lineEnabled,
@@ -1235,6 +1236,7 @@ class _MobileChapterBodyField extends StatefulWidget {
     required this.hintStyle,
   });
 
+  final String chapterId;
   final TextEditingController controller;
   final VoidCallback onChanged;
   final bool lineEnabled;
@@ -1254,10 +1256,7 @@ class _MobileChapterBodyField extends StatefulWidget {
 
 class _MobileChapterBodyFieldState extends State<_MobileChapterBodyField> {
   late final ScrollController _scrollController;
-  late final List<TextInputFormatter> _inputFormatters = [
-    const ChapterParagraphIndentFormatter(),
-    PasteSizeLimitTextInputFormatter(onRejected: _handlePasteRejected),
-  ];
+  late List<TextInputFormatter> _inputFormatters = _createInputFormatters();
   // 挂在正文 TextField 上，供划线层定位其内部 RenderEditable 读取真实行几何。
   final GlobalKey _fieldKey = GlobalKey();
 
@@ -1265,6 +1264,15 @@ class _MobileChapterBodyFieldState extends State<_MobileChapterBodyField> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MobileChapterBodyField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.chapterId != widget.chapterId ||
+        oldWidget.controller != widget.controller) {
+      _inputFormatters = _createInputFormatters();
+    }
   }
 
   @override
@@ -1289,6 +1297,11 @@ class _MobileChapterBodyFieldState extends State<_MobileChapterBodyField> {
       ),
     );
   }
+
+  List<TextInputFormatter> _createInputFormatters() => [
+    ChapterParagraphIndentFormatter(),
+    PasteSizeLimitTextInputFormatter(onRejected: _handlePasteRejected),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -1484,6 +1497,7 @@ class _ChapterSurface extends ConsumerWidget {
           const SizedBox(height: RevericSpacing.md),
           Expanded(
             child: _MobileChapterBodyField(
+              chapterId: activeChapter.id,
               controller: bodyController,
               onChanged: () => onChanged(_ChapterEditField.content),
               lineEnabled: lineEnabled,
