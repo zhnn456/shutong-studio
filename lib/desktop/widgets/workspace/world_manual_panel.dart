@@ -14,7 +14,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../shared/database/novel_content_database.dart';
 import '../../../shared/models/novel_workspace.dart';
 import '../../../shared/providers/novel_providers.dart';
 import '../../../shared/services/world_manual.dart';

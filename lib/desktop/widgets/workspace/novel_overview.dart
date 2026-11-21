@@ -1304,13 +1304,6 @@ class _FlowProgressCard extends StatelessWidget {
     final written = bodyChapters
         .where((chapter) => chapter.wordCount > 0 || chapter.content.trim().isNotEmpty)
         .toList();
-    final settled = bodyChapters
-        .where(
-          (chapter) =>
-              normalizeChapterStat(chapter.stat) == chapterStatReviewed ||
-              normalizeChapterStat(chapter.stat) == chapterStatPublished,
-        )
-        .toList();
 
     final stageLabels = <String>[
       context.t(LocaleKeys.flowStageIdea),

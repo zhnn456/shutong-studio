@@ -67,7 +67,6 @@ void main() {
     ProductionImageInvoke invoke, {
     Future<AiImageGenerationResult> Function(AiProvider, app.GenerationTask)?
     fetch,
-    Future<void> Function(app.GenerationTask)? onGenerationAttempt,
     Future<String?> Function(app.GenerationTask)? sourceName,
   }) {
     final result = results();
@@ -80,7 +79,6 @@ void main() {
       beforeSubmit: result.beforeSubmit,
       recoverSources: result.recover,
       fetchResult: fetch ?? (_, _) => throw StateError('Must not fetch'),
-      onGenerationAttempt: onGenerationAttempt,
       sourceName: sourceName,
     );
   }

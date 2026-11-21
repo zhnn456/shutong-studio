@@ -18,7 +18,6 @@ import '../../../../shared/localization/app_localization.dart';
 import '../../../../shared/localization/locale_keys.dart';
 import '../../../../shared/theme/theme.dart';
 import '../../../../shared/providers/novel_providers.dart';
-import '../../../../shared/services/working_overlay.dart';
 import '../../../../shared/widgets/ai/diff/recent_changes_log.dart';
 import 'pending_changes_detail_dialog.dart';
 

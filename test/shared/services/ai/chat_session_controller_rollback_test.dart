@@ -52,9 +52,7 @@ import 'package:reveric/shared/services/ai/tools.dart'
     show
         ToolExecutionContext,
         AskUserRequest,
-        AskUserQuestion,
-        AskUserResult,
-        AskUserAnswer;
+        AskUserQuestion;
 import 'package:reveric/shared/services/ai/prompts/ai_prompt_service.dart';
 import 'package:reveric/shared/services/ai/trace_reporter_service.dart';
 import 'package:reveric/shared/services/anonymous_outbox_service.dart';
