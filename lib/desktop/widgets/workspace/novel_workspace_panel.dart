@@ -49,6 +49,11 @@ import '../../../shared/database/app_database.dart';
 import '../../../shared/database/novel_content_database.dart';
 import '../../../shared/logger/app_logger.dart';
 import '../../../shared/providers/novel_providers.dart';
+import '../../../shared/providers/novel_goal_provider.dart';
+import '../../../shared/providers/novel_style_provider.dart';
+import '../../../shared/services/novel_style.dart';
+import '../../../shared/providers/settle_listing_provider.dart';
+import '../../../shared/services/novel_goal.dart';
 import '../../../shared/providers/canvas_providers.dart';
 import '../../../shared/providers/production_view.dart';
 import '../../../shared/providers/screenplay_providers.dart';
@@ -58,6 +63,7 @@ import '../../../shared/models/screenplay_workspace_state.dart';
 import '../../../shared/localization/app_localization.dart';
 import '../../../shared/services/ai/chat.dart';
 import '../../../shared/services/chapter_format_all.dart';
+import '../../../shared/services/chapter_briefing_context.dart';
 import '../../../shared/services/working_overlay.dart';
 import '../../../shared/services/name_generator_service.dart';
 import '../../../shared/localization/locale_keys.dart';
@@ -101,6 +107,7 @@ import 'outlines_landing_state.dart';
 import 'outline_editor.dart';
 import 'volume_editor.dart';
 import 'workspace_item_editor.dart';
+import 'world_manual_panel.dart';
 
 final _log = AppLogger.forModule('NovelWorkspacePanel');
 
@@ -160,6 +167,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
     this.onBack,
     required this.onSelectionChanged,
     required this.onContinueWriting,
+    this.onContinueWritingWithReferences,
     required this.onCreateEntry,
     required this.onOutlineChanged,
     required this.onSaveChapter,
@@ -191,6 +199,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
     this.onNavigateToChapter,
     this.onRunShortcutAction,
     this.onAddChapterSelectionToChat,
+    this.onSetChapterStat,
   });
 
   final Novel novel;
@@ -248,6 +257,11 @@ class NovelWorkspacePanel extends ConsumerWidget {
   final VoidCallback? onBack;
   final ValueSetter<WorkspaceSelection> onSelectionChanged;
   final ValueChanged<String> onContinueWriting;
+
+  /// 带上下文引用的续写：写章/沉淀这类需要"确定性喂设定"的动作走这里。
+  /// 宿主没接时退回 [onContinueWriting]，不阻塞功能。
+  final void Function(String prompt, List<AiContextReference> references)?
+  onContinueWritingWithReferences;
   final Future<void> Function() onCreateEntry;
   final ValueChanged<OutlineDraft> onOutlineChanged;
   final Future<void> Function() onSaveChapter;
@@ -292,6 +306,9 @@ class NovelWorkspacePanel extends ConsumerWidget {
   /// 把章节正文选区作为快照引用加入当前 AI 对话。
   final ValueChanged<String>? onAddChapterSelectionToChat;
 
+  /// 推进章节状态（writing / reviewed / published）。宿主页负责落库。
+  final void Function(String chapterId, String stat)? onSetChapterStat;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = RevericTheme.colorsOf(context);
@@ -333,7 +350,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
             selectedCanvasLocked: false,
           ),
           Divider(height: RevericSizes.dividerThickness, color: colors.border),
-          Expanded(child: _buildBody(context)),
+          Expanded(child: _buildBody(context, ref)),
           if (showStatusBar) ...[
             Divider(
               height: RevericSizes.dividerThickness,
@@ -532,7 +549,9 @@ class NovelWorkspacePanel extends ConsumerWidget {
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  Widget _buildBody(BuildContext context, WidgetRef ref) {
+    final goal = ref.watch(novelGoalProvider(novel.id)).value;
+    final styleSample = ref.watch(novelStyleProvider(novel.id)).value;
     switch (selection.section) {
       case NovelWorkspaceSection.overview:
         // 剧本作品的概览是集 / 场次 / 时长口径，和小说的章节字数口径不通用。
@@ -555,6 +574,10 @@ class NovelWorkspacePanel extends ConsumerWidget {
           onEditNovel: onEditNovel,
           coverThumbnailKey: coverThumbnailKey,
           coverMenuTrigger: coverMenuTrigger,
+          goal: goal,
+          onEditGoal: () => _showGoalDialog(context, ref),
+          onPlanChapters: () => _planChapters(context, ref),
+          onEditStyle: () => _showStyleDialog(context, ref),
         );
       case NovelWorkspaceSection.maps:
         return _buildMapsPanel(context);
@@ -606,6 +629,70 @@ class NovelWorkspacePanel extends ConsumerWidget {
           onCreateChapter: onCreateEntry,
           databasePath: databasePath,
           onAddSelectionToChat: onAddChapterSelectionToChat,
+          onWriteChapter: () =>
+              onWriteChapterPressed(
+            context,
+            selectedChapter!,
+            goal: goal,
+            styleSample: styleSample,
+          ),
+          onSettleChapter: () => onSettleChapterPressed(
+            context,
+            ref,
+            selectedChapter!,
+            listed: ref.watch(settleListedProvider(selectedChapter.id)).value ?? false,
+          ),
+          onDraftOutline: () =>
+              onDraftOutlinePressed(
+            context,
+            selectedChapter!,
+            goal: goal,
+            styleSample: styleSample,
+          ),
+          onReviewChapter: () => _reviewChapter(
+            context,
+            selectedChapter!,
+            goal: goal,
+            styleSample: styleSample,
+          ),
+          settleListed:
+              (selectedChapter == null
+                  ? false
+                  : ref.watch(settleListedProvider(selectedChapter.id)).value ??
+                        false),
+        );
+      case NovelWorkspaceSection.world_manual:
+        return WorldManualPanel(
+          databasePath: databasePath,
+          novelId: novel.id,
+          novelTitle: novel.title,
+          chapterCount: chapters.where((chapter) => !chapter.isVolume).length,
+          factions: [
+            for (final faction in factionEntries)
+              WorldEntityBrief(
+                name: faction.title,
+                hasContent: faction.content.trim().isNotEmpty,
+              ),
+          ],
+          locations: [
+            for (final location in locations)
+              WorldEntityBrief(
+                name: location.name,
+                hasContent: location.description.trim().isNotEmpty,
+              ),
+          ],
+          characters: [
+            for (final character in characterProfiles)
+              WorldEntityBrief(
+                name: character.name,
+                hasContent: character.biography.trim().isNotEmpty,
+              ),
+          ],
+          unrecoveredForeshadowings: [
+            for (final foreshadowing in foreshadowings)
+              if (foreshadowing.payoff.trim().isEmpty) foreshadowing.title,
+          ],
+          onAskAi: onContinueWritingWithReferences,
         );
       case NovelWorkspaceSection.lore:
         return _buildSimpleEntryEditor(
@@ -700,6 +787,445 @@ class NovelWorkspacePanel extends ConsumerWidget {
       case NovelWorkspaceSection.screenplay_scenes:
         return ScreenplayScenesRegion(novel: novel);
     }
+  }
+
+  /// 「生成章纲」：五字段模板 + 本章设定上下文，让 AI 直接把章纲写进 outline 字段。
+  /// 章纲是自由文本时最常见的缺口是「章末钩子」，于是写出来的章读起来是断的；
+  /// 这里把五项结构固定下来，并要求落盘到 chapters/{id}/outline。
+  Future<void> onDraftOutlinePressed(
+    BuildContext context,
+    Chapter chapter, {
+    NovelGoal? goal,
+    String? styleSample,
+  }) async {
+    final prompt = context.t(
+      LocaleKeys.chapterOutlineDraftPrompt,
+      namedArgs: {
+        'label': chapterLabel(context, chapter),
+        'id': chapter.id,
+      },
+    );
+    final briefing = buildChapterBriefingReference(
+      novel: novel,
+      chapter: chapter,
+      chapters: chapters,
+      characters: characterProfiles,
+      lore: worldbuildingEntries,
+      foreshadowings: foreshadowings,
+      label: context.t(LocaleKeys.flowBriefingLabel),
+      goal: goal,
+      styleSample: styleSample,
+    );
+    final sendWithReferences = onContinueWritingWithReferences;
+    if (sendWithReferences != null) {
+      sendWithReferences(prompt, [briefing]);
+    } else {
+      onContinueWriting(prompt);
+    }
+  }
+
+  /// 「写本章」：章纲是硬前置。缺章纲时先给两个出口（去写章纲 / 仍然直接写），
+  /// 不静默放行，因为无章纲的草稿正是复验里"设定全空、人物漂移"的直接来源。
+  Future<void> onWriteChapterPressed(
+    BuildContext context,
+    Chapter chapter, {
+    NovelGoal? goal,
+    String? styleSample,
+  }) async {
+    if (chapter.outline.trim().isEmpty) {
+      final proceed = await showConfirmDialog(
+        context,
+        title: context.t(LocaleKeys.chapterWriteNeedOutline),
+        message: context.t(LocaleKeys.chapterWriteNeedOutlineBody),
+        confirmLabel: context.t(LocaleKeys.chapterWriteAnyway),
+        cancelLabel: context.t(LocaleKeys.chapterWriteGoOutline),
+      );
+      if (!proceed) {
+        chapterOutlineFocusNode.requestFocus();
+        return;
+      }
+      if (!context.mounted) return;
+    }
+    // 上一章没沉淀就往下写，是"接不上"最常见的成因：上一章的角色状态和新伏笔
+    // 从未进过设定库，这一章的上下文里自然读不到。这里只拦一次，作者仍可强写。
+    final previous = _previousBodyChapter(chapter);
+    if (previous != null &&
+        previous.content.trim().isNotEmpty &&
+        (normalizeChapterStat(previous.stat) == chapterStatDraft ||
+            normalizeChapterStat(previous.stat) == chapterStatWriting)) {
+      final proceed = await showConfirmDialog(
+        context,
+        title: context.t(LocaleKeys.chapterWritePrevUnsettled),
+        message: context.t(
+          LocaleKeys.chapterWritePrevUnsettledBody,
+          namedArgs: {'label': chapterLabel(context, previous)},
+        ),
+        confirmLabel: context.t(LocaleKeys.chapterWritePrevAnyway),
+        cancelLabel: context.t(LocaleKeys.chapterWritePrevGoSettle),
+      );
+      if (!proceed) {
+        onSelectionChanged(
+          WorkspaceSelection(section: NovelWorkspaceSection.chapters, itemId: previous.id),
+        );
+        return;
+      }
+      if (!context.mounted) return;
+    }
+    // 本章已有正文时，AI 生成的是"候选稿"：原稿必须由作者决定是否让位。
+    // AI 的写入本身走「待处理变更」，但很多人开了自动保存，等于默认覆盖；
+    // 这里先问一句，把"我的原稿会不会被冲掉"这个判断交回作者。
+    if (chapter.content.trim().isNotEmpty && chapter.brief.trim().isNotEmpty) {
+      final overwrite = await showConfirmDialog(
+        context,
+        title: context.t(LocaleKeys.chapterWriteOverwriteTitle),
+        message: context.t(
+          LocaleKeys.chapterWriteOverwriteBody,
+          namedArgs: {'label': chapterLabel(context, chapter)},
+        ),
+        confirmLabel: context.t(LocaleKeys.chapterWriteOverwriteGo),
+        cancelLabel: context.t(LocaleKeys.flowGoalCancel),
+      );
+      if (!overwrite) return;
+      if (!context.mounted) return;
+    }
+    final briefing = buildChapterBriefingReference(
+      novel: novel,
+      chapter: chapter,
+      chapters: chapters,
+      characters: characterProfiles,
+      lore: worldbuildingEntries,
+      foreshadowings: foreshadowings,
+      label: context.t(LocaleKeys.flowBriefingLabel),
+      goal: goal,
+      styleSample: styleSample,
+    );
+    final sendWithReferences = onContinueWritingWithReferences;
+    void send(String prompt) {
+      if (sendWithReferences != null) {
+        sendWithReferences(prompt, [briefing]);
+      } else {
+        onContinueWriting(prompt);
+      }
+    }
+
+    // 两段式：先出写前简报（场景清单），确认后再起草正文。
+    // 一次生成整章是返工与漂移的主因，竞品的做法也是"先计划、后落笔"。
+    if (chapter.brief.trim().isEmpty) {
+      send(
+        context.t(
+          LocaleKeys.chapterBriefDraftPrompt,
+          namedArgs: {'label': chapterLabel(context, chapter), 'id': chapter.id},
+        ),
+      );
+      return;
+    }
+
+    onSetChapterStat?.call(chapter.id, chapterStatWriting);
+    send(
+      context.t(
+        LocaleKeys.chapterWriteThisPrompt,
+        namedArgs: {'label': chapterLabel(context, chapter)},
+      ),
+    );
+  }
+
+  /// 本章之前、最近一个有正文的普通章节（跳过卷）。
+  Chapter? _previousBodyChapter(Chapter target) {
+    final bodies = chapters
+        .where((item) => !item.isVolume && item.id != target.id)
+        .toList()
+      ..sort((a, b) => a.siblingOrder.compareTo(b.siblingOrder));
+    Chapter? latest;
+    for (final item in bodies) {
+      if (item.content.trim().isEmpty) continue;
+      if (item.siblingOrder < target.siblingOrder) latest = item;
+    }
+    return latest;
+  }
+
+  /// 设定/修改全书目标（目标章数 + 每章字数），保存后写进 AppStates。
+  Future<void> _showGoalDialog(BuildContext context, WidgetRef ref) async {
+    final database = ref.read(appDatabaseProvider);
+    final current =
+        await readNovelGoal(database, novel.id) ??
+        const NovelGoal(
+          chapters: defaultTargetChapters,
+          wordsPerChapter: defaultWordsPerChapter,
+        );
+    final chaptersController = TextEditingController(
+      text: '${current.chapters}',
+    );
+    final wordsController = TextEditingController(
+      text: '${current.wordsPerChapter}',
+    );
+    if (!context.mounted) return;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.t(LocaleKeys.flowGoalDialogTitle)),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                dialogContext.t(LocaleKeys.flowGoalDialogBody),
+                style: RevericTheme.typographyOf(
+                  dialogContext,
+                ).uiSmall.copyWith(
+                  color: RevericTheme.colorsOf(dialogContext).textMuted,
+                ),
+              ),
+              const SizedBox(height: RevericSpacing.x2l),
+              TextField(
+                controller: chaptersController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: dialogContext.t(LocaleKeys.flowGoalChaptersLabel),
+                ),
+              ),
+              const SizedBox(height: RevericSpacing.md),
+              TextField(
+                controller: wordsController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: dialogContext.t(LocaleKeys.flowGoalWordsLabel),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.t(LocaleKeys.flowGoalCancel)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(dialogContext.t(LocaleKeys.flowGoalSave)),
+          ),
+        ],
+      ),
+    );
+    final chapters = int.tryParse(chaptersController.text.trim()) ?? 0;
+    final words = int.tryParse(wordsController.text.trim()) ?? 0;
+    chaptersController.dispose();
+    wordsController.dispose();
+    if (saved != true || chapters <= 0 || words <= 0) return;
+    await writeNovelGoal(
+      database,
+      novel.id,
+      NovelGoal(chapters: chapters, wordsPerChapter: words),
+    );
+    ref.invalidate(novelGoalProvider(novel.id));
+  }
+
+  /// 文风样文：贴 1-5 段自己的文字，软件算句长/段长/对白密度并常驻注入。
+  Future<void> _showStyleDialog(BuildContext context, WidgetRef ref) async {
+    final database = ref.read(appDatabaseProvider);
+    final current = await readNovelStyle(database, novel.id) ?? '';
+    final controller = TextEditingController(text: current);
+    if (!context.mounted) return;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.t(LocaleKeys.flowStyleDialogTitle)),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                dialogContext.t(LocaleKeys.flowStyleDialogBody),
+                style: RevericTheme.typographyOf(
+                  dialogContext,
+                ).uiSmall.copyWith(
+                  color: RevericTheme.colorsOf(dialogContext).textMuted,
+                ),
+              ),
+              const SizedBox(height: RevericSpacing.lg),
+              TextField(
+                controller: controller,
+                minLines: 8,
+                maxLines: 14,
+                decoration: InputDecoration(
+                  hintText: dialogContext.t(LocaleKeys.flowStyleHint),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.t(LocaleKeys.flowGoalCancel)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(dialogContext.t(LocaleKeys.flowGoalSave)),
+          ),
+        ],
+      ),
+    );
+    final text = controller.text;
+    controller.dispose();
+    if (saved != true) return;
+    await writeNovelStyle(database, novel.id, text);
+    ref.invalidate(novelStyleProvider(novel.id));
+  }
+
+  /// 「审校本章」：只出问题清单（错字、人名、时间线、未收伏笔、AI 味），不改正文。
+  Future<void> _reviewChapter(
+    BuildContext context,
+    Chapter chapter, {
+    NovelGoal? goal,
+    String? styleSample,
+  }) async {
+    final prompt = context.t(
+      LocaleKeys.chapterReviewPrompt,
+      namedArgs: {'label': chapterLabel(context, chapter)},
+    );
+    final references = <AiContextReference>[
+      buildChapterBriefingReference(
+        novel: novel,
+        chapter: chapter,
+        chapters: chapters,
+        characters: characterProfiles,
+        lore: worldbuildingEntries,
+        foreshadowings: foreshadowings,
+        label: context.t(LocaleKeys.flowBriefingLabel),
+        goal: goal,
+        styleSample: styleSample,
+      ),
+      buildChapterSettleReference(
+        chapter: chapter,
+        label: context.t(LocaleKeys.chapterReviewBodyLabel),
+      ),
+    ];
+    final sendWithReferences = onContinueWritingWithReferences;
+    if (sendWithReferences != null) {
+      sendWithReferences(prompt, references);
+    } else {
+      onContinueWriting(prompt);
+    }
+  }
+
+  /// 「按目标排章」：让 AI 依据已有大纲与目标，批量创建章节节点并写入五字段章纲。
+  ///
+  /// 一章章手输是流程里最枯燥的一环；目标给了章数，这一批就该由软件按数字补齐。
+  /// 每批最多 10 章：一次生成上百章章纲既容易空转，也难以及时纠偏。
+  Future<void> _planChapters(BuildContext context, WidgetRef ref) async {
+    final goal = await readNovelGoal(ref.read(appDatabaseProvider), novel.id);
+    if (goal == null || !goal.isUsable) return;
+    final styleSample = await ref.read(novelStyleProvider(novel.id).future);
+    final planned = chapters
+        .where((chapter) => !chapter.isVolume && chapter.outline.trim().isNotEmpty)
+        .length;
+    final remaining = goal.chapters - planned;
+    if (remaining <= 0) return;
+    const batch = 10;
+    final count = remaining > batch ? batch : remaining;
+    final prompt = context.t(
+      LocaleKeys.flowPlanChaptersPrompt,
+      namedArgs: {
+        'chapters': '${goal.chapters}',
+        'per': '${goal.wordsPerChapter}',
+        'existing': '$planned',
+        'batch': '$count',
+      },
+    );
+    final briefing = buildPlanChaptersBriefingReference(
+      novel: novel,
+      chapters: chapters,
+      characters: characterProfiles,
+      lore: worldbuildingEntries,
+      foreshadowings: foreshadowings,
+      label: context.t(LocaleKeys.flowBriefingLabel),
+      goal: goal,
+      styleSample: styleSample,
+    );
+    final sendWithReferences = onContinueWritingWithReferences;
+    if (sendWithReferences != null) {
+      sendWithReferences(prompt, [briefing]);
+    } else {
+      onContinueWriting(prompt);
+    }
+  }
+
+  /// 「沉淀本章」两段式：先出清单（不动库），确认后才入库。
+  ///
+  /// 之前是一步到位：按一下，AI 直接把角色状态、伏笔写进设定库。
+  /// 问题是作者没有机会在上库前把清单过一遍——写错的条目一旦进库，
+  /// 后面的章节就会照错的写。现在拆成"出清单 → 确认入库"，
+  /// 按钮文案随之从「沉淀本章」变成「确认入库」。
+  Future<void> onSettleChapterPressed(
+    BuildContext context,
+    WidgetRef ref,
+    Chapter chapter, {
+    bool listed = false,
+  }) async {
+    final database = ref.read(appDatabaseProvider);
+    final key = settleListedKey(chapter.id);
+
+    if (listed) {
+      onSetChapterStat?.call(chapter.id, chapterStatReviewed);
+      final prompt = context.t(
+        LocaleKeys.chapterSettleApplyPrompt,
+        namedArgs: {'label': chapterLabel(context, chapter)},
+      );
+      final settleReference = buildChapterSettleReference(
+        chapter: chapter,
+        label: context.t(LocaleKeys.flowBriefingLabel),
+      );
+      final sendWithReferences = onContinueWritingWithReferences;
+      if (sendWithReferences != null) {
+        sendWithReferences(prompt, [settleReference]);
+      } else {
+        onContinueWriting(prompt);
+      }
+      await database.appStateDao.remove(key);
+      ref.invalidate(settleListedProvider(chapter.id));
+      return;
+    }
+
+    final prompt = context.t(
+      LocaleKeys.chapterSettleListPrompt,
+      namedArgs: {'label': chapterLabel(context, chapter)},
+    );
+    final settleReference = buildChapterSettleReference(
+      chapter: chapter,
+      label: context.t(LocaleKeys.flowBriefingLabel),
+    );
+    final sendWithReferences = onContinueWritingWithReferences;
+    if (sendWithReferences != null) {
+      sendWithReferences(prompt, [settleReference]);
+    } else {
+      onContinueWriting(prompt);
+    }
+    await database.appStateDao.set(
+      key: key,
+      value: DateTime.now().toIso8601String(),
+    );
+    ref.invalidate(settleListedProvider(chapter.id));
+  }
+
+  String chapterLabel(BuildContext context, Chapter chapter) {
+    final title = (chapter.title ?? '').trim();
+    if (chapter.isExtra) {
+      return title.isEmpty
+          ? context.t(LocaleKeys.workspaceExtra)
+          : title;
+    }
+    final number = chapter.chapterNum;
+    final head = number == null
+        ? ''
+        : context.t(
+            LocaleKeys.commonChapterNumber,
+            namedArgs: {'number': '$number'},
+          );
+    return title.isEmpty ? head : '$head《$title》';
   }
 
   /// 剧本概览需要 screenplay 根 id；根还没读出来时先留白，不闪错误态。
@@ -1156,6 +1682,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
             : AiShortcutActionLocation.foreshadowing;
       case NovelWorkspaceSection.overview:
       case NovelWorkspaceSection.maps:
+      case NovelWorkspaceSection.world_manual:
       case NovelWorkspaceSection.entity_graph:
       case NovelWorkspaceSection.story_progress:
       case NovelWorkspaceSection.canvas:
@@ -1223,6 +1750,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
         return true;
       case NovelWorkspaceSection.entity_graph:
       case NovelWorkspaceSection.story_progress:
+      case NovelWorkspaceSection.world_manual:
       case NovelWorkspaceSection.screenplay_script:
       case NovelWorkspaceSection.screenplay_outline:
       case NovelWorkspaceSection.storyboard:
@@ -1409,6 +1937,7 @@ class NovelWorkspacePanel extends ConsumerWidget {
         return chapters;
       case NovelWorkspaceSection.overview:
       case NovelWorkspaceSection.canvas:
+      case NovelWorkspaceSection.world_manual:
       case NovelWorkspaceSection.screenplay_script:
       case NovelWorkspaceSection.screenplay_outline:
       case NovelWorkspaceSection.storyboard:
@@ -1528,6 +2057,8 @@ class NovelWorkspacePanel extends ConsumerWidget {
         return context.t(LocaleKeys.workspaceOverview);
       case NovelWorkspaceSection.story_progress:
         return context.t(LocaleKeys.workspaceStoryProgress);
+      case NovelWorkspaceSection.world_manual:
+        return context.t(LocaleKeys.workspaceWorldManual);
       case NovelWorkspaceSection.canvas:
         return selectedCanvasName ?? context.t(LocaleKeys.workspaceCanvas);
       case NovelWorkspaceSection.screenplay_script:

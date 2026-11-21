@@ -274,6 +274,7 @@ const String _iconBookOpen = 'assets/icons/phosphor/book-open.svg';
 const String _iconListNumbers = 'assets/icons/phosphor/list-numbers.svg';
 const String _iconUsers = 'assets/icons/phosphor/users.svg';
 const String _iconGlobeSimple = 'assets/icons/phosphor/globe-simple.svg';
+const String _iconBooks = 'assets/icons/phosphor/books.svg';
 const String _iconMapTrifold = 'assets/icons/phosphor/map-trifold.svg';
 const String _iconFlagPennant = 'assets/icons/phosphor/flag-pennant.svg';
 const String _iconUsersThree = 'assets/icons/phosphor/users-three.svg';
@@ -384,6 +385,8 @@ class _LeftSidebarState extends ConsumerState<LeftSidebar> {
       // 不再展开中栏。
       case NovelWorkspaceSection.maps:
       case NovelWorkspaceSection.overview:
+      // 世界观手册是整页视图，没有二级列表。
+      case NovelWorkspaceSection.world_manual:
       // 当前进展没有二级列表，和 overview 同类。
       case NovelWorkspaceSection.story_progress:
         return false;

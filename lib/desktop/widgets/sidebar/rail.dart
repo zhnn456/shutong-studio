@@ -218,6 +218,11 @@ const _RailGroup _worldGroup = _RailGroup(
       target: _RailContentTarget(NovelWorkspaceSection.lore),
     ),
     _RailEntry(
+      icon: _iconBooks,
+      labelKey: LocaleKeys.workspaceWorldManual,
+      target: _RailSystemTarget(NovelWorkspaceSection.world_manual),
+    ),
+    _RailEntry(
       icon: _iconMapTrifold,
       labelKey: LocaleKeys.workspaceSidebarMap,
       target: _RailContentTarget(NovelWorkspaceSection.maps),

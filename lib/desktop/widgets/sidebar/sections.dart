@@ -93,6 +93,9 @@ extension _LeftSidebarSections on _LeftSidebarState {
     NovelWorkspaceSection section,
   ) {
     switch (section) {
+      // 世界观手册是整页视图（系统入口），中栏不出条目列表。
+      case NovelWorkspaceSection.world_manual:
+        return const SizedBox.shrink();
       case NovelWorkspaceSection.chapters:
         return _buildChapterSectionPanel(context);
       case NovelWorkspaceSection.outlines:

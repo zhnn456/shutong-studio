@@ -875,6 +875,7 @@ class NovelEditorPage extends HookConsumerWidget {
           case NovelWorkspaceSection.overview:
           case NovelWorkspaceSection.novel_description:
           case NovelWorkspaceSection.entity_graph:
+          case NovelWorkspaceSection.world_manual:
           case NovelWorkspaceSection.story_progress:
           case NovelWorkspaceSection.canvas:
           case NovelWorkspaceSection.screenplay_script:
@@ -1320,6 +1321,7 @@ class NovelEditorPage extends HookConsumerWidget {
         case NovelWorkspaceSection.maps:
         case NovelWorkspaceSection.novel_description:
         case NovelWorkspaceSection.entity_graph:
+        case NovelWorkspaceSection.world_manual:
         case NovelWorkspaceSection.story_progress:
         case NovelWorkspaceSection.canvas:
         case NovelWorkspaceSection.screenplay_script:
@@ -2882,6 +2884,7 @@ class NovelEditorPage extends HookConsumerWidget {
         case NovelWorkspaceSection.overview:
         case NovelWorkspaceSection.maps:
         case NovelWorkspaceSection.entity_graph:
+        case NovelWorkspaceSection.world_manual:
         case NovelWorkspaceSection.story_progress:
         case NovelWorkspaceSection.canvas:
         case NovelWorkspaceSection.screenplay_script:
@@ -4420,6 +4423,18 @@ class NovelEditorPage extends HookConsumerWidget {
                       autoSend: true,
                     );
                   },
+                  onContinueWritingWithReferences: (prompt, references) {
+                    aiPanelCollapsed.value = false;
+                    pendingHandoffDraft.value = AiChatHandoffDraft(
+                      id: 'continue_writing_${DateTime.now().microsecondsSinceEpoch}',
+                      label: prompt,
+                      title: prompt,
+                      content: prompt,
+                      initialText: prompt,
+                      references: references,
+                      autoSend: true,
+                    );
+                  },
                   novel: novel,
                   selection: selection.value,
                   onProductionPrompt:
@@ -4607,6 +4622,11 @@ class NovelEditorPage extends HookConsumerWidget {
                   onNavigateToChapter: navigateToChapter,
                   onRunShortcutAction: runShortcutAction,
                   onAddChapterSelectionToChat: addChapterSelectionToChat,
+                  onSetChapterStat: (chapterId, stat) async {
+                    await ref
+                        .read(novelContentServiceProvider(databasePath))
+                        .updateChapterStat(chapterId: chapterId, stat: stat);
+                  },
                 );
                 final mainContent = switch (contentSelection.value) {
                   _EditorSubAgentSelection(:final agent) => SubAgentEditPanel(

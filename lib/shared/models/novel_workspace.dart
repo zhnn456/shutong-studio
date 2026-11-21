@@ -20,6 +20,8 @@ extension NovelWorkspaceSectionX on NovelWorkspaceSection {
     NovelWorkspaceSection.chapters => 'chapters',
     NovelWorkspaceSection.characters => 'characters',
     NovelWorkspaceSection.lore => 'lore',
+    // 手册是书级单条记录，AI 侧按 lore 资源类型识别即可。
+    NovelWorkspaceSection.world_manual => 'lore',
     NovelWorkspaceSection.outlines => 'outlines',
     NovelWorkspaceSection.materials => 'materials',
     NovelWorkspaceSection.skills => 'skills',
@@ -146,6 +148,9 @@ enum NovelWorkspaceSection {
   novel_description,
   // lore = 世界观设定文档区；DB 的 Documents.type 与 AI 工具路径（/lore）同名。
   lore,
+  // world_manual = 世界观手册（五段印象 + 四个区块 + 样本库）；与 lore 不同，
+  // 它是「一条书级记录」，不参与条目增删改。
+  world_manual,
   outlines,
   materials,
   characters,

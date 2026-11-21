@@ -50,6 +50,7 @@ String sectionLocaleKey(NovelWorkspaceSection section) {
     NovelWorkspaceSection.novel_description =>
       LocaleKeys.workspaceNovelDescription,
     NovelWorkspaceSection.lore => LocaleKeys.workspaceLore,
+    NovelWorkspaceSection.world_manual => LocaleKeys.workspaceWorldManual,
     NovelWorkspaceSection.outlines => LocaleKeys.workspaceOutlines,
     NovelWorkspaceSection.materials => LocaleKeys.workspaceMaterials,
     NovelWorkspaceSection.characters => LocaleKeys.workspaceCharacters,

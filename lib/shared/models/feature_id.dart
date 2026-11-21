@@ -69,6 +69,8 @@ extension NovelWorkspaceSectionFeatureIdX on NovelWorkspaceSection {
     NovelWorkspaceSection.entity_graph => FeatureId.entity_graph,
     // 当前进展是快照的只读视图，不单独做 feature 追踪与发现推荐。
     NovelWorkspaceSection.story_progress => null,
+    // 世界观手册挂在世界观特性下，不单独做 feature 追踪。
+    NovelWorkspaceSection.world_manual => null,
     NovelWorkspaceSection.canvas => null,
     NovelWorkspaceSection.screenplay_script ||
     NovelWorkspaceSection.screenplay_outline ||

@@ -1468,6 +1468,9 @@ abstract final class LocaleKeys {
       'ai.queued_message_sending_next_prefix';
   static const aiQueuedMessageRemove = 'ai.queued_message_remove';
   static const aiQueuedMessageOccupied = 'ai.queued_message_occupied';
+  static const aiQueuedMessageWaiting = 'ai.queued_message_waiting';
+  static const aiQueuedMessageSendingNextHint =
+      'ai.queued_message_sending_next_hint';
   static const aiRateLimited = 'ai.rate_limited';
   static const aiReasoningSection = 'ai.reasoning_section';
   static const aiReasoningEffort = 'ai.reasoning_effort';
@@ -1774,8 +1777,42 @@ abstract final class LocaleKeys {
   static const chapterPublishChroniclerPrompt =
       'chapter.publish_chronicler_prompt';
   static const chapterRunChronicler = 'chapter.run_chronicler';
-  static const chapterStatDraft = 'chapter.stat_draft';
+  static const chapterStatDraft = 'chapter.stat_draft';  static const chapterStatWriting = 'chapter.stat_writing';
+  static const chapterStatReviewed = 'chapter.stat_reviewed';
   static const chapterStatPublished = 'chapter.stat_published';
+  static const chapterWriteThis = 'chapter.write_this';
+  static const chapterWriteThisHint = 'chapter.write_this_hint';
+  static const chapterWriteThisPrompt = 'chapter.write_this_prompt';
+  static const chapterSettleThisPrompt = 'chapter.settle_this_prompt';
+  static const chapterWriteNeedOutline = 'chapter.write_need_outline';
+  static const chapterWriteNeedOutlineBody =
+      'chapter.write_need_outline_body';
+  static const chapterWriteGoOutline = 'chapter.write_go_outline';
+  static const chapterWriteAnyway = 'chapter.write_anyway';
+  static const chapterSettleThis = 'chapter.settle_this';
+  static const chapterSettleThisHint = 'chapter.settle_this_hint';
+  static const chapterOutlineDraft = 'chapter.outline_draft';
+  static const chapterOutlineRedraft = 'chapter.outline_redraft';
+  static const chapterOutlineDraftHint = 'chapter.outline_draft_hint';
+  static const chapterOutlineDraftPrompt = 'chapter.outline_draft_prompt';
+  static const chapterBriefDraft = 'chapter.brief_draft';
+  static const chapterBriefDraftHint = 'chapter.brief_draft_hint';
+  static const chapterBriefDraftPrompt = 'chapter.brief_draft_prompt';
+  static const chapterWritePrevUnsettled = 'chapter.write_prev_unsettled';
+  static const chapterWritePrevUnsettledBody = 'chapter.write_prev_unsettled_body';
+  static const chapterWritePrevGoSettle = 'chapter.write_prev_go_settle';
+  static const chapterWritePrevAnyway = 'chapter.write_prev_anyway';
+  static const chapterWriteOverwriteTitle = 'chapter.write_overwrite_title';
+  static const chapterWriteOverwriteBody = 'chapter.write_overwrite_body';
+  static const chapterWriteOverwriteGo = 'chapter.write_overwrite_go';
+  static const chapterSettleListPrompt = 'chapter.settle_list_prompt';
+  static const chapterSettleApply = 'chapter.settle_apply';
+  static const chapterReview = 'chapter.review';
+  static const chapterReviewHint = 'chapter.review_hint';
+  static const chapterReviewBodyLabel = 'chapter.review_body_label';
+  static const chapterReviewPrompt = 'chapter.review_prompt';
+  static const chapterSettleApplyHint = 'chapter.settle_apply_hint';
+  static const chapterSettleApplyPrompt = 'chapter.settle_apply_prompt';
   static const chapterUnpublish = 'chapter.unpublish';
   // ── character ────────────────────────────────────────
   static const characterGenderFemale = 'character.gender.female';
@@ -5806,6 +5843,12 @@ abstract final class LocaleKeys {
       'workspace.foreshadow_payoff_hint';
   static const workspaceForeshadowSetupHint = 'workspace.foreshadow_setup_hint';
   static const workspaceForeshadowings = 'workspace.foreshadowings';
+  static const workspaceForeshadowDistribution = 'workspace.foreshadow_distribution';
+  static const workspaceForeshadowDistributionSummary = 'workspace.foreshadow_distribution_summary';
+  static const workspaceForeshadowChapterSetup = 'workspace.foreshadow_chapter_setup';
+  static const workspaceForeshadowChapterPayoff = 'workspace.foreshadow_chapter_payoff';
+  static const workspaceForeshadowChapterOverdue = 'workspace.foreshadow_chapter_overdue';
+  static const workspaceForeshadowChapterUnset = 'workspace.foreshadow_chapter_unset';
   static const workspaceForeshadowingsHint = 'workspace.foreshadowings_hint';
   static const workspaceRelations = 'workspace.relations';
   static const foreshadowingStatusPending =
@@ -5980,6 +6023,57 @@ abstract final class LocaleKeys {
   static const workspaceOverviewCreationOrder =
       'workspace.overview_creation_order';
   static const workspaceOverviewPlanFirst = 'workspace.overview_plan_first';
+  // ── flow：七站写作进度与下一步 ───────────────────────
+  static const flowTitle = 'flow.title';
+  static const flowStageIdea = 'flow.stage_idea';
+  static const flowStageWorld = 'flow.stage_world';
+  static const flowStageCharacters = 'flow.stage_characters';
+  static const flowStageOutline = 'flow.stage_outline';
+  static const flowStageChapterOutline = 'flow.stage_chapter_outline';
+  static const flowStageWriting = 'flow.stage_writing';
+  static const flowStageSettle = 'flow.stage_settle';
+  static const flowNextTitleIdea = 'flow.next_title_idea';
+  static const flowNextTitleWorld = 'flow.next_title_world';
+  static const flowNextTitleCharacters = 'flow.next_title_characters';
+  static const flowNextTitleOutline = 'flow.next_title_outline';
+  static const flowNextTitleChapterOutline = 'flow.next_title_chapter_outline';
+  static const flowNextTitleWriting = 'flow.next_title_writing';
+  static const flowNextTitleSettle = 'flow.next_title_settle';
+  static const flowNextTitlePublish = 'flow.next_title_publish';
+  static const flowNextDescIdea = 'flow.next_desc_idea';
+  static const flowNextDescWorld = 'flow.next_desc_world';
+  static const flowNextDescCharacters = 'flow.next_desc_characters';
+  static const flowNextDescOutline = 'flow.next_desc_outline';
+  static const flowNextDescChapterOutline = 'flow.next_desc_chapter_outline';
+  static const flowNextDescWriting = 'flow.next_desc_writing';
+  static const flowNextDescSettle = 'flow.next_desc_settle';
+  static const flowNextDescPublish = 'flow.next_desc_publish';
+  static const flowActionIdea = 'flow.action_idea';
+  static const flowActionWorld = 'flow.action_world';
+  static const flowActionCharacters = 'flow.action_characters';
+  static const flowActionOutline = 'flow.action_outline';
+  static const flowActionChapterOutline = 'flow.action_chapter_outline';
+  static const flowActionWriting = 'flow.action_writing';
+  static const flowActionSettle = 'flow.action_settle';
+  static const flowActionPublish = 'flow.action_publish';
+  static const flowCounts = 'flow.counts';
+  static const flowBriefingLabel = 'flow.briefing_label';
+  static const flowGoalUnset = 'flow.goal_unset';
+  static const flowGoal = 'flow.goal';
+  static const flowGoalSet = 'flow.goal_set';
+  static const flowGoalEdit = 'flow.goal_edit';
+  static const flowPlanChapters = 'flow.plan_chapters';
+  static const flowGoalDialogTitle = 'flow.goal_dialog_title';
+  static const flowGoalDialogBody = 'flow.goal_dialog_body';
+  static const flowGoalChaptersLabel = 'flow.goal_chapters_label';
+  static const flowGoalWordsLabel = 'flow.goal_words_label';
+  static const flowGoalSave = 'flow.goal_save';
+  static const flowGoalCancel = 'flow.goal_cancel';
+  static const flowStyle = 'flow.style';
+  static const flowStyleDialogTitle = 'flow.style_dialog_title';
+  static const flowStyleDialogBody = 'flow.style_dialog_body';
+  static const flowStyleHint = 'flow.style_hint';
+  static const flowPlanChaptersPrompt = 'flow.plan_chapters_prompt';
   static const workspacePendingChangesTitle = 'workspace.pending_changes_title';
   static const workspacePreview = 'workspace.preview';
   static const workspacePreviewDescription = 'workspace.preview_description';
@@ -6038,6 +6132,8 @@ abstract final class LocaleKeys {
   static const workspacePunctuation = 'workspace.punctuation';
   static const workspaceTextCharacters = 'workspace.text_characters';
   static const workspaceUntitledFolder = 'workspace.untitled_folder';
+  static const workspaceRevertRound = 'workspace.revert_round';
+  static const workspaceRevertRoundDone = 'workspace.revert_round_done';
   static const workspaceViewChanges = 'workspace.view_changes';
   static const workspaceViewOutline = 'workspace.view_outline';
   static const workspaceWhitespace = 'workspace.whitespace';
@@ -6075,6 +6171,7 @@ abstract final class LocaleKeys {
   static const workspaceNewCompendiumEntry = 'workspace.new_compendium_entry';
   static const workspaceSidebarEntityGraph = 'workspace.sidebar_entity_graph';
   static const workspaceStoryProgress = 'workspace.story_progress';
+  static const workspaceWorldManual = 'workspace.world_manual';
   static const workspaceStoryProgressEmpty = 'workspace.story_progress_empty';
   static const workspaceStoryProgressEmptyHint =
       'workspace.story_progress_empty_hint';

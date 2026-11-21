@@ -261,6 +261,7 @@ flutter:
     - assets/bundled_skills/story-continuity/references/screenplay.md
     - assets/bundled_skills/chapter-write-pipeline/SKILL.md
     - assets/bundled_skills/story-state-sync/SKILL.md
+    - assets/world_samples.json
     - assets/official_skills/
     - assets/official_skills/map-design/SKILL.md
     - assets/official_skills/map-design/references/
