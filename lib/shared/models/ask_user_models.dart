@@ -165,6 +165,7 @@ class AskUserResult {
     this.error,
     this.resolution,
     this.unansweredQuestionIds,
+    this.message,
   });
 
   final bool ok;
@@ -173,6 +174,11 @@ class AskUserResult {
   final String? error;
   final AskUserResolution? resolution;
   final List<String>? unansweredQuestionIds;
+
+  /// 面向模型的补充说明：没有 answers 时告诉模型该怎么理解这次结果。
+  /// 例如用户用新消息代替点选问卷时，这里写明"新消息就是回答"，
+  /// 避免模型把它当成取消后自行替你决定。
+  final String? message;
 
   factory AskUserResult.timeout(List<AskUserQuestion> questions) {
     final answers = <AskUserAnswer>[];
@@ -213,7 +219,10 @@ class AskUserResult {
     if (resolution != null) 'resolution': resolution!.jsonValue,
     if (unansweredQuestionIds != null)
       'unanswered_question_ids': unansweredQuestionIds,
-    if (resolution == AskUserResolution.timeout && (answers?.isEmpty ?? true))
+    if (message != null)
+      'message': message
+    else if (resolution == AskUserResolution.timeout &&
+        (answers?.isEmpty ?? true))
       'message': '用户未回答，请根据现有上下文继续',
   };
 }

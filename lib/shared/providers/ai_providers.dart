@@ -777,6 +777,34 @@ class AiChatRuntime extends _$AiChatRuntime {
     return pending;
   }
 
+  /// 用户在本轮进行中发出新消息时，先结束挂起的 AskUser 卡。
+  ///
+  /// 原因：问卷卡会让当前 turn 一直等待点击，而排队消息要等 turn 结束才投递，
+  /// 两者互等就会让消息长时间停在「待发送」。这里按「取消本题」结束卡片，
+  /// 让 turn 继续跑完并把排队消息接上；卡片会被标记为 interrupted，
+  /// 界面上仍能看到它已因新消息而跳过。
+  ///
+  /// 返回被结束的卡片数量（0 表示没有挂起问卷）。
+  int cancelPendingAskUsersForNewMessage({String? userText}) {
+    final pendings = pendingAskUserRequests.values.toList();
+    var cancelled = 0;
+    for (final pending in pendings) {
+      if (pending.isCompleted) {
+        continue;
+      }
+      // 新消息就是用户的回答：不能走 cancel()，否则模型收到 User cancelled
+      // 会把用户的选择当成"用户放弃"，然后自行决策。
+      pending.cancelForNewMessage(userText: userText);
+      cancelled++;
+    }
+    if (cancelled > 0 && _aiProvidersLog.isDebugEnabled) {
+      _aiProvidersLog.debug(
+        'AskUser superseded by new user message count=$cancelled',
+      );
+    }
+    return cancelled;
+  }
+
   int startRequest() {
     if (state.isSessionMutationInFlight || _stopAllDepth > 0) {
       throw StateError('Chat startup is blocked by a session operation.');

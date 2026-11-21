@@ -2637,6 +2637,8 @@ Future<void> _openWorkspaceResource(
     case NovelWorkspaceSection.novel_description:
     case NovelWorkspaceSection.entity_graph:
     case NovelWorkspaceSection.story_progress:
+    // 世界观手册目前只有桌面端整页视图。
+    case NovelWorkspaceSection.world_manual:
     case NovelWorkspaceSection.canvas:
     case NovelWorkspaceSection.storyboard:
       return;

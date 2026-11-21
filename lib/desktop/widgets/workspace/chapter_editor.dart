@@ -31,6 +31,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../shared/components/dialog_feedback.dart';
+import '../../../shared/components/reveric_button.dart';
 import '../../../shared/database/novel_content_database.dart';
 import '../../../shared/localization/app_localization.dart';
 import '../../../shared/localization/locale_keys.dart';
@@ -83,6 +84,11 @@ class ChapterEditor extends HookConsumerWidget {
     required this.onCreateChapter,
     this.databasePath,
     this.onAddSelectionToChat,
+    this.onWriteChapter,
+    this.onSettleChapter,
+    this.onDraftOutline,
+    this.onReviewChapter,
+    this.settleListed = false,
   });
 
   final List<Chapter> chapters;
@@ -111,6 +117,23 @@ class ChapterEditor extends HookConsumerWidget {
 
   /// 把正文选区作为快照引用加入当前 AI 对话。
   final ValueChanged<String>? onAddSelectionToChat;
+
+  /// 「写本章」：跑 章纲 → 简报 → 起草 → 审查 四步。
+  /// 为 null 时不渲染按钮（移动端/只读场景）。
+  final Future<void> Function()? onWriteChapter;
+
+  /// 「沉淀本章」：把本章产生的角色状态/伏笔/线索回填设定库。
+  final Future<void> Function()? onSettleChapter;
+
+  /// 「生成章纲」：按固定 5 字段让 AI 直接写进章节的章纲字段。
+  /// 章纲自由文本最容易缺「章末钩子」，这正是写完读起来断的直接原因。
+  final Future<void> Function()? onDraftOutline;
+
+  /// 「审校本章」：只出问题清单，不改正文（错字/人名/时间线/未收伏笔/AI 味）。
+  final Future<void> Function()? onReviewChapter;
+
+  /// 已经为本章出过沉淀清单、正等作者确认入库 —— 按钮文案随之切换。
+  final bool settleListed;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -219,6 +242,86 @@ class ChapterEditor extends HookConsumerWidget {
                     _ChapterEmotionChip(label: tag),
                   if (!commentSession.isEmpty)
                     _ChapterCommentBadge(session: commentSession),
+                  // 「写本章」「沉淀本章」：把流程从"记指令"变成"点按钮"。
+                  // 已发布的章节不再提供写本章（避免覆盖定稿），只留沉淀补录。
+                  if (onDraftOutline != null &&
+                      !chapter.isExtra &&
+                      normalizeChapterStat(chapter.stat) !=
+                          chapterStatPublished)
+                    Tooltip(
+                      message: context.t(LocaleKeys.chapterOutlineDraftHint),
+                      child: RevericButton.text(
+                        label: context.t(
+                          chapter.outline.trim().isEmpty
+                              ? LocaleKeys.chapterOutlineDraft
+                              : LocaleKeys.chapterOutlineRedraft,
+                        ),
+                        icon: RevericIcons.checklist_rounded,
+                        size: RevericButtonSize.compact,
+                        onPressed: () {
+                          onDraftOutline!();
+                        },
+                      ),
+                    ),
+                  if (onWriteChapter != null &&
+                      !chapter.isExtra &&
+                      normalizeChapterStat(chapter.stat) !=
+                          chapterStatPublished)
+                    Tooltip(
+                      message: context.t(
+                        chapter.brief.trim().isEmpty
+                            ? LocaleKeys.chapterBriefDraftHint
+                            : LocaleKeys.chapterWriteThisHint,
+                      ),
+                      child: RevericButton.text(
+                        label: context.t(
+                          chapter.brief.trim().isEmpty
+                              ? LocaleKeys.chapterBriefDraft
+                              : LocaleKeys.chapterWriteThis,
+                        ),
+                        icon: RevericIcons.auto_awesome,
+                        size: RevericButtonSize.compact,
+                        onPressed: () {
+                          onWriteChapter!();
+                        },
+                      ),
+                    ),
+                  if (onReviewChapter != null &&
+                      !chapter.isExtra &&
+                      chapter.content.trim().isNotEmpty)
+                    Tooltip(
+                      message: context.t(LocaleKeys.chapterReviewHint),
+                      child: RevericButton.text(
+                        label: context.t(LocaleKeys.chapterReview),
+                        icon: RevericIcons.checklist_rounded,
+                        size: RevericButtonSize.compact,
+                        onPressed: () {
+                          onReviewChapter!();
+                        },
+                      ),
+                    ),
+                  if (onSettleChapter != null &&
+                      !chapter.isExtra &&
+                      chapter.content.trim().isNotEmpty)
+                    Tooltip(
+                      message: context.t(
+                        settleListed
+                            ? LocaleKeys.chapterSettleApplyHint
+                            : LocaleKeys.chapterSettleThisHint,
+                      ),
+                      child: RevericButton.text(
+                        label: context.t(
+                          settleListed
+                              ? LocaleKeys.chapterSettleApply
+                              : LocaleKeys.chapterSettleThis,
+                        ),
+                        icon: RevericIcons.pending_actions_rounded,
+                        size: RevericButtonSize.compact,
+                        onPressed: () {
+                          onSettleChapter!();
+                        },
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: RevericSpacing.sm),
@@ -1957,12 +2060,53 @@ class _ChapterStatBadge extends StatelessWidget {
 
   final String stat;
 
+  /// draft → writing → reviewed → published，各自一个颜色与图标。
+  /// 未知/旧的空值统一按草稿展示，避免旧库章节渲染异常。
+  (String, String, String) _present(String raw) {
+    switch (normalizeChapterStat(raw)) {
+      case chapterStatWriting:
+        return (
+          RevericIcons.pending_rounded,
+          LocaleKeys.chapterStatWriting,
+          'writing',
+        );
+      case chapterStatReviewed:
+        return (
+          RevericIcons.check_circle_rounded,
+          LocaleKeys.chapterStatReviewed,
+          'reviewed',
+        );
+      case chapterStatPublished:
+        return (
+          RevericIcons.check_circle,
+          LocaleKeys.chapterStatPublished,
+          'published',
+        );
+      default:
+        return (
+          RevericIcons.edit_outlined,
+          LocaleKeys.chapterStatDraft,
+          'draft',
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = RevericTheme.colorsOf(context);
     final typo = RevericTheme.typographyOf(context);
-    final isPublished = stat == chapterStatPublished;
-    final statusColor = isPublished ? colors.additionBorder : colors.accentWarm;
+    final (icon, labelKey, kind) = _present(stat);
+    final statusColor = switch (kind) {
+      'published' => colors.additionBorder,
+      'reviewed' => colors.additionBorder,
+      'writing' => colors.accentWarm,
+      _ => colors.textMuted,
+    };
+    final fillAlpha = switch (kind) {
+      'writing' => 0.10,
+      'reviewed' => 0.06,
+      _ => 0.08,
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -1970,31 +2114,17 @@ class _ChapterStatBadge extends StatelessWidget {
         vertical: RevericSpacing.xxs,
       ),
       decoration: BoxDecoration(
-        color: isPublished
-            ? colors.additionBorder.withValues(alpha: 0.08)
-            : colors.accentWarm.withValues(alpha: 0.08),
+        color: statusColor.withValues(alpha: fillAlpha),
         borderRadius: BorderRadius.circular(RevericRadius.full),
-        border: Border.all(
-          color: isPublished
-              ? colors.additionBorder.withValues(alpha: 0.32)
-              : colors.accentWarm.withValues(alpha: 0.32),
-        ),
+        border: Border.all(color: statusColor.withValues(alpha: 0.32)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          RevericIcon(
-            isPublished
-                ? RevericIcons.check_circle
-                : RevericIcons.edit_outlined,
-            size: 14,
-            color: statusColor,
-          ),
+          RevericIcon(icon, size: 14, color: statusColor),
           const SizedBox(width: RevericSpacing.xs),
           Text(
-            isPublished
-                ? context.t(LocaleKeys.chapterStatPublished)
-                : context.t(LocaleKeys.chapterStatDraft),
+            context.t(labelKey),
             style: typo.uiSmallSemibold.copyWith(color: statusColor),
           ),
         ],

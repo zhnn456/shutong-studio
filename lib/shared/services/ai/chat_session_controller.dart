@@ -654,6 +654,20 @@ class ChatSessionController {
         return;
       }
 
+      // 打破互锁：本轮挂起的 AskUser 会让 turn 一直不结束，而排队消息只在
+      // turn 结束后投递（_flushQueuedMessageAfterRequest）。两者互等，消息就会
+      // 长时间停在「待发送」。用户既然发了新消息，按"新消息优先"结束挂起问卷卡，
+      // 让本轮尽快收尾并把这条消息接上。
+      final supersededAskUsers = runtime.cancelPendingAskUsersForNewMessage(
+        userText: trimmedText,
+      );
+      if (supersededAskUsers > 0) {
+        _log.info(
+          'ask-user superseded by new message count=$supersededAskUsers '
+          'sessionId=$targetSessionId',
+        );
+      }
+
       // 同时只允许一条排队消息；已有队列或附件准备中时拒绝，由 UI 禁用发送。
       if (runtime.isPreparingQueuedMessage ||
           runtime.queuedMessage != null ||
@@ -1681,6 +1695,9 @@ class ChatSessionController {
     }
 
     await _deliverCurrentContextReminds(sessionId);
+    // 「立即发送」也要打破问卷卡互锁：挂起的 AskUser 会让本轮迟迟不结束，
+    // stage 的消息就等不到下一轮请求。先按取消结束卡片，再 stage。
+    runtime.cancelPendingAskUsersForNewMessage();
     agent.stageNextTurn(
       'queued_chat',
       AgentMessage.user(

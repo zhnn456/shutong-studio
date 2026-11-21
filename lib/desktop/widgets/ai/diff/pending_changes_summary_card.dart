@@ -17,6 +17,8 @@ import '../../../../shared/database/novel_content_database.dart';
 import '../../../../shared/localization/app_localization.dart';
 import '../../../../shared/localization/locale_keys.dart';
 import '../../../../shared/theme/theme.dart';
+import '../../../../shared/providers/novel_providers.dart';
+import '../../../../shared/services/working_overlay.dart';
 import '../../../../shared/widgets/ai/diff/recent_changes_log.dart';
 import 'pending_changes_detail_dialog.dart';
 
@@ -51,6 +53,34 @@ class PendingChangesSummaryCard extends ConsumerStatefulWidget {
 class _PendingChangesSummaryCardState
     extends ConsumerState<PendingChangesSummaryCard> {
   late bool _expanded;
+
+  /// 「撤销本轮」：把这一轮所有待处理 AI 变更逐条拒绝，等于整轮回滚。
+  /// 与「查看变更」里的逐条采用/拒绝是同一底层动作，不是另一套逻辑。
+  Future<void> _revertAll() async {
+    final service = ref.read(
+      workingOverlayServiceProvider(widget.databasePath),
+    );
+    var reverted = 0;
+    for (final change in widget.changes) {
+      try {
+        await service.rejectWorkingChange(change.id);
+        reverted++;
+      } catch (_) {
+        // 单条失败不影响其余条目——撤销要尽量回到干净状态。
+      }
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.t(
+            LocaleKeys.workspaceRevertRoundDone,
+            namedArgs: {'count': '$reverted'},
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -128,6 +158,11 @@ class _PendingChangesSummaryCardState
                             ),
                           ],
                         ),
+                      ),
+                      RevericButton.text(
+                        label: context.t(LocaleKeys.workspaceRevertRound),
+                        size: RevericButtonSize.compact,
+                        onPressed: _revertAll,
                       ),
                       RevericButton.text(
                         label: context.t(LocaleKeys.workspaceViewChanges),

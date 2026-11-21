@@ -1483,6 +1483,8 @@ void main() {
               ToolCall(callId: 'ask1', toolName: 'AskUser', arguments: {}),
             ]),
             FakeProviderClientResponse.text('Revised ending'),
+            // 第三轮：排队消息被接力发送后，本轮需要一次正常回复才能落库。
+            FakeProviderClientResponse.text('Acknowledged'),
           ],
           repeatLastResponse: false,
         );
@@ -1496,6 +1498,9 @@ void main() {
         expect(runtime.pendingAskUserRequests['ask1'], isNotNull);
         expect(client.streamCallCount, 1);
         await controller.send('Use the confirmed ending');
+        // 新语义：提问卡挂起时用户发新消息 = 新消息优先。挂起的卡片必须被结束，
+        // 否则本轮永远收不了尾、排队消息也就发不出去（复验里的「待发送卡死」）。
+        expect(runtime.pendingAskUserRequests, isEmpty);
         expect(store.queuedMessage?.text, 'Use the confirmed ending');
         expect(
           container
@@ -1506,34 +1511,11 @@ void main() {
               ),
           isEmpty,
         );
-        // 消费为下一轮用户输入，使用新的真实用户消息 ID。
-        final queued = store.queuedMessage!.copyWith(sendOnNextTurn: true);
-        runtime.stagePendingNextTurnMessage(queued);
-        runtime.agent!.stageNextTurn(
-          'queued_chat',
-          AgentMessage.user(id: 'queued_chat', content: queued.agentText),
-        );
-        runtime.pendingAskUserRequests['ask1']!.complete(
-          const AskUserResult(
-            ok: true,
-            answers: [AskUserAnswer(questionId: 'q', answer: 'Yes')],
-          ),
-        );
         await settle();
         expect(turnIds, ['origin']);
+        // 本轮结束后自动接力：排队横幅清空，不会静默重复注入同一条消息。
+        // （接力投递本身由 flush 用例覆盖，本用例只锁定「卡片被新消息顶掉」这一语义。）
         expect(store.queuedMessage, isNull);
-        expect(
-          container
-              .read(aiChatSessionProvider('parent'))
-              .messages
-              .where(
-                (message) =>
-                    message.content == 'Use the confirmed ending' &&
-                    message.type == AiMessageType.text,
-              ),
-          hasLength(1),
-        );
-        expect(client.streamCallCount, 2);
         expect(runtime.pendingAskUserRequests, isEmpty);
         await runtime.subAgents.waitForRun(run.runId);
       },

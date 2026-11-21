@@ -20,7 +20,11 @@ export '../database/novel_content_database.dart'
         nodeTypeExtra,
         nodeTypes,
         chapterStatDraft,
+        chapterStatWriting,
+        chapterStatReviewed,
         chapterStatPublished,
+        chapterStatOrder,
+        normalizeChapterStat,
         chapterEmbeddingSyncStatusPending,
         notDeletedSentinel;
 

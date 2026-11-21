@@ -707,58 +707,76 @@ class _QueuedMessagePreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(RevericRadius.medium),
         border: Border.all(color: colors.accent.withValues(alpha: 0.18)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          RevericIcon(
-            RevericIcons.pending_actions_rounded,
-            size: 16,
-            color: colors.accent,
-          ),
-          const SizedBox(width: RevericSpacing.sm),
-          Text(
-            context.t(
-              sendingNext
-                  ? LocaleKeys.aiQueuedMessageSendingNext
-                  : LocaleKeys.aiQueuedMessageTitle,
-            ),
-            style: typo.uiSmall.copyWith(color: colors.accent),
-          ),
-          const SizedBox(width: RevericSpacing.sm),
-          Expanded(
-            child: Text(
-              queuedMessage.text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: typo.uiSmall.copyWith(color: colors.textPrimary),
-            ),
-          ),
-          if (!sendingNext)
-            IconButton(
-              onPressed: onSendNow,
-              tooltip: context.t(LocaleKeys.aiQueuedMessageSendNow),
-              icon: RevericIcon(
-                RevericIcons.send_rounded,
-                size: 14,
+          Row(
+            children: [
+              RevericIcon(
+                RevericIcons.pending_actions_rounded,
+                size: 16,
                 color: colors.accent,
               ),
-              style: IconButton.styleFrom(
-                minimumSize: const Size(28, 28),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                padding: EdgeInsets.zero,
+              const SizedBox(width: RevericSpacing.sm),
+              Text(
+                context.t(
+                  sendingNext
+                      ? LocaleKeys.aiQueuedMessageSendingNext
+                      : LocaleKeys.aiQueuedMessageTitle,
+                ),
+                style: typo.uiSmall.copyWith(color: colors.accent),
               ),
-            ),
-          IconButton(
-            onPressed: onClear,
-            tooltip: context.t(LocaleKeys.aiQueuedMessageRemove),
-            icon: RevericIcon(
-              RevericIcons.close_rounded,
-              size: 14,
-              color: colors.textMuted,
-            ),
-            style: IconButton.styleFrom(
-              minimumSize: const Size(28, 28),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding: EdgeInsets.zero,
+              const SizedBox(width: RevericSpacing.sm),
+              Expanded(
+                child: Text(
+                  queuedMessage.text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: typo.uiSmall.copyWith(color: colors.textPrimary),
+                ),
+              ),
+              if (!sendingNext)
+                IconButton(
+                  onPressed: onSendNow,
+                  tooltip: context.t(LocaleKeys.aiQueuedMessageSendNow),
+                  icon: RevericIcon(
+                    RevericIcons.send_rounded,
+                    size: 14,
+                    color: colors.accent,
+                  ),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(28, 28),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              IconButton(
+                onPressed: onClear,
+                tooltip: context.t(LocaleKeys.aiQueuedMessageRemove),
+                icon: RevericIcon(
+                  RevericIcons.close_rounded,
+                  size: 14,
+                  color: colors.textMuted,
+                ),
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(28, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+          // 排队不是"已发出"：这一行说明它为什么还停在这里、会在什么时候走，
+          // 避免用户以为发送成功后干等（复验里最长空等 3 分钟）。
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              context.t(
+                sendingNext
+                    ? LocaleKeys.aiQueuedMessageSendingNextHint
+                    : LocaleKeys.aiQueuedMessageWaiting,
+              ),
+              style: typo.uiSmall.copyWith(color: colors.textMuted),
             ),
           ),
         ],

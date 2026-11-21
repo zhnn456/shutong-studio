@@ -20,8 +20,11 @@ class PendingAskUser {
     startedAt = _now();
   }
 
-  static const reminderDelay = Duration(minutes: 10);
-  static const timeout = Duration(minutes: 30);
+  // 问卷卡挂起时 turn 不会结束，排队消息也就不会被消费（见
+  // ChatSessionController._send 的互锁说明）。因此超时必须短到用户能接受：
+  // 1 分钟提醒一次，5 分钟仍未回答即按"跳过本题"继续，避免出现长时间静默。
+  static const reminderDelay = Duration(minutes: 1);
+  static const timeout = Duration(minutes: 5);
   final String instanceId = const Uuid().v4();
   final AskUserRequest request;
   final int runId;
@@ -85,6 +88,25 @@ class PendingAskUser {
         ok: false,
         cancelled: true,
         resolution: AskUserResolution.interrupted,
+      ),
+    );
+  }
+
+  /// 用户在问卷挂起期间直接发了新消息。
+  ///
+  /// 这不是"取消"：那条消息本身就是回答。这里返回 ok=true + 明确说明，
+  /// 让模型把新消息当作用户的选择，而不是按 User cancelled 自行替你决定。
+  void cancelForNewMessage({String? userText}) {
+    final quoted = userText?.trim();
+    _resolve(
+      AskUserResult(
+        ok: true,
+        resolution: AskUserResolution.interrupted,
+        message: quoted == null || quoted.isEmpty
+            ? '用户没有点选问卷，而是直接发了新消息继续对话。'
+                '请把随后那条用户消息视为对上述问题的回答，不要视为取消，也不要自行替用户决定。'
+            : '用户没有点选问卷，而是直接发了新消息作答："$quoted"。'
+                '请把这条消息视为对上述问题的回答，不要视为取消，也不要自行替用户决定。',
       ),
     );
   }

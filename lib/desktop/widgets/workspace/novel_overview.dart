@@ -35,6 +35,7 @@ import '../../../shared/models/content_kind.dart';
 import '../../../shared/models/content_status.dart';
 import '../../../shared/models/novel_workspace.dart';
 import '../../../shared/models/outline.dart';
+import '../../../shared/services/novel_goal.dart';
 import '../../../shared/theme/theme.dart';
 import '../agent_management/agent_model_settings_page.dart';
 import '../novel_create_submitter.dart';
@@ -62,6 +63,10 @@ class NovelOverview extends StatelessWidget {
     this.onEditNovel,
     required this.coverThumbnailKey,
     required this.coverMenuTrigger,
+    this.goal,
+    this.onEditGoal,
+    this.onPlanChapters,
+    this.onEditStyle,
   });
 
   final Novel novel;
@@ -79,6 +84,16 @@ class NovelOverview extends StatelessWidget {
   final VoidCallback? onEditNovel;
   final GlobalKey coverThumbnailKey;
   final ValueNotifier<int> coverMenuTrigger;
+
+  /// 全书目标（章数 / 每章字数）。null 表示还没设定。
+  final NovelGoal? goal;
+  final VoidCallback? onEditGoal;
+
+  /// 按目标把后续章节（含字段章纲）一次性补齐。
+  final VoidCallback? onPlanChapters;
+
+  /// 文风样文入口（贴自己的文字，让 AI 照着腔调写）。
+  final VoidCallback? onEditStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -103,12 +118,18 @@ class NovelOverview extends StatelessWidget {
                 outlineEntries.isNotEmpty,
           ),
           const SizedBox(height: RevericSpacing.x4l),
-          _NextStepGuideCard(
+          _FlowProgressCard(
+            novel: novel,
             characterProfiles: characterProfiles,
             worldbuildingEntries: worldbuildingEntries,
             outlineEntries: outlineEntries,
             chapters: chapters,
+            foreshadowings: foreshadowings,
+            goal: goal,
             onSelectionChanged: onSelectionChanged,
+            onEditGoal: onEditGoal,
+            onPlanChapters: onPlanChapters,
+            onEditStyle: onEditStyle,
           ),
           const SizedBox(height: RevericSpacing.x4l),
           _SecondRow(
@@ -1241,29 +1262,65 @@ class _CopyButton extends StatelessWidget {
 // 无章节时给出「先搭世界观 → 设定角色 → 规划大纲 → 写第1章」的顺序引导；
 // 已有章节则隐藏，交给「继续写作」入口。
 // =============================================================================
-class _NextStepGuideCard extends StatelessWidget {
-  const _NextStepGuideCard({
+/// 七站写作进度 + 按状态算出的下一步。
+///
+/// 之前的「下一步建议」在第一章出现后就返回 null（`return null`），
+/// 于是"开始写了"恰恰是引导消失的时刻——这正是复验里"写完两章不知道下一步"的界面成因。
+/// 现在改成一条状态链：立项 → 世界观 → 人物 → 大纲 → 章纲 → 正文 → 沉淀 →（定稿），
+/// 每一站都由库里真实数据判定，不靠模型自觉。
+class _FlowProgressCard extends StatelessWidget {
+  const _FlowProgressCard({
+    required this.novel,
     required this.characterProfiles,
     required this.worldbuildingEntries,
     required this.outlineEntries,
     required this.chapters,
+    required this.foreshadowings,
+    required this.goal,
     required this.onSelectionChanged,
+    required this.onEditGoal,
+    required this.onPlanChapters,
+    required this.onEditStyle,
   });
 
+  final Novel novel;
   final List<CharacterProfile> characterProfiles;
   final List<Document> worldbuildingEntries;
   final List<OutlineDraft> outlineEntries;
   final List<Chapter> chapters;
+  final List<Foreshadowing> foreshadowings;
+  final NovelGoal? goal;
   final ValueSetter<WorkspaceSelection> onSelectionChanged;
+  final VoidCallback? onEditGoal;
+  final VoidCallback? onPlanChapters;
+  final VoidCallback? onEditStyle;
 
   @override
   Widget build(BuildContext context) {
     final colors = RevericTheme.colorsOf(context);
     final typo = RevericTheme.typographyOf(context);
-    final next = _resolveNextStep();
-    if (next == null) {
-      return const SizedBox.shrink();
-    }
+    final stage = _resolveStage();
+    final bodyChapters = chapters.where((chapter) => !chapter.isVolume).toList();
+    final written = bodyChapters
+        .where((chapter) => chapter.wordCount > 0 || chapter.content.trim().isNotEmpty)
+        .toList();
+    final settled = bodyChapters
+        .where(
+          (chapter) =>
+              normalizeChapterStat(chapter.stat) == chapterStatReviewed ||
+              normalizeChapterStat(chapter.stat) == chapterStatPublished,
+        )
+        .toList();
+
+    final stageLabels = <String>[
+      context.t(LocaleKeys.flowStageIdea),
+      context.t(LocaleKeys.flowStageWorld),
+      context.t(LocaleKeys.flowStageCharacters),
+      context.t(LocaleKeys.flowStageOutline),
+      context.t(LocaleKeys.flowStageChapterOutline),
+      context.t(LocaleKeys.flowStageWriting),
+      context.t(LocaleKeys.flowStageSettle),
+    ];
 
     return RevericElevatedCard(
       fallback: colors.surfaceContainerHigh,
@@ -1274,50 +1331,89 @@ class _NextStepGuideCard extends StatelessWidget {
       ],
       child: Padding(
         padding: const EdgeInsets.all(RevericSpacing.x4l),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      RevericIcon(
-                        RevericIcons.auto_awesome_outlined,
-                        size: 18,
-                        color: colors.accentWarm,
-                      ),
-                      const SizedBox(width: RevericSpacing.sm),
-                      Text(
-                        '下一步建议',
-                        style: typo.uiSemibold.copyWith(
-                          color: colors.accentWarm,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: RevericSpacing.x2l),
-                  Text(
-                    next.title,
-                    style: typo.heading2.copyWith(
-                      color: colors.textPrimary,
+            Row(
+              children: [
+                RevericIcon(
+                  RevericIcons.auto_awesome_outlined,
+                  size: 18,
+                  color: colors.accentWarm,
+                ),
+                const SizedBox(width: RevericSpacing.sm),
+                Text(
+                  context.t(LocaleKeys.flowTitle),
+                  style: typo.uiSemibold.copyWith(color: colors.accentWarm),
+                ),
+                const SizedBox(width: RevericSpacing.md),
+                Expanded(
+                  child: Text(
+                    context.t(
+                      LocaleKeys.flowCounts,
+                      namedArgs: {
+                        'world': '${worldbuildingEntries.length}',
+                        'characters': '${characterProfiles.length}',
+                        'foreshadowings': '${foreshadowings.length}',
+                        'chapters': '${written.length}',
+                      },
                     ),
+                    style: typo.uiSmall.copyWith(color: colors.textMuted),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: RevericSpacing.sm),
-                  Text(
-                    next.description,
-                    style: typo.body.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: RevericSpacing.x4l),
-            RevericButton.primary(
-              label: next.buttonLabel,
-              onPressed: () => onSelectionChanged(
-                WorkspaceSelection(section: next.section),
+            const SizedBox(height: RevericSpacing.x2l),
+            _GoalRow(
+              goal: goal,
+              chaptersWithOutline: chapters
+                  .where(
+                    (chapter) =>
+                        !chapter.isVolume && chapter.outline.trim().isNotEmpty,
+                  )
+                  .length,
+              onEditGoal: onEditGoal,
+              onPlanChapters: onPlanChapters,
+              onEditStyle: onEditStyle,
+            ),
+            const SizedBox(height: RevericSpacing.x2l),
+            Wrap(
+              spacing: RevericSpacing.sm,
+              runSpacing: RevericSpacing.xs,
+              children: [
+                for (var i = 0; i < stageLabels.length; i++)
+                  _StagePill(
+                    index: i + 1,
+                    label: stageLabels[i],
+                    done: i < stage,
+                    current: i == stage,
+                  ),
+              ],
+            ),
+            const SizedBox(height: RevericSpacing.x3l),
+            Text(
+              stage == -1
+                  ? context.t(LocaleKeys.flowNextTitlePublish)
+                  : _nextTitle(context, stage, written.length),
+              style: typo.heading2.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: RevericSpacing.sm),
+            Text(
+              stage == -1
+                  ? context.t(LocaleKeys.flowNextDescPublish)
+                  : _nextDesc(context, stage),
+              style: typo.body.copyWith(color: colors.textSecondary),
+            ),
+            const SizedBox(height: RevericSpacing.x3l),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: RevericButton.primary(
+                label: stage == -1
+                    ? context.t(LocaleKeys.flowActionPublish)
+                    : _nextActionLabel(context, stage),
+                onPressed: () =>
+                    onSelectionChanged(WorkspaceSelection(section: _nextSection(stage))),
               ),
             ),
           ],
@@ -1326,57 +1422,242 @@ class _NextStepGuideCard extends StatelessWidget {
     );
   }
 
-  _NextStep? _resolveNextStep() {
-    final hasWorld = worldbuildingEntries.isNotEmpty;
-    final hasCharacters = characterProfiles.isNotEmpty;
-    final hasOutline = outlineEntries.isNotEmpty;
-    final hasChapter = chapters.isNotEmpty;
-    if (!hasWorld) {
-      return const _NextStep(
-        section: NovelWorkspaceSection.lore,
-        title: '先搭世界观',
-        description: '这是全书的地基：先定题材、时代、核心规则体系与主要势力。后续的角色和大纲都要长在这套设定上，先把地基打好再动笔。',
-        buttonLabel: '去搭世界观',
-      );
+  /// 返回当前应该做的站序号（0–6）；-1 表示七站都完成。
+  int _resolveStage() {
+    if (novel.description.trim().isEmpty) return 0;
+    if (worldbuildingEntries.isEmpty) return 1;
+    if (characterProfiles.isEmpty) return 2;
+    if (outlineEntries.isEmpty) return 3;
+    final withOutline = chapters
+        .where((chapter) => !chapter.isVolume && chapter.outline.trim().isNotEmpty)
+        .length;
+    if (withOutline == 0) return 4;
+    final written = chapters.where(
+      (chapter) =>
+          !chapter.isVolume &&
+          (chapter.wordCount > 0 || chapter.content.trim().isNotEmpty),
+    );
+    if (written.isEmpty) return 5;
+    final unsettled = written.where(
+      (chapter) =>
+          normalizeChapterStat(chapter.stat) == chapterStatDraft ||
+          normalizeChapterStat(chapter.stat) == chapterStatWriting,
+    );
+    if (unsettled.isNotEmpty) return 6;
+    return -1;
+  }
+
+  String _nextTitle(BuildContext context, int stage, int writtenCount) {
+    switch (stage) {
+      case 0:
+        return context.t(LocaleKeys.flowNextTitleIdea);
+      case 1:
+        return context.t(LocaleKeys.flowNextTitleWorld);
+      case 2:
+        return context.t(LocaleKeys.flowNextTitleCharacters);
+      case 3:
+        return context.t(LocaleKeys.flowNextTitleOutline);
+      case 4:
+        return context.t(LocaleKeys.flowNextTitleChapterOutline);
+      case 5:
+        return context.t(
+          LocaleKeys.flowNextTitleWriting,
+          namedArgs: {'number': '${writtenCount + 1}'},
+        );
+      default:
+        return context.t(LocaleKeys.flowNextTitleSettle);
     }
-    if (!hasCharacters) {
-      return const _NextStep(
-        section: NovelWorkspaceSection.characters,
-        title: '设定主角与核心人物',
-        description: '世界观已就位，下一步把人物立起来：主角的渴望、缺陷与弧光，以及和反派的关系网。人物立住，故事才有驱动力。',
-        buttonLabel: '去设定角色',
-      );
+  }
+
+  String _nextDesc(BuildContext context, int stage) {
+    switch (stage) {
+      case 0:
+        return context.t(LocaleKeys.flowNextDescIdea);
+      case 1:
+        return context.t(LocaleKeys.flowNextDescWorld);
+      case 2:
+        return context.t(LocaleKeys.flowNextDescCharacters);
+      case 3:
+        return context.t(LocaleKeys.flowNextDescOutline);
+      case 4:
+        return context.t(LocaleKeys.flowNextDescChapterOutline);
+      case 5:
+        return context.t(LocaleKeys.flowNextDescWriting);
+      default:
+        return context.t(LocaleKeys.flowNextDescSettle);
     }
-    if (!hasOutline) {
-      return const _NextStep(
-        section: NovelWorkspaceSection.outlines,
-        title: '规划全书大纲',
-        description: '人物已就位，先搭全书骨架（分卷 + 逐章节奏），再动笔写正文。大纲是防止写到一半跑偏的导航图。',
-        buttonLabel: '去规划大纲',
-      );
+  }
+
+  String _nextActionLabel(BuildContext context, int stage) {
+    switch (stage) {
+      case 0:
+        return context.t(LocaleKeys.flowActionIdea);
+      case 1:
+        return context.t(LocaleKeys.flowActionWorld);
+      case 2:
+        return context.t(LocaleKeys.flowActionCharacters);
+      case 3:
+        return context.t(LocaleKeys.flowActionOutline);
+      case 4:
+        return context.t(LocaleKeys.flowActionChapterOutline);
+      case 5:
+        return context.t(LocaleKeys.flowActionWriting);
+      default:
+        return context.t(LocaleKeys.flowActionSettle);
     }
-    if (!hasChapter) {
-      return const _NextStep(
-        section: NovelWorkspaceSection.chapters,
-        title: '开始写第 1 章',
-        description: '基础已齐，可以动笔了。写正文前建议先让 AI 产出一份本章场景清单，确认后再落笔，能显著减少返工。',
-        buttonLabel: '去写第 1 章',
-      );
+  }
+
+  NovelWorkspaceSection _nextSection(int stage) {
+    switch (stage) {
+      case 0:
+        return NovelWorkspaceSection.novel_description;
+      case 1:
+        return NovelWorkspaceSection.lore;
+      case 2:
+        return NovelWorkspaceSection.characters;
+      case 3:
+        return NovelWorkspaceSection.outlines;
+      case 4:
+      case 5:
+      case 6:
+      default:
+        return NovelWorkspaceSection.chapters;
     }
-    return null;
   }
 }
 
-class _NextStep {
-  const _NextStep({
-    required this.section,
-    required this.title,
-    required this.description,
-    required this.buttonLabel,
+/// 全书目标行：目标章数 / 每章字数 / 已排到第几章，外加「按目标排章」入口。
+///
+/// 没有这一行时，"要写多少章、每章多少字"只存在于作者脑子里，AI 无从控制节奏，
+/// 进度卡也就只能说"该写下一章"，说不出"还差 114 章"。
+class _GoalRow extends StatelessWidget {
+  const _GoalRow({
+    required this.goal,
+    required this.chaptersWithOutline,
+    required this.onEditGoal,
+    required this.onPlanChapters,
+    required this.onEditStyle,
   });
 
-  final NovelWorkspaceSection section;
-  final String title;
-  final String description;
-  final String buttonLabel;
+  final NovelGoal? goal;
+  final int chaptersWithOutline;
+  final VoidCallback? onEditGoal;
+  final VoidCallback? onPlanChapters;
+  final VoidCallback? onEditStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final current = goal;
+
+    final text = current == null || !current.isUsable
+        ? context.t(LocaleKeys.flowGoalUnset)
+        : context.t(
+            LocaleKeys.flowGoal,
+            namedArgs: {
+              'chapters': '${current.chapters}',
+              'per': '${current.wordsPerChapter}',
+              'total': (current.totalWords / 10000).toStringAsFixed(1),
+              'done': '$chaptersWithOutline',
+            },
+          );
+
+    return Row(
+      children: [
+        RevericIcon(RevericIcons.outlined_flag, size: 14, color: colors.textMuted),
+        const SizedBox(width: RevericSpacing.xs),
+        Expanded(
+          child: Text(
+            text,
+            style: typo.uiSmall.copyWith(color: colors.textMuted),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (onEditStyle != null)
+          RevericButton.text(
+            label: context.t(LocaleKeys.flowStyle),
+            size: RevericButtonSize.compact,
+            onPressed: onEditStyle,
+          ),
+        if (onEditGoal != null)
+          RevericButton.text(
+            label: context.t(
+              current == null ? LocaleKeys.flowGoalSet : LocaleKeys.flowGoalEdit,
+            ),
+            size: RevericButtonSize.compact,
+            onPressed: onEditGoal,
+          ),
+        if (current != null &&
+            current.isUsable &&
+            chaptersWithOutline < current.chapters &&
+            onPlanChapters != null)
+          RevericButton.text(
+            label: context.t(LocaleKeys.flowPlanChapters),
+            size: RevericButtonSize.compact,
+            onPressed: onPlanChapters,
+          ),
+      ],
+    );
+  }
+}
+
+/// 一站的药丸：已完成（勾 + 实心）、当前（编号 + 强调色）、未开始（灰）。
+class _StagePill extends StatelessWidget {
+  const _StagePill({
+    required this.index,
+    required this.label,
+    required this.done,
+    required this.current,
+  });
+
+  final int index;
+  final String label;
+  final bool done;
+  final bool current;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final accent = current
+        ? colors.accentWarm
+        : done
+        ? colors.additionBorder
+        : colors.textMuted;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: RevericSpacing.sm,
+        vertical: RevericSpacing.xxs,
+      ),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: current ? 0.12 : 0.06),
+        borderRadius: BorderRadius.circular(RevericRadius.full),
+        border: Border.all(color: accent.withValues(alpha: current ? 0.4 : 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (done)
+            RevericIcon(RevericIcons.check_circle, size: 12, color: accent)
+          else
+            Text(
+              '$index',
+              style: typo.uiSmall.copyWith(
+                color: accent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          const SizedBox(width: RevericSpacing.xs),
+          Text(
+            label,
+            style: typo.uiSmall.copyWith(
+              color: current ? colors.textPrimary : accent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

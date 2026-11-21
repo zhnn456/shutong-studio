@@ -242,6 +242,8 @@
   "ai.queued_message_sending_next_prefix": "Sending next: {text}",
   "ai.queued_message_remove": "Unqueue",
   "ai.queued_message_occupied": "A message is already queued. Send or remove it first.",
+  "ai.queued_message_waiting": "The AI is answering right now. This message will be sent automatically when this turn finishes; tap \"Send now\" to interrupt it immediately.",
+  "ai.queued_message_sending_next_hint": "Scheduled for the next request; waiting for the current turn to finish.",
   "ai.ask_user.notification_title": "AI needs your answer",
   "ai.ask_user.notification_body": "AI will automatically handle the questions after {minutes} minutes without a reply.",
   "ai.ask_user.reminder_title": "AI is still waiting for your answer",

@@ -97,7 +97,27 @@ const List<String> nodeTypes = <String>[
 ];
 
 const String chapterStatDraft = 'draft';
+
+/// AI 流水线正在写本章（简报→起草→审查进行中）。
+const String chapterStatWriting = 'writing';
+
+/// 本章已写完并完成沉淀（角色状态/伏笔已回填，待定稿发布）。
+const String chapterStatReviewed = 'reviewed';
+
 const String chapterStatPublished = 'published';
+
+/// 章节状态推进顺序：draft → writing → reviewed → published。
+/// 只在产物真实存在时前进，不做手工跳级。
+const List<String> chapterStatOrder = <String>[
+  chapterStatDraft,
+  chapterStatWriting,
+  chapterStatReviewed,
+  chapterStatPublished,
+];
+
+/// 两张旧数据里的 stat 可能为空或未知值，读侧统一按草稿处理。
+String normalizeChapterStat(String? stat) =>
+    chapterStatOrder.contains(stat) ? stat! : chapterStatDraft;
 const String novelStateSnapshotStatusActive = 'active';
 const String novelStateSnapshotStatusSuperseded = 'superseded';
 const String novelStateSnapshotCreatedByChronicler = 'chronicler';

@@ -26,6 +26,8 @@ import '../../../shared/localization/app_localization.dart';
 import '../../../shared/localization/locale_keys.dart';
 import '../../../shared/widgets/foreshadowing/position_links.dart';
 import '../../../shared/models/foreshadowing.dart';
+import '../../../shared/models/chapter.dart';
+import '../../../shared/providers/novel_providers.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/md/reveric_markdown_editor.dart';
 
@@ -115,6 +117,14 @@ class ForeshadowingEditor extends HookConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (databasePath != null && foreshadowings.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: RevericSpacing.lg),
+                      child: _ForeshadowingDistribution(
+                        databasePath: databasePath!,
+                        items: foreshadowings,
+                      ),
+                    ),
                   _ForeshadowingMetaGrid(
                     rows: [
                       [
@@ -607,4 +617,140 @@ Color _statusColor(BuildContext context, String status) {
     foreshadowingStatusAbandoned => colors.textMuted,
     _ => colors.textSubtle,
   };
+}
+
+/// 伏笔分布：把所有伏笔的「埋第 N 章 → 收第 M 章」排在一张图上。
+///
+/// 只看单个伏笔的编辑表单，看不出"这本书的线是不是全挤在前 10 章、后面 90 章空着"，
+/// 也看不出"埋了却一直没收"。章号由 chapters 现算，不落库，避免两处真相。
+class _ForeshadowingDistribution extends ConsumerWidget {
+  const _ForeshadowingDistribution({
+    required this.databasePath,
+    required this.items,
+  });
+
+  final String databasePath;
+  final List<Foreshadowing> items;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final chapters =
+        ref.watch(chaptersProvider(databasePath)).value ?? const <Chapter>[];
+    final numbers = <String, int>{};
+    var ordinal = 0;
+    for (final chapter in chapters) {
+      if (chapter.isVolume) continue;
+      ordinal++;
+      numbers[chapter.id] = chapter.chapterNum ?? ordinal;
+    }
+
+    final rows = <Widget>[];
+    var overdue = 0;
+    var unplaced = 0;
+    for (final item in items) {
+      final setupId = item.setupChapterId;
+      final payoffId = item.payoffChapterId;
+      if (setupId == null && payoffId == null) {
+        unplaced++;
+        continue;
+      }
+      final setup = setupId == null ? null : numbers[setupId];
+      final payoff = payoffId == null ? null : numbers[payoffId];
+      final isOverdue = payoff != null && item.payoff.trim().isEmpty;
+      if (isOverdue) overdue++;
+      rows.add(_row(context, item, setup, payoff, isOverdue));
+    }
+    if (rows.isEmpty && unplaced == 0) return const SizedBox.shrink();
+
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              context.t(LocaleKeys.workspaceForeshadowDistribution),
+              style: typo.uiSemibold.copyWith(color: colors.textSecondary),
+            ),
+            const SizedBox(width: RevericSpacing.sm),
+            Text(
+              context.t(
+                LocaleKeys.workspaceForeshadowDistributionSummary,
+                namedArgs: {
+                  'total': '${items.length}',
+                  'overdue': '$overdue',
+                  'unplaced': '$unplaced',
+                },
+              ),
+              style: typo.uiSmall.copyWith(color: colors.textMuted),
+            ),
+          ],
+        ),
+        const SizedBox(height: RevericSpacing.sm),
+        for (final row in rows) row,
+      ],
+    );
+  }
+
+  Widget _row(
+    BuildContext context,
+    Foreshadowing item,
+    int? setup,
+    int? payoff,
+    bool isOverdue,
+  ) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final setupText = setup == null
+        ? context.t(LocaleKeys.workspaceForeshadowChapterUnset)
+        : context.t(
+            LocaleKeys.workspaceForeshadowChapterSetup,
+            namedArgs: {'number': '$setup'},
+          );
+    final payoffText = payoff == null
+        ? context.t(LocaleKeys.workspaceForeshadowChapterUnset)
+        : context.t(
+            isOverdue
+                ? LocaleKeys.workspaceForeshadowChapterOverdue
+                : LocaleKeys.workspaceForeshadowChapterPayoff,
+            namedArgs: {'number': '$payoff'},
+          );
+    final lineColor = isOverdue ? colors.error : colors.border;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: RevericSpacing.xs),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 148,
+            child: Text(
+              item.title.isEmpty ? '—' : item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: typo.uiSmall.copyWith(color: colors.textSecondary),
+            ),
+          ),
+          Text(
+            setupText,
+            style: typo.uiSmall.copyWith(color: colors.textMuted),
+          ),
+          const SizedBox(width: RevericSpacing.xs),
+          Expanded(
+            child: Container(
+              height: 1,
+              margin: const EdgeInsets.symmetric(horizontal: RevericSpacing.xs),
+              color: lineColor,
+            ),
+          ),
+          const SizedBox(width: RevericSpacing.xs),
+          Text(
+            payoffText,
+            style: typo.uiSmall.copyWith(
+              color: isOverdue ? colors.error : colors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

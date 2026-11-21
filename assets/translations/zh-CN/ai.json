@@ -242,6 +242,8 @@
   "ai.queued_message_sending_next_prefix": "下一轮发送：{text}",
   "ai.queued_message_remove": "取消排队",
   "ai.queued_message_occupied": "已有待发送消息，请先发送或删除",
+  "ai.queued_message_waiting": "AI 正在处理当前回复，这条消息会在本轮结束后自动发送；点「立即发送」可立刻打断当前处理",
+  "ai.queued_message_sending_next_hint": "已安排在下一轮请求发送，正在等待本轮回复收尾",
   "ai.ask_user.notification_title": "AI 需要你的回答",
   "ai.ask_user.notification_body": "若未回复，AI 将在等待满 {minutes} 分钟后自动处理。",
   "ai.ask_user.reminder_title": "AI 仍在等待你的回答",
