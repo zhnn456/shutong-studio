@@ -48,6 +48,7 @@ import 'editor_focus_lines_layer.dart';
 import 'chapter_comment_highlight.dart';
 import 'chapter_comment_popover.dart';
 import 'chapter_comment_session.dart';
+import 'chapter_cast_strip.dart';
 import 'chapter_outline_window.dart';
 import 'chapter_editor_minimap.dart';
 import '../../../shared/models/chapter_comment.dart';
@@ -342,6 +343,11 @@ class ChapterEditor extends HookConsumerWidget {
                 fontSize: editorFontSize,
                 letterSpacing: editorLetterSpacing,
                 lineHeight: editorLineHeight,
+              ),
+              ChapterCastStrip(
+                outlineController: outlineController,
+                contentController: contentController,
+                characters: characterProfiles,
               ),
               ChapterEventsCard(events: chapter.events),
               _ChapterContentField(

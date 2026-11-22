@@ -35,6 +35,7 @@ import '../../../shared/models/content_kind.dart';
 import '../../../shared/models/content_status.dart';
 import '../../../shared/models/novel_workspace.dart';
 import '../../../shared/models/outline.dart';
+import '../../../shared/services/chapter_cast.dart';
 import '../../../shared/services/novel_goal.dart';
 import '../../../shared/theme/theme.dart';
 import '../agent_management/agent_model_settings_page.dart';
@@ -1409,9 +1410,179 @@ class _FlowProgressCard extends StatelessWidget {
                     onSelectionChanged(WorkspaceSelection(section: _nextSection(stage))),
               ),
             ),
+            const SizedBox(height: RevericSpacing.x3l),
+            Container(height: 1, color: colors.borderSubtle),
+            const SizedBox(height: RevericSpacing.x2l),
+            _buildGapChecklist(context, bodyChapters),
           ],
         ),
       ),
+    );
+  }
+
+  /// 「还差这些」：把七站里"存在但没填完"的缺口逐条列出来，每条给一个直达入口。
+  ///
+  /// 七站进度只看"有没有条目"，所以人物卡全空、章纲全缺时进度条照样显示已完成，
+  /// 作者写了几章以后打开面板仍然一片空白。这里按真实字段算缺口，并 reused
+  /// chapter_cast 判断"人名已经在章纲/正文里出现、但首次出场还没落位"的角色。
+  Widget _buildGapChecklist(BuildContext context, List<Chapter> bodyChapters) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final rows = <Widget>[];
+
+    void addRow({
+      required String label,
+      String? actionLabel,
+      VoidCallback? onAction,
+    }) {
+      rows.add(
+        _GapRow(
+          label: label,
+          actionLabel: actionLabel,
+          onAction: onAction,
+        ),
+      );
+    }
+
+    if (novel.description.trim().isEmpty) {
+      addRow(
+        label: context.t(LocaleKeys.flowGapDescription),
+        actionLabel: context.t(LocaleKeys.flowGapActionDescription),
+        onAction: () => onSelectionChanged(
+          const WorkspaceSelection(section: NovelWorkspaceSection.novel_description),
+        ),
+      );
+    }
+
+    if (worldbuildingEntries.isEmpty) {
+      addRow(
+        label: context.t(LocaleKeys.flowGapWorld),
+        actionLabel: context.t(LocaleKeys.flowGapActionWorld),
+        onAction: () => onSelectionChanged(
+          const WorkspaceSelection(section: NovelWorkspaceSection.lore),
+        ),
+      );
+    }
+
+    if (characterProfiles.isEmpty) {
+      addRow(
+        label: context.t(LocaleKeys.flowGapCharacters),
+        actionLabel: context.t(LocaleKeys.flowGapActionCharacters),
+        onAction: () => onSelectionChanged(
+          const WorkspaceSelection(section: NovelWorkspaceSection.characters),
+        ),
+      );
+    } else {
+      final emptyCards = characterProfiles.where((character) =>
+          character.identity.trim().isEmpty &&
+          character.personality.trim().isEmpty &&
+          character.motivation.trim().isEmpty &&
+          character.biography.trim().isEmpty).length;
+      if (emptyCards > 0) {
+        addRow(
+          label: context.t(
+            LocaleKeys.flowGapCharacterEmpty,
+            namedArgs: {'count': '$emptyCards'},
+          ),
+          actionLabel: context.t(LocaleKeys.flowGapActionCharacters),
+          onAction: () => onSelectionChanged(
+            const WorkspaceSelection(section: NovelWorkspaceSection.characters),
+          ),
+        );
+      }
+
+      final unplaced = characterProfiles.where((character) {
+        if (character.firstAppearChapterId != null &&
+            character.firstAppearChapterId!.trim().isNotEmpty) {
+          return false;
+        }
+        final terms = castTermsOf(character);
+        return terms.isNotEmpty &&
+            firstChapterMatchingTerms(terms: terms, chapters: chapters) !=
+                null;
+      }).length;
+      if (unplaced > 0) {
+        addRow(
+          label: context.t(
+            LocaleKeys.flowGapCharacterUnplaced,
+            namedArgs: {'count': '$unplaced'},
+          ),
+          actionLabel: context.t(LocaleKeys.flowGapActionCharacters),
+          onAction: () => onSelectionChanged(
+            const WorkspaceSelection(section: NovelWorkspaceSection.characters),
+          ),
+        );
+      }
+    }
+
+    if (bodyChapters.isEmpty) {
+      addRow(
+        label: context.t(LocaleKeys.flowGapChapters),
+        actionLabel: onPlanChapters == null
+            ? null
+            : context.t(LocaleKeys.flowGapActionPlan),
+        onAction: onPlanChapters,
+      );
+    } else {
+      final missingOutline = bodyChapters
+          .where((chapter) => chapter.outline.trim().isEmpty)
+          .toList();
+      if (missingOutline.isNotEmpty) {
+        addRow(
+          label: context.t(
+            LocaleKeys.flowGapChapterOutline,
+            namedArgs: {'count': '${missingOutline.length}'},
+          ),
+          actionLabel: context.t(LocaleKeys.flowGapActionOutline),
+          onAction: () => onSelectionChanged(
+            WorkspaceSelection(
+              section: NovelWorkspaceSection.chapters,
+              itemId: missingOutline.first.id,
+            ),
+          ),
+        );
+      }
+
+      final unsettled = bodyChapters.where((chapter) {
+        final written =
+            chapter.wordCount > 0 || chapter.content.trim().isNotEmpty;
+        final stat = normalizeChapterStat(chapter.stat);
+        return written &&
+            (stat == chapterStatDraft || stat == chapterStatWriting);
+      }).toList();
+      if (unsettled.isNotEmpty) {
+        addRow(
+          label: context.t(
+            LocaleKeys.flowGapSettle,
+            namedArgs: {'count': '${unsettled.length}'},
+          ),
+          actionLabel: context.t(LocaleKeys.flowGapActionSettle),
+          onAction: () => onSelectionChanged(
+            WorkspaceSelection(
+              section: NovelWorkspaceSection.chapters,
+              itemId: unsettled.first.id,
+            ),
+          ),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.t(LocaleKeys.flowGapTitle),
+          style: typo.uiSemibold.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: RevericSpacing.sm),
+        if (rows.isEmpty)
+          Text(
+            context.t(LocaleKeys.flowGapReady),
+            style: typo.uiSmall.copyWith(color: colors.textMuted),
+          )
+        else
+          ...rows,
+      ],
     );
   }
 
@@ -1649,6 +1820,61 @@ class _StagePill extends StatelessWidget {
               color: current ? colors.textPrimary : accent,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 「还差这些」里的一行：一句缺口说明 + 一个直达动作。
+class _GapRow extends StatelessWidget {
+  const _GapRow({
+    required this.label,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String label;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: RevericSpacing.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: colors.accentWarm,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: RevericSpacing.sm),
+          Expanded(
+            child: Text(
+              label,
+              style: typo.uiSmall.copyWith(color: colors.textSecondary),
+            ),
+          ),
+          if (actionLabel != null && onAction != null)
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: RevericSpacing.sm),
+                minimumSize: const Size(0, 26),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                actionLabel!,
+                style: typo.uiSmall.copyWith(color: colors.accentWarm),
+              ),
+            ),
         ],
       ),
     );

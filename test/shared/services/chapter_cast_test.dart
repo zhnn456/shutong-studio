@@ -214,4 +214,39 @@ void main() {
       expect(counts['c2'], 2);
     });
   });
+  group('scanTextCast（编辑器里的未落库文本）', () {
+    test('章纲单独命中也能列出人物', () {
+      final hits = scanTextCast(
+        outline: '沈砚推门，柳七在灯下抄书',
+        content: '',
+        characters: [
+          _character(id: 'c1', name: '沈砚'),
+          _character(id: 'c2', name: '柳七'),
+          _character(id: 'c3', name: '未登场的人'),
+        ],
+      );
+      expect(hits.map((hit) => hit.characterName), ['沈砚', '柳七']);
+      expect(hits.every((hit) => !hit.appearsInBody), isTrue);
+    });
+
+    test('卷节点不参与按词扫章', () {
+      final now = DateTime(2026, 11, 22);
+      final volume = Chapter(
+        id: 'v1',
+        type: nodeTypeVolume,
+        siblingOrder: 1,
+        outline: '沈砚在这一卷的卷首语里',
+        content: '',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: notDeletedSentinel,
+      );
+      final chapter = _chapter(id: 'ch1', chapterNum: 1, content: '沈砚出场。');
+      final first = firstChapterMatchingTerms(
+        terms: ['沈砚'],
+        chapters: [volume, chapter],
+      );
+      expect(first?.id, 'ch1');
+    });
+  });
 }

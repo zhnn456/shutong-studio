@@ -5864,6 +5864,20 @@ abstract final class LocaleKeys {
       'workspace.character_locate_apply';
   static const workspaceCharacterLocateNone =
       'workspace.character_locate_none';
+  static const workspaceChapterCastTitle = 'workspace.chapter_cast_title';
+  static const workspaceChapterCastBody = 'workspace.chapter_cast_body';
+  static const workspaceChapterCastOutline = 'workspace.chapter_cast_outline';
+  static const workspaceChapterCastOutlineOnly =
+      'workspace.chapter_cast_outline_only';
+  static const workspaceChapterCastEmpty = 'workspace.chapter_cast_empty';
+  static const workspaceChapterCastEmptyNoOutline =
+      'workspace.chapter_cast_empty_no_outline';
+  static const workspaceChapterCastEmptyHint =
+      'workspace.chapter_cast_empty_hint';
+  static const workspaceChapterCastNoCharacters =
+      'workspace.chapter_cast_no_characters';
+  static const workspaceChapterCastNoCharactersDescription =
+      'workspace.chapter_cast_no_characters_description';
   static const workspaceForeshadowOpenPosition =
       'workspace.foreshadow_open_position';
   static const workspaceForeshadowSetupPosition =
@@ -6109,6 +6123,22 @@ abstract final class LocaleKeys {
   static const workspaceOverviewPlanFirst = 'workspace.overview_plan_first';
   // ── flow：七站写作进度与下一步 ───────────────────────
   static const flowTitle = 'flow.title';
+  static const flowGapTitle = 'flow.gap_title';
+  static const flowGapReady = 'flow.gap_ready';
+  static const flowGapDescription = 'flow.gap_description';
+  static const flowGapWorld = 'flow.gap_world';
+  static const flowGapCharacters = 'flow.gap_characters';
+  static const flowGapCharacterEmpty = 'flow.gap_character_empty';
+  static const flowGapCharacterUnplaced = 'flow.gap_character_unplaced';
+  static const flowGapChapters = 'flow.gap_chapters';
+  static const flowGapChapterOutline = 'flow.gap_chapter_outline';
+  static const flowGapSettle = 'flow.gap_settle';
+  static const flowGapActionDescription = 'flow.gap_action_description';
+  static const flowGapActionWorld = 'flow.gap_action_world';
+  static const flowGapActionCharacters = 'flow.gap_action_characters';
+  static const flowGapActionPlan = 'flow.gap_action_plan';
+  static const flowGapActionOutline = 'flow.gap_action_outline';
+  static const flowGapActionSettle = 'flow.gap_action_settle';
   static const flowStageIdea = 'flow.stage_idea';
   static const flowStageWorld = 'flow.stage_world';
   static const flowStageCharacters = 'flow.stage_characters';

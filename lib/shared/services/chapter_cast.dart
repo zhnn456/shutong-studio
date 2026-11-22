@@ -96,6 +96,17 @@ int countTermMentions(String text, List<String> terms) {
 List<ChapterCastHit> scanChapterCast({
   required Chapter chapter,
   required List<CharacterProfile> characters,
+}) => scanTextCast(
+  outline: chapter.outline,
+  content: chapter.content,
+  characters: characters,
+);
+
+/// 直接按文本扫描（编辑器里章纲/正文还在输入、尚未落库时用这一层）。
+List<ChapterCastHit> scanTextCast({
+  required String outline,
+  required String content,
+  required List<CharacterProfile> characters,
 }) {
   final hits = <ChapterCastHit>[];
   for (final character in characters) {
@@ -103,15 +114,14 @@ List<ChapterCastHit> scanChapterCast({
     if (terms.isEmpty) {
       continue;
     }
-    final outlineMentions = countTermMentions(chapter.outline, terms);
-    final contentMentions = countTermMentions(chapter.content, terms);
+    final outlineMentions = countTermMentions(outline, terms);
+    final contentMentions = countTermMentions(content, terms);
     if (outlineMentions == 0 && contentMentions == 0) {
       continue;
     }
     final matched = <String>[
       for (final term in terms)
-        if (chapter.content.contains(term) || chapter.outline.contains(term))
-          term,
+        if (content.contains(term) || outline.contains(term)) term,
     ];
     hits.add(
       ChapterCastHit(
