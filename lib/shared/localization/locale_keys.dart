@@ -6124,6 +6124,14 @@ abstract final class LocaleKeys {
   // ── 概览页素材区（E 区：默认收成一行）───────────────
   static const workspaceMaterialsLabel = 'workspace.materials_label';
   static const workspaceMaterialsSnippets = 'workspace.materials_snippets';
+  // ── 概览页内容库（D 区：四张卡带真实计数）───────────
+  static const workspaceLibrarySection = 'workspace.library_section';
+  static const workspaceEntryChapters = 'workspace.entry_chapters';
+  static const workspaceEntryItems = 'workspace.entry_items';
+  static const workspaceEntryChars = 'workspace.entry_chars';
+  static const workspaceEntryEmpty = 'workspace.entry_empty';
+  static const workspaceEntryNoChapters = 'workspace.entry_no_chapters';
+  static const workspaceEntryUntitled = 'workspace.entry_untitled';
   // ── flow：七站写作进度与下一步 ───────────────────────
   static const flowTitle = 'flow.title';
   static const flowGapTitle = 'flow.gap_title';

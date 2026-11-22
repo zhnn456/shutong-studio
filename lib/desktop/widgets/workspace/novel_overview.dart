@@ -134,6 +134,16 @@ class NovelOverview extends StatelessWidget {
             onPlanChapters: onPlanChapters,
           ),
           const SizedBox(height: RevericSpacing.x4l),
+          // 顺序按方案：C 进度 → D 内容库 → E 素材区 → F 工具行。
+          // 四张入口卡先给"东西在哪"，简介与灵感是备着用的，放在它后面。
+          _WritingEntries(
+            onSelectionChanged: onSelectionChanged,
+            chapters: chapters,
+            characterProfiles: characterProfiles,
+            worldbuildingEntries: worldbuildingEntries,
+            outlineEntries: outlineEntries,
+          ),
+          const SizedBox(height: RevericSpacing.x4l),
           _SecondRow(
             novel: novel,
             chapters: chapters,
@@ -147,8 +157,6 @@ class NovelOverview extends StatelessWidget {
             coverThumbnailKey: coverThumbnailKey,
             coverMenuTrigger: coverMenuTrigger,
           ),
-          const SizedBox(height: RevericSpacing.x4l),
-          _WritingEntries(onSelectionChanged: onSelectionChanged),
           const SizedBox(height: RevericSpacing.x4l),
           // 分层改造（P0）：低频动作统一收在页尾一行（L3 文字链），
           // 包括改目标、文风、按目标排章与一键起稿。
@@ -1131,19 +1139,55 @@ class _SnippetEmptyState extends StatelessWidget {
 // Writing entries: 4 large cards
 // =============================================================================
 class _WritingEntries extends StatelessWidget {
-  const _WritingEntries({required this.onSelectionChanged});
+  const _WritingEntries({
+    required this.onSelectionChanged,
+    required this.chapters,
+    required this.characterProfiles,
+    required this.worldbuildingEntries,
+    required this.outlineEntries,
+  });
 
   final ValueSetter<WorkspaceSelection> onSelectionChanged;
+  final List<Chapter> chapters;
+  final List<CharacterProfile> characterProfiles;
+  final List<Document> worldbuildingEntries;
+  final List<OutlineDraft> outlineEntries;
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = RevericTheme.colorsOf(context);
-    final typo = RevericTheme.typographyOf(context);
-    final entries = <_EntrySpec>[
+  /// 卡片上的一句话：真实数量 + 最近一条。
+  /// 之前卡片只有名字（"写作主线""世界观手册"），作者看不出里面有没有东西、
+  /// 有多少、上次动过哪一份，于是每次都得点进去看。
+  List<_EntrySpec> _entries(BuildContext context, RevericColors colors) {
+    final body = chapters.where((chapter) => !chapter.isVolume).toList();
+    final written = body
+        .where((chapter) =>
+            chapter.wordCount > 0 || chapter.content.trim().isNotEmpty)
+        .toList();
+    final lastChapter = written.isEmpty ? null : written.last;
+    final emptyCards = characterProfiles.where((character) =>
+        character.identity.trim().isEmpty &&
+        character.personality.trim().isEmpty &&
+        character.motivation.trim().isEmpty &&
+        character.biography.trim().isEmpty).length;
+
+    String recentTitle(String? title) =>
+        (title == null || title.trim().isEmpty)
+            ? context.t(LocaleKeys.workspaceEntryUntitled)
+            : title.trim();
+
+    return [
       _EntrySpec(
         icon: RevericIcons.edit_note_outlined,
         title: context.t(LocaleKeys.workspaceWritingMain),
         hint: context.t(LocaleKeys.workspaceWritingMainHint),
+        subtitle: body.isEmpty
+            ? context.t(LocaleKeys.workspaceEntryNoChapters)
+            : context.t(
+                LocaleKeys.workspaceEntryChapters,
+                namedArgs: {
+                  'count': '${body.length}',
+                  'title': recentTitle(lastChapter?.title),
+                },
+              ),
         tint: colors.accentAmber,
         section: NovelWorkspaceSection.chapters,
       ),
@@ -1151,6 +1195,15 @@ class _WritingEntries extends StatelessWidget {
         icon: RevericIcons.public_outlined,
         title: context.t(LocaleKeys.workspaceLore),
         hint: context.t(LocaleKeys.workspaceLoreHint),
+        subtitle: worldbuildingEntries.isEmpty
+            ? context.t(LocaleKeys.workspaceEntryEmpty)
+            : context.t(
+                LocaleKeys.workspaceEntryItems,
+                namedArgs: {
+                  'count': '${worldbuildingEntries.length}',
+                  'title': recentTitle(worldbuildingEntries.last.title),
+                },
+              ),
         tint: colors.accent,
         section: NovelWorkspaceSection.lore,
       ),
@@ -1158,6 +1211,15 @@ class _WritingEntries extends StatelessWidget {
         icon: RevericIcons.auto_stories_outlined,
         title: context.t(LocaleKeys.workspaceWritingOutlinePlot),
         hint: context.t(LocaleKeys.workspaceWritingOutlinePlotHint),
+        subtitle: outlineEntries.isEmpty
+            ? context.t(LocaleKeys.workspaceEntryEmpty)
+            : context.t(
+                LocaleKeys.workspaceEntryItems,
+                namedArgs: {
+                  'count': '${outlineEntries.length}',
+                  'title': recentTitle(outlineEntries.last.title),
+                },
+              ),
         tint: colors.accentWarm,
         section: NovelWorkspaceSection.outlines,
       ),
@@ -1165,16 +1227,32 @@ class _WritingEntries extends StatelessWidget {
         icon: RevericIcons.people_alt_outlined,
         title: context.t(LocaleKeys.workspaceWritingCharacters),
         hint: context.t(LocaleKeys.workspaceWritingCharactersHint),
+        subtitle: characterProfiles.isEmpty
+            ? context.t(LocaleKeys.workspaceEntryEmpty)
+            : context.t(
+                LocaleKeys.workspaceEntryChars,
+                namedArgs: {
+                  'count': '${characterProfiles.length}',
+                  'empty': '$emptyCards',
+                },
+              ),
         tint: colors.accent,
         section: NovelWorkspaceSection.characters,
       ),
     ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final entries = _entries(context, colors);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          context.t(LocaleKeys.workspaceWritingEntrances),
+          context.t(LocaleKeys.workspaceLibrarySection),
           style: typo.heading2.copyWith(color: colors.textPrimary),
         ),
         const SizedBox(height: RevericSpacing.lg),
@@ -1255,6 +1333,7 @@ class _EntrySpec {
     required this.hint,
     required this.tint,
     required this.section,
+    this.subtitle,
   });
 
   final String icon;
@@ -1262,6 +1341,9 @@ class _EntrySpec {
   final String hint;
   final Color tint;
   final NovelWorkspaceSection section;
+
+  /// 卡上的一句话：真实数量 + 最近一条（D 区要求"卡内不放按钮，但要看得出里面有什么"）。
+  final String? subtitle;
 }
 
 class _EntryCard extends StatelessWidget {
@@ -1310,6 +1392,15 @@ class _EntryCard extends StatelessWidget {
               spec.title,
               style: typo.uiSemibold.copyWith(color: colors.textPrimary),
             ),
+            if (spec.subtitle != null) ...[
+              const SizedBox(height: RevericSpacing.xxs),
+              Text(
+                spec.subtitle!,
+                style: typo.uiSmall.copyWith(color: colors.textSecondary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
             const SizedBox(height: RevericSpacing.xs),
             Text(
               spec.hint,
