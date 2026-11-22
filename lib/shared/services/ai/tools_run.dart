@@ -628,6 +628,85 @@ mixin _AiToolManagerRunMixin
     }
   }
 
+  Future<Map<String, dynamic>> _runDebugLogs(
+    Map<String, dynamic> options,
+    DateTime startedAt,
+  ) async {
+    final continuation = options['continuation'];
+    if (continuation != null && options.length != 1) {
+      throw const FormatException(
+        'continuation cannot be combined with offset or limit',
+      );
+    }
+    final offset = options.containsKey('offset')
+        ? _parseIntArgument(options['offset'])
+        : null;
+    final limit = options.containsKey('limit')
+        ? _parseIntArgument(options['limit'])
+        : _debugLogDefaultLimit;
+    final keyword = options['keyword'];
+    final pattern = options['pattern'];
+    const supportedOptions = {
+      'offset',
+      'limit',
+      'continuation',
+      'keyword',
+      'pattern',
+      'ignore_case',
+      'literal',
+    };
+    if (options.keys.any((key) => !supportedOptions.contains(key)) ||
+        (options.containsKey('offset') && (offset == null || offset < 0)) ||
+        limit == null ||
+        limit < 1 ||
+        limit > _debugLogMaxLimit ||
+        (continuation != null && continuation is! String) ||
+        (keyword != null && keyword is! String)) {
+      throw const FormatException(
+        'Use a nonnegative offset, limit 1..$_debugLogMaxLimit, '
+        'a string keyword, or continuation alone.',
+      );
+    }
+    if (pattern != null && (pattern is! String || pattern.isEmpty)) {
+      throw const FormatException('pattern must be a nonempty string.');
+    }
+    final path = LogManager.instance.logFilePath;
+    if (path == null) {
+      throw const ToolOperationException(
+        'unavailable',
+        'The application log has not been initialized.',
+      );
+    }
+
+    final page = await compute(_readDebugLogPage, (
+      path: path,
+      offset: offset,
+      limit: limit,
+      continuation: continuation as String?,
+      keyword: keyword as String? ?? '',
+      pattern: pattern as String?,
+      grepOptions: <String, dynamic>{
+        'ignore_case': _parseBoolArgument(options['ignore_case']),
+        'literal': _parseBoolArgument(options['literal']),
+      },
+    ));
+    return {
+      'ok': true,
+      'command': 'debug log',
+      'file': p.basename(path),
+      'output': page.output,
+      'has_more': page.hasMore,
+      'truncated': page.truncated,
+      'total_lines': page.totalLines,
+      'start_line': page.startLine,
+      'end_line': page.endLine,
+      if (page.nextOffset != null) 'next_offset': page.nextOffset,
+      if (page.continuation != null) 'continuation': page.continuation,
+      'exit_code': 0,
+      'duration_ms': DateTime.now().difference(startedAt).inMilliseconds,
+    };
+  }
+
   String _runContextHelp(String? command) {
     if (mcpRunHandler != null &&
         mcpAllowed?.call() == true &&
