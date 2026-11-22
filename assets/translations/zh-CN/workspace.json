@@ -451,6 +451,8 @@
   "flow.gap_action_plan": "按目标排章",
   "flow.gap_action_outline": "去写章纲",
   "flow.gap_action_settle": "去沉淀",
+  "flow.kickoff_action": "一键起稿（人物 + 前 10 章骨架）",
+  "flow.kickoff_prompt": "这本书还在起稿阶段：目标共 {chapters} 章、每章约 {per} 字。请依据本书简介、当前世界观与全书目标，用 Create 工具一次性完成两件事：\n1）建 3 张核心人物卡：主角、主要对手、关键配角各一张，写清身份、动机、性格、弧光与别名（aliases 尽量补全，供后续正文反查）；\n2）为 chapters 创建前 {batch} 章：标题要具体，每章 outline 按六字段写（本章目的 / 出场人物及状态 / 冲突与阻力 / 关键转折 / 章末钩子 / 信息不对称），接在现有章节之后。\n不要写正文。完成后用三句话汇报：建了哪 3 个人物、建了哪几章、下一章该写什么。",
   "flow.stage_idea": "立项",
   "flow.stage_world": "世界观",
   "flow.stage_characters": "人物",

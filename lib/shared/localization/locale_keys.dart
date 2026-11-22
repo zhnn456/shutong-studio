@@ -6139,6 +6139,8 @@ abstract final class LocaleKeys {
   static const flowGapActionPlan = 'flow.gap_action_plan';
   static const flowGapActionOutline = 'flow.gap_action_outline';
   static const flowGapActionSettle = 'flow.gap_action_settle';
+  static const flowKickoffAction = 'flow.kickoff_action';
+  static const flowKickoffPrompt = 'flow.kickoff_prompt';
   static const flowStageIdea = 'flow.stage_idea';
   static const flowStageWorld = 'flow.stage_world';
   static const flowStageCharacters = 'flow.stage_characters';

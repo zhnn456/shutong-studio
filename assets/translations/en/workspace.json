@@ -451,6 +451,8 @@
   "flow.gap_action_plan": "Plan chapters",
   "flow.gap_action_outline": "Write outlines",
   "flow.gap_action_settle": "Settle",
+  "flow.kickoff_action": "Kick off (characters + first 10 chapters)",
+  "flow.kickoff_prompt": "This book is still at the kickoff stage: {chapters} chapters planned, about {per} words each. Using the Create tool, do two things in one pass based on the synopsis, current world settings and the book goal:\n1) Create 3 core character cards: protagonist, main antagonist, key supporting character - with identity, motivation, personality, arc and aliases (fill aliases so the draft can match them later);\n2) Create the first {batch} chapters: concrete titles, each outline in six fields (purpose / cast and state / conflict / turning point / chapter-end hook / information asymmetry), appended after existing chapters.\nDo not write prose. When done, report in three sentences: which 3 characters, which chapters, and what the next chapter should do.",
   "flow.stage_idea": "Concept",
   "flow.stage_world": "World",
   "flow.stage_characters": "Cast",

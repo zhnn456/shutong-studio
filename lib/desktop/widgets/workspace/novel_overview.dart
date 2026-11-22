@@ -68,6 +68,7 @@ class NovelOverview extends StatelessWidget {
     this.onEditGoal,
     this.onPlanChapters,
     this.onEditStyle,
+    this.onKickoff,
   });
 
   final Novel novel;
@@ -95,6 +96,9 @@ class NovelOverview extends StatelessWidget {
 
   /// 文风样文入口（贴自己的文字，让 AI 照着腔调写）。
   final VoidCallback? onEditStyle;
+
+  /// 「一键起稿」：把简介 + 目标交给 AI，一次建人物卡与前 10 章骨架。
+  final VoidCallback? onKickoff;
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +135,20 @@ class NovelOverview extends StatelessWidget {
             onEditGoal: onEditGoal,
             onPlanChapters: onPlanChapters,
             onEditStyle: onEditStyle,
+            onKickoff: novel.description.trim().isEmpty
+                ? null
+                : () => onContinueWriting(
+                      context.t(
+                        LocaleKeys.flowKickoffPrompt,
+                        namedArgs: {
+                          'chapters':
+                              '${goal?.chapters ?? defaultTargetChapters}',
+                          'per':
+                              '${goal?.wordsPerChapter ?? defaultWordsPerChapter}',
+                          'batch': '10',
+                        },
+                      ),
+                    ),
           ),
           const SizedBox(height: RevericSpacing.x4l),
           _SecondRow(
@@ -1282,6 +1300,7 @@ class _FlowProgressCard extends StatelessWidget {
     required this.onEditGoal,
     required this.onPlanChapters,
     required this.onEditStyle,
+    this.onKickoff,
   });
 
   final Novel novel;
@@ -1295,6 +1314,7 @@ class _FlowProgressCard extends StatelessWidget {
   final VoidCallback? onEditGoal;
   final VoidCallback? onPlanChapters;
   final VoidCallback? onEditStyle;
+  final VoidCallback? onKickoff;
 
   @override
   Widget build(BuildContext context) {
