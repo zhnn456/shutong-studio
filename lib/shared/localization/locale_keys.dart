@@ -6124,6 +6124,7 @@ abstract final class LocaleKeys {
   // ── flow：七站写作进度与下一步 ───────────────────────
   static const flowTitle = 'flow.title';
   static const flowGapTitle = 'flow.gap_title';
+  static const flowGapCollapsed = 'flow.gap_collapsed';
   static const flowGapReady = 'flow.gap_ready';
   static const flowGapDescription = 'flow.gap_description';
   static const flowGapWorld = 'flow.gap_world';
@@ -6190,6 +6191,12 @@ abstract final class LocaleKeys {
   static const flowStyleDialogBody = 'flow.style_dialog_body';
   static const flowStyleHint = 'flow.style_hint';
   static const flowPlanChaptersPrompt = 'flow.plan_chapters_prompt';
+  // ── flow.tools：页尾工具行（低频动作的固定归属地）─────────
+  static const flowToolsLabel = 'flow.tools_label';
+  static const flowToolsGoal = 'flow.tools_goal';
+  static const flowToolsStyle = 'flow.tools_style';
+  static const flowToolsPlan = 'flow.tools_plan';
+  static const flowToolsKickoff = 'flow.tools_kickoff';
   static const workspacePendingChangesTitle = 'workspace.pending_changes_title';
   static const workspacePreview = 'workspace.preview';
   static const workspacePreviewDescription = 'workspace.preview_description';

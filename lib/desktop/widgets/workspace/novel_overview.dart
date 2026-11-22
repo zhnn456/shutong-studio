@@ -132,25 +132,7 @@ class NovelOverview extends StatelessWidget {
             foreshadowings: foreshadowings,
             goal: goal,
             onSelectionChanged: onSelectionChanged,
-            onEditGoal: onEditGoal,
             onPlanChapters: onPlanChapters,
-            onEditStyle: onEditStyle,
-            onKickoff: novel.description.trim().isEmpty
-                ? null
-                : () => onContinueWriting(
-                      context.t(
-                        LocaleKeys.flowKickoffPrompt,
-                        namedArgs: {
-                          'chapters':
-                              '${goal?.chapters ?? defaultTargetChapters}',
-                          'per':
-                              '${goal?.wordsPerChapter ?? defaultWordsPerChapter}',
-                          'batch': '10',
-                          'existing': '${chapters.where((chapter) => !chapter.isVolume).length}',
-                          'cards': '${characterProfiles.length}',
-                        },
-                      ),
-                    ),
           ),
           const SizedBox(height: RevericSpacing.x4l),
           _SecondRow(
@@ -168,6 +150,38 @@ class NovelOverview extends StatelessWidget {
           ),
           const SizedBox(height: RevericSpacing.x4l),
           _WritingEntries(onSelectionChanged: onSelectionChanged),
+          const SizedBox(height: RevericSpacing.x4l),
+          // 分层改造（P0）：低频动作统一收在页尾一行（L3 文字链），
+          // 包括改目标、文风、按目标排章与一键起稿。
+          _ToolRow(
+            goal: goal,
+            chaptersWithOutline: chapters
+                .where(
+                  (chapter) =>
+                      !chapter.isVolume && chapter.outline.trim().isNotEmpty,
+                )
+                .length,
+            onEditGoal: onEditGoal,
+            onEditStyle: onEditStyle,
+            onPlanChapters: onPlanChapters,
+            onKickoff: novel.description.trim().isEmpty
+                ? null
+                : () => onContinueWriting(
+                      context.t(
+                        LocaleKeys.flowKickoffPrompt,
+                        namedArgs: {
+                          'chapters':
+                              '${goal?.chapters ?? defaultTargetChapters}',
+                          'per':
+                              '${goal?.wordsPerChapter ?? defaultWordsPerChapter}',
+                          'batch': '10',
+                          'existing':
+                              '${chapters.where((chapter) => !chapter.isVolume).length}',
+                          'cards': '${characterProfiles.length}',
+                        },
+                      ),
+                    ),
+          ),
         ],
       ),
     );
@@ -1299,10 +1313,7 @@ class _FlowProgressCard extends StatelessWidget {
     required this.foreshadowings,
     required this.goal,
     required this.onSelectionChanged,
-    required this.onEditGoal,
-    required this.onPlanChapters,
-    required this.onEditStyle,
-    this.onKickoff,
+    this.onPlanChapters,
   });
 
   final Novel novel;
@@ -1313,10 +1324,10 @@ class _FlowProgressCard extends StatelessWidget {
   final List<Foreshadowing> foreshadowings;
   final NovelGoal? goal;
   final ValueSetter<WorkspaceSelection> onSelectionChanged;
-  final VoidCallback? onEditGoal;
+
+  /// 「一章都没排」这条缺口需要一个"按目标排章"的动作，仍留在进度卡里；
+  /// 其余三个目标类动作已收到页尾工具行。
   final VoidCallback? onPlanChapters;
-  final VoidCallback? onEditStyle;
-  final VoidCallback? onKickoff;
 
   @override
   Widget build(BuildContext context) {
@@ -1389,9 +1400,6 @@ class _FlowProgressCard extends StatelessWidget {
                         !chapter.isVolume && chapter.outline.trim().isNotEmpty,
                   )
                   .length,
-              onEditGoal: onEditGoal,
-              onPlanChapters: onPlanChapters,
-              onEditStyle: onEditStyle,
             ),
             const SizedBox(height: RevericSpacing.x2l),
             Wrap(
@@ -1421,28 +1429,20 @@ class _FlowProgressCard extends StatelessWidget {
                   : _nextDesc(context, stage),
               style: typo.body.copyWith(color: colors.textSecondary),
             ),
-            const SizedBox(height: RevericSpacing.x3l),
+            const SizedBox(height: RevericSpacing.md),
+            // 分层改造（P0）：整页只允许一个黑底主按钮，它属于「继续写作」hero。
+            // 这一站的动作降级为文字链（L3：动词 + 箭头），避免一屏两个实心按钮
+            // 让作者不知道先点哪个。
             Align(
               alignment: Alignment.centerLeft,
-              child: RevericButton.primary(
-                label: stage == -1
-                    ? context.t(LocaleKeys.flowActionPublish)
-                    : _nextActionLabel(context, stage),
+              child: RevericButton.text(
+                label:
+                    '${stage == -1 ? context.t(LocaleKeys.flowActionPublish) : _nextActionLabel(context, stage)} ›',
+                size: RevericButtonSize.compact,
                 onPressed: () =>
                     onSelectionChanged(WorkspaceSelection(section: _nextSection(stage))),
               ),
             ),
-            if (onKickoff != null) ...[
-              const SizedBox(height: RevericSpacing.sm),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: RevericButton.secondary(
-                  label: context.t(LocaleKeys.flowKickoffAction),
-                  size: RevericButtonSize.compact,
-                  onPressed: onKickoff,
-                ),
-              ),
-            ],
             const SizedBox(height: RevericSpacing.x3l),
             Container(height: 1, color: colors.borderSubtle),
             const SizedBox(height: RevericSpacing.x2l),
@@ -1459,8 +1459,6 @@ class _FlowProgressCard extends StatelessWidget {
   /// 作者写了几章以后打开面板仍然一片空白。这里按真实字段算缺口，并 reused
   /// chapter_cast 判断"人名已经在章纲/正文里出现、但首次出场还没落位"的角色。
   Widget _buildGapChecklist(BuildContext context, List<Chapter> bodyChapters) {
-    final colors = RevericTheme.colorsOf(context);
-    final typo = RevericTheme.typographyOf(context);
     final rows = <Widget>[];
 
     void addRow({
@@ -1600,23 +1598,9 @@ class _FlowProgressCard extends StatelessWidget {
       }
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.t(LocaleKeys.flowGapTitle),
-          style: typo.uiSemibold.copyWith(color: colors.textSecondary),
-        ),
-        const SizedBox(height: RevericSpacing.sm),
-        if (rows.isEmpty)
-          Text(
-            context.t(LocaleKeys.flowGapReady),
-            style: typo.uiSmall.copyWith(color: colors.textMuted),
-          )
-        else
-          ...rows,
-      ],
-    );
+    // 分层改造（P0）：缺口清单默认收起成一行摘要，点开才逐条展开。
+    // 之前 5–7 条缺口各带一个按钮常驻展开，一屏十几处可点区域，把主行动淹没了。
+    return _GapChecklist(rows: rows);
   }
 
   /// 返回当前应该做的站序号（0–6）；-1 表示七站都完成。
@@ -1723,24 +1707,107 @@ class _FlowProgressCard extends StatelessWidget {
   }
 }
 
-/// 全书目标行：目标章数 / 每章字数 / 已排到第几章，外加「按目标排章」入口。
+/// 页尾工具行：低频动作的固定归属地。
 ///
-/// 没有这一行时，"要写多少章、每章多少字"只存在于作者脑子里，AI 无从控制节奏，
-/// 进度卡也就只能说"该写下一章"，说不出"还差 114 章"。
-class _GoalRow extends StatelessWidget {
-  const _GoalRow({
+/// 分层规则里"每屏只有一个黑底主按钮"，所以改目标、文风、按目标排章、
+/// 一键起稿这些"偶尔才用一次"的动作全部降为 L3 文字链，并集中到最后一行，
+/// 首屏不再被它们切碎。
+class _ToolRow extends StatelessWidget {
+  const _ToolRow({
     required this.goal,
     required this.chaptersWithOutline,
     required this.onEditGoal,
-    required this.onPlanChapters,
     required this.onEditStyle,
+    required this.onPlanChapters,
+    required this.onKickoff,
   });
 
   final NovelGoal? goal;
   final int chaptersWithOutline;
   final VoidCallback? onEditGoal;
-  final VoidCallback? onPlanChapters;
   final VoidCallback? onEditStyle;
+  final VoidCallback? onPlanChapters;
+  final VoidCallback? onKickoff;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final current = goal;
+    final canPlan = current != null &&
+        current.isUsable &&
+        chaptersWithOutline < current.chapters &&
+        onPlanChapters != null;
+
+    final links = <Widget>[
+      if (onEditGoal != null)
+        RevericButton.text(
+          label: context.t(LocaleKeys.flowToolsGoal),
+          size: RevericButtonSize.compact,
+          onPressed: onEditGoal,
+        ),
+      if (onEditStyle != null)
+        RevericButton.text(
+          label: context.t(LocaleKeys.flowToolsStyle),
+          size: RevericButtonSize.compact,
+          onPressed: onEditStyle,
+        ),
+      if (canPlan)
+        RevericButton.text(
+          label: context.t(
+            LocaleKeys.flowToolsPlan,
+            namedArgs: {'chapters': '${current.chapters}'},
+          ),
+          size: RevericButtonSize.compact,
+          onPressed: onPlanChapters,
+        ),
+      if (onKickoff != null)
+        RevericButton.text(
+          label: context.t(LocaleKeys.flowToolsKickoff),
+          size: RevericButtonSize.compact,
+          onPressed: onKickoff,
+        ),
+    ];
+
+    if (links.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.only(top: RevericSpacing.md),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: colors.borderSubtle)),
+      ),
+      child: Wrap(
+        spacing: RevericSpacing.lg,
+        runSpacing: RevericSpacing.xs,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            context.t(LocaleKeys.flowToolsLabel),
+            style: typo.uiSmall.copyWith(color: colors.textMuted),
+          ),
+          ...links,
+        ],
+      ),
+    );
+  }
+}
+
+/// 全书目标行：目标章数 / 每章字数 / 已排到第几章。
+///
+/// 没有这一行时，"要写多少章、每章多少字"只存在于作者脑子里，AI 无从控制节奏，
+/// 进度卡也就只能说"该写下一章"，说不出"还差 114 章"。
+/// 分层改造（P0）后这一行只**读**目标，不再挂三个动作按钮——改目标、文风、
+/// 排章统一在页尾工具行，让进度卡只剩"读到哪了"这一件事。
+class _GoalRow extends StatelessWidget {
+  const _GoalRow({
+    required this.goal,
+    required this.chaptersWithOutline,
+  });
+
+  final NovelGoal? goal;
+  final int chaptersWithOutline;
 
   @override
   Widget build(BuildContext context) {
@@ -1760,6 +1827,8 @@ class _GoalRow extends StatelessWidget {
             },
           );
 
+    // 分层改造（P0）：目标只在这里"读一次"，改目标/文风/排章三个动作
+    // 统一收在页尾工具行，不在进度卡里和主行动抢注意力。
     return Row(
       children: [
         RevericIcon(RevericIcons.outlined_flag, size: 14, color: colors.textMuted),
@@ -1771,29 +1840,6 @@ class _GoalRow extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (onEditStyle != null)
-          RevericButton.text(
-            label: context.t(LocaleKeys.flowStyle),
-            size: RevericButtonSize.compact,
-            onPressed: onEditStyle,
-          ),
-        if (onEditGoal != null)
-          RevericButton.text(
-            label: context.t(
-              current == null ? LocaleKeys.flowGoalSet : LocaleKeys.flowGoalEdit,
-            ),
-            size: RevericButtonSize.compact,
-            onPressed: onEditGoal,
-          ),
-        if (current != null &&
-            current.isUsable &&
-            chaptersWithOutline < current.chapters &&
-            onPlanChapters != null)
-          RevericButton.text(
-            label: context.t(LocaleKeys.flowPlanChapters),
-            size: RevericButtonSize.compact,
-            onPressed: onPlanChapters,
-          ),
       ],
     );
   }
@@ -1855,6 +1901,92 @@ class _StagePill extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 缺口清单的折叠外壳：收起时只有一行「还差 N 项 ›」，展开才逐条列出。
+///
+/// 收起状态**不做持久化**——每次进概览页都从收起开始，首屏永远清爽；
+/// 展开是为了"我现在就想知道差哪几项"，不是为了常驻。
+class _GapChecklist extends StatefulWidget {
+  const _GapChecklist({required this.rows});
+
+  final List<Widget> rows;
+
+  @override
+  State<_GapChecklist> createState() => _GapChecklistState();
+}
+
+class _GapChecklistState extends State<_GapChecklist> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final count = widget.rows.length;
+
+    if (count == 0) {
+      return Row(
+        children: [
+          RevericIcon(
+            RevericIcons.check_circle,
+            size: 14,
+            color: colors.additionBorder,
+          ),
+          const SizedBox(width: RevericSpacing.sm),
+          Expanded(
+            child: Text(
+              context.t(LocaleKeys.flowGapReady),
+              style: typo.uiSmall.copyWith(color: colors.textMuted),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(RevericRadius.small),
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: RevericSpacing.xs),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RevericIcon(
+                  RevericIcons.error_outline,
+                  size: 14,
+                  color: colors.accentWarm,
+                ),
+                const SizedBox(width: RevericSpacing.sm),
+                Text(
+                  context.t(
+                    LocaleKeys.flowGapCollapsed,
+                    namedArgs: {'count': '$count'},
+                  ),
+                  style: typo.uiSmall.copyWith(color: colors.textSecondary),
+                ),
+                const SizedBox(width: RevericSpacing.xs),
+                RevericIcon(
+                  _expanded
+                      ? RevericIcons.expand_less_rounded
+                      : RevericIcons.chevron_right,
+                  size: 16,
+                  color: colors.textMuted,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_expanded) ...[
+          const SizedBox(height: RevericSpacing.xs),
+          ...widget.rows,
+        ],
+      ],
     );
   }
 }
