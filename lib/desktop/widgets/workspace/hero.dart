@@ -28,6 +28,8 @@ class ContinueWritingHero extends StatelessWidget {
     required this.onSelectionChanged,
     required this.onContinueWriting,
     required this.hasAnyFoundation,
+    this.onKickoff,
+    this.kickoffLabel,
   });
 
   final List<Chapter> chapters;
@@ -38,6 +40,11 @@ class ContinueWritingHero extends StatelessWidget {
   /// 是否已有任何创作基础（世界观 / 角色 / 大纲至少一项非空）。
   /// 无章节且无任何基础时进入引导态，主按钮引导用户先定世界观。
   final bool hasAnyFoundation;
+
+  /// 「一键起稿」：还没有正文时，它就是这个页面唯一该按的主按钮。
+  /// 分层规则——黑底按钮跟着"当前这一步"走，而不是固定给"继续写作"。
+  final VoidCallback? onKickoff;
+  final String? kickoffLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -56,10 +63,17 @@ class ContinueWritingHero extends StatelessWidget {
           )
         : context.t(LocaleKeys.workspaceStartFirstChapter);
     // 引导态主按钮：label 与 onPressed 均切换为"先定世界观"引导。
-    final primaryLabel = isOnboarding
+    // 无正文时（且已有简介/基础）主按钮改为「一键起稿」——这是"从零到有骨架"
+    // 的当前一步，比"写第一章"更省事，也解决了"找不到起稿入口"。
+    final useKickoff = !hasChapter && !isOnboarding && onKickoff != null;
+    final primaryLabel = useKickoff
+        ? (kickoffLabel ?? context.t(LocaleKeys.flowToolsKickoff))
+        : isOnboarding
         ? context.t(LocaleKeys.workspaceOverviewPlanFirst)
         : continueLabel;
-    final VoidCallback primaryAction = isOnboarding
+    final VoidCallback primaryAction = useKickoff
+        ? onKickoff!
+        : isOnboarding
         ? () => onSelectionChanged(
             const WorkspaceSelection(section: NovelWorkspaceSection.lore),
           )
@@ -164,40 +178,17 @@ class ContinueWritingHero extends StatelessWidget {
                             icon: RevericIcons.create_outlined,
                             label: primaryLabel,
                           ),
-                          const SizedBox(height: RevericSpacing.lg),
+                          const SizedBox(height: RevericSpacing.sm),
                           Wrap(
-                            spacing: RevericSpacing.sm,
-                            runSpacing: RevericSpacing.sm,
-                            children: [
-                              RevericButton.secondary(
-                                icon: RevericIcons.list_alt_outlined,
-                                label: context.t(
-                                  LocaleKeys.workspaceViewOutline,
-                                ),
-                                onPressed: () => onSelectionChanged(
-                                  const WorkspaceSelection(
-                                    section: NovelWorkspaceSection.outlines,
-                                    isViewingAllOutlines: true,
-                                  ),
-                                ),
-                              ),
-                              RevericButton.secondary(
-                                icon: RevericIcons.public_outlined,
-                                label: context.t(
-                                  LocaleKeys.workspaceBrowseSettings,
-                                ),
-                                onPressed: () => onSelectionChanged(
-                                  const WorkspaceSelection(
-                                    section: NovelWorkspaceSection.lore,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            spacing: RevericSpacing.md,
+                            runSpacing: RevericSpacing.xs,
+                            children: _secondaryLinks(context, useKickoff),
                           ),
                         ],
                       )
                     else
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           RevericButton.primary(
                             onPressed: primaryAction,
@@ -207,33 +198,9 @@ class ContinueWritingHero extends StatelessWidget {
                           const SizedBox(width: RevericSpacing.x2l),
                           Expanded(
                             child: Wrap(
-                              spacing: RevericSpacing.sm,
-                              runSpacing: RevericSpacing.sm,
-                              children: [
-                                RevericButton.secondary(
-                                  icon: RevericIcons.list_alt_outlined,
-                                  label: context.t(
-                                    LocaleKeys.workspaceViewOutline,
-                                  ),
-                                  onPressed: () => onSelectionChanged(
-                                    const WorkspaceSelection(
-                                      section: NovelWorkspaceSection.outlines,
-                                      isViewingAllOutlines: true,
-                                    ),
-                                  ),
-                                ),
-                                RevericButton.secondary(
-                                  icon: RevericIcons.public_outlined,
-                                  label: context.t(
-                                    LocaleKeys.workspaceBrowseSettings,
-                                  ),
-                                  onPressed: () => onSelectionChanged(
-                                    const WorkspaceSelection(
-                                      section: NovelWorkspaceSection.lore,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              spacing: RevericSpacing.md,
+                              runSpacing: RevericSpacing.xs,
+                              children: _secondaryLinks(context, useKickoff),
                             ),
                           ),
                         ],
@@ -246,6 +213,40 @@ class ContinueWritingHero extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// hero 的次要入口统一降为 L3 文字链（分层规则：主按钮之外不再出现白底按钮）。
+  /// 起稿成为主按钮时，"自己写第一章"退到这里，仍是可点的，只是不再抢第一眼。
+  List<Widget> _secondaryLinks(BuildContext context, bool useKickoff) {
+    return [
+      if (useKickoff)
+        RevericButton.text(
+          size: RevericButtonSize.compact,
+          icon: RevericIcons.edit_outlined,
+          label: context.t(LocaleKeys.workspaceStartFirstChapter),
+          onPressed: () =>
+              onContinueWriting(context.t(LocaleKeys.workspaceStartFirstChapter)),
+        ),
+      RevericButton.text(
+        size: RevericButtonSize.compact,
+        icon: RevericIcons.list_alt_outlined,
+        label: context.t(LocaleKeys.workspaceViewOutline),
+        onPressed: () => onSelectionChanged(
+          const WorkspaceSelection(
+            section: NovelWorkspaceSection.outlines,
+            isViewingAllOutlines: true,
+          ),
+        ),
+      ),
+      RevericButton.text(
+        size: RevericButtonSize.compact,
+        icon: RevericIcons.public_outlined,
+        label: context.t(LocaleKeys.workspaceBrowseSettings),
+        onPressed: () => onSelectionChanged(
+          const WorkspaceSelection(section: NovelWorkspaceSection.lore),
+        ),
+      ),
+    ];
   }
 
   Chapter? _resolveLatestChapter(List<Chapter> chapters) {

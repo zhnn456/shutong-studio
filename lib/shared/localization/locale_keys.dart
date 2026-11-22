@@ -6121,6 +6121,9 @@ abstract final class LocaleKeys {
   static const workspaceOverviewCreationOrder =
       'workspace.overview_creation_order';
   static const workspaceOverviewPlanFirst = 'workspace.overview_plan_first';
+  // ── 概览页素材区（E 区：默认收成一行）───────────────
+  static const workspaceMaterialsLabel = 'workspace.materials_label';
+  static const workspaceMaterialsSnippets = 'workspace.materials_snippets';
   // ── flow：七站写作进度与下一步 ───────────────────────
   static const flowTitle = 'flow.title';
   static const flowGapTitle = 'flow.gap_title';
@@ -6198,6 +6201,7 @@ abstract final class LocaleKeys {
   static const flowToolsPlan = 'flow.tools_plan';
   static const flowToolsKickoff = 'flow.tools_kickoff';
   static const flowKickoffPromptNoIntro = 'flow.kickoff_prompt_no_intro';
+  static const flowKickoffStart = 'flow.kickoff_start';
   static const workspacePendingChangesTitle = 'workspace.pending_changes_title';
   static const workspacePreview = 'workspace.preview';
   static const workspacePreviewDescription = 'workspace.preview_description';

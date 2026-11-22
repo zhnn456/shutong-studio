@@ -117,6 +117,9 @@ class NovelOverview extends StatelessWidget {
                 characterProfiles.isNotEmpty ||
                 worldbuildingEntries.isNotEmpty ||
                 outlineEntries.isNotEmpty,
+            // 还没有正文时，"一键起稿"就是这个页面的主按钮（hero 自己决定要不要用）。
+            onKickoff: () => onContinueWriting(_kickoffPrompt(context)),
+            kickoffLabel: context.t(LocaleKeys.flowKickoffStart),
           ),
           const SizedBox(height: RevericSpacing.x4l),
           _FlowProgressCard(
@@ -160,10 +163,11 @@ class NovelOverview extends StatelessWidget {
             onEditGoal: onEditGoal,
             onEditStyle: onEditStyle,
             onPlanChapters: onPlanChapters,
-            // 一键起稿不再受"有没有简介"限制：没简介时提示语会先让它补简介，
-            // 这样按钮永远可点、永远看得见——之前这里返回 null，
-            // 加上调用方没传回调，按钮等于从来没渲染过。
-            onKickoff: () => onContinueWriting(_kickoffPrompt(context)),
+            // 已有正文时，起稿才退到这一行；没有正文时它是 hero 的主按钮，
+            // 同一处功能不会在两个地方同时出现。
+            onKickoff: chapters.isEmpty
+                ? null
+                : () => onContinueWriting(_kickoffPrompt(context)),
           ),
         ],
       ),
@@ -229,9 +233,10 @@ class _TitleSection extends ConsumerWidget {
               ),
             ),
             // 草稿不在改编的原著候选里，选不回来，所以只给书架上的小说。
+            // 分层改造：改编是低频动作，降为 L3 文字链贴在标题行右侧。
             if (novel.contentKind == contentKindNovel && !novel.draft) ...[
-              const SizedBox(width: RevericSpacing.sm),
-              RevericButton.secondary(
+              const SizedBox(width: RevericSpacing.md),
+              RevericButton.text(
                 onPressed: () => showNovelAdaptationDialog(context, ref, novel),
                 icon: RevericIcons.movie_outlined,
                 label: context.t(LocaleKeys.libraryActionAdapt),
@@ -342,9 +347,12 @@ class _StatusBadge extends StatelessWidget {
 }
 
 // =============================================================================
-// Second row: 项目简介 + 创作片段
+// Second row: 素材区 — 默认收成一行，点开才是简介卡 + 创作片段卡
 // =============================================================================
-class _SecondRow extends StatelessWidget {
+/// 分层规则里的 E 区：简介和灵感属于"备着用"的信息，
+/// 两张各占半屏的卡片常驻会让页面下半段全是背景资料。
+/// 收起时只留一行摘要（简介第一句 + 灵感条数），点这一行才展开原来两张卡。
+class _SecondRow extends StatefulWidget {
   const _SecondRow({
     required this.novel,
     required this.chapters,
@@ -372,28 +380,103 @@ class _SecondRow extends StatelessWidget {
   final ValueNotifier<int> coverMenuTrigger;
 
   @override
+  State<_SecondRow> createState() => _SecondRowState();
+}
+
+class _SecondRowState extends State<_SecondRow> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final colors = RevericTheme.colorsOf(context);
+    final typo = RevericTheme.typographyOf(context);
+    final description = widget.novel.description.trim();
+    final count = widget.foreshadowings.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ProjectIntroCard(
-          novel: novel,
-          chapters: chapters,
-          characterProfiles: characterProfiles,
-          worldbuildingEntries: worldbuildingEntries,
-          foreshadowings: foreshadowings,
-          canOpenCoverStudio: canOpenCoverStudio,
-          onOpenCoverStudio: onOpenCoverStudio,
-          onUploadCover: onUploadCover,
-          coverThumbnailKey: coverThumbnailKey,
-          coverMenuTrigger: coverMenuTrigger,
+        InkWell(
+          borderRadius: BorderRadius.circular(RevericRadius.card),
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: RevericSpacing.x2l,
+              vertical: RevericSpacing.md,
+            ),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(RevericRadius.card),
+              border: Border.all(color: colors.borderSubtle),
+            ),
+            child: Row(
+              children: [
+                RevericIcon(
+                  RevericIcons.auto_awesome,
+                  size: 15,
+                  color: colors.accentWarm,
+                ),
+                const SizedBox(width: RevericSpacing.sm),
+                Text(
+                  context.t(LocaleKeys.workspaceMaterialsLabel),
+                  style: typo.uiSmall.copyWith(
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: RevericSpacing.md),
+                Expanded(
+                  child: Text(
+                    description.isEmpty
+                        ? context.t(LocaleKeys.flowGapDescription)
+                        : description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: typo.uiSmall.copyWith(color: colors.textMuted),
+                  ),
+                ),
+                const SizedBox(width: RevericSpacing.md),
+                if (count > 0)
+                  Text(
+                    context.t(
+                      LocaleKeys.workspaceMaterialsSnippets,
+                      namedArgs: {'count': '$count'},
+                    ),
+                    style: typo.uiSmall.copyWith(color: colors.textMuted),
+                  ),
+                const SizedBox(width: RevericSpacing.sm),
+                RevericIcon(
+                  _expanded
+                      ? RevericIcons.expand_less_rounded
+                      : RevericIcons.chevron_right,
+                  size: 16,
+                  color: colors.textMuted,
+                ),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: RevericSpacing.x2l),
-        _SnippetsCard(
-          foreshadowings: foreshadowings,
-          worldbuildingEntries: worldbuildingEntries,
-          onSelectionChanged: onSelectionChanged,
-        ),
+        if (_expanded) ...[
+          const SizedBox(height: RevericSpacing.x2l),
+          _ProjectIntroCard(
+            novel: widget.novel,
+            chapters: widget.chapters,
+            characterProfiles: widget.characterProfiles,
+            worldbuildingEntries: widget.worldbuildingEntries,
+            foreshadowings: widget.foreshadowings,
+            canOpenCoverStudio: widget.canOpenCoverStudio,
+            onOpenCoverStudio: widget.onOpenCoverStudio,
+            onUploadCover: widget.onUploadCover,
+            coverThumbnailKey: widget.coverThumbnailKey,
+            coverMenuTrigger: widget.coverMenuTrigger,
+          ),
+          const SizedBox(height: RevericSpacing.x2l),
+          _SnippetsCard(
+            foreshadowings: widget.foreshadowings,
+            worldbuildingEntries: widget.worldbuildingEntries,
+            onSelectionChanged: widget.onSelectionChanged,
+          ),
+        ],
       ],
     );
   }
