@@ -36,6 +36,7 @@ import '../../../shared/localization/locale_keys.dart';
 import '../../../shared/entity_graph/labels.dart';
 import '../../../shared/providers/novel_providers.dart';
 import '../../../shared/services/ai/chat.dart';
+import '../../../shared/services/chapter_cast.dart';
 import '../../../shared/models/content_kind.dart';
 import '../../../shared/models/cover_style.dart';
 import '../../../shared/models/character_profile.dart';
@@ -656,6 +657,9 @@ class CharacterProfileEditor extends HookConsumerWidget {
                               ? _CharacterChapterLink(
                                   databasePath: currentDatabasePath,
                                   characterId: selectedItemId,
+                                  characterName: selectedCharacter?.name ?? '',
+                                  aliases:
+                                      selectedCharacter?.aliases ?? const [],
                                   firstAppearChapterId:
                                       selectedCharacter?.firstAppearChapterId,
                                   chapters: chapters,
@@ -1131,6 +1135,8 @@ class _CharacterChapterLink extends HookConsumerWidget {
   const _CharacterChapterLink({
     required this.databasePath,
     required this.characterId,
+    required this.characterName,
+    required this.aliases,
     required this.firstAppearChapterId,
     required this.chapters,
     this.onNavigateToChapter,
@@ -1138,6 +1144,8 @@ class _CharacterChapterLink extends HookConsumerWidget {
 
   final String databasePath;
   final String characterId;
+  final String characterName;
+  final List<String> aliases;
   final String? firstAppearChapterId;
   final List<Chapter> chapters;
   final ValueChanged<String>? onNavigateToChapter;
@@ -1146,6 +1154,18 @@ class _CharacterChapterLink extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = RevericTheme.colorsOf(context);
     final typo = RevericTheme.typographyOf(context);
+
+    final terms = normalizeCastTerms([characterName, ...aliases]);
+    final detected = firstChapterMatchingTerms(
+      terms: terms,
+      chapters: chapters,
+    );
+    final appearanceCount = countChaptersMatchingTerms(
+      terms: terms,
+      chapters: chapters,
+    );
+    final detectedInBody =
+        detected != null && countTermMentions(detected.content, terms) > 0;
 
     return Container(
       padding: const EdgeInsets.all(RevericSpacing.lg),
@@ -1184,6 +1204,57 @@ class _CharacterChapterLink extends HookConsumerWidget {
                   ),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: RevericSpacing.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                detected == null
+                    ? Icons.search_off_rounded
+                    : Icons.check_circle_outline_rounded,
+                size: 16,
+                color: detected == null
+                    ? colors.textTertiary
+                    : colors.accent,
+              ),
+              const SizedBox(width: RevericSpacing.xs),
+              Expanded(
+                child: Text(
+                  detected == null
+                      ? context.t(LocaleKeys.workspaceCharacterLocateNone)
+                      : '${context.t(LocaleKeys.workspaceCharacterLocateDetected)}'
+                            '${detected.displayTitle}'
+                            '${detectedInBody ? '' : context.t(LocaleKeys.workspaceCharacterLocateOutlineOnly)}'
+                            ' · ${context.t(LocaleKeys.workspaceCharacterLocateCount)} '
+                            '$appearanceCount',
+                  style: typo.uiSmall.copyWith(color: colors.textTertiary),
+                ),
+              ),
+              if (detected != null && detected.id != firstAppearChapterId)
+                TextButton(
+                  onPressed: () async {
+                    final service = ref.read(
+                      novelContentServiceProvider(databasePath),
+                    );
+                    await service.updateCharacterFirstAppearChapter(
+                      characterId: characterId,
+                      firstAppearChapterId: detected.id,
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: RevericSpacing.sm,
+                    ),
+                    minimumSize: const Size(0, 28),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    context.t(LocaleKeys.workspaceCharacterLocateApply),
+                    style: typo.uiSmall.copyWith(color: colors.accent),
+                  ),
+                ),
             ],
           ),
         ],

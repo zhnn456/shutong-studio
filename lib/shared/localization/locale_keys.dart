@@ -5854,6 +5854,16 @@ abstract final class LocaleKeys {
   static const workspaceCharactersHint = 'workspace.characters_hint';
   static const workspaceCharacterFirstAppearChapter =
       'workspace.character_first_appear_chapter';
+  static const workspaceCharacterLocateDetected =
+      'workspace.character_locate_detected';
+  static const workspaceCharacterLocateOutlineOnly =
+      'workspace.character_locate_outline_only';
+  static const workspaceCharacterLocateCount =
+      'workspace.character_locate_count';
+  static const workspaceCharacterLocateApply =
+      'workspace.character_locate_apply';
+  static const workspaceCharacterLocateNone =
+      'workspace.character_locate_none';
   static const workspaceForeshadowOpenPosition =
       'workspace.foreshadow_open_position';
   static const workspaceForeshadowSetupPosition =
