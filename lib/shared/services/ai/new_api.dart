@@ -5,7 +5,9 @@
 //   lib/shared/services/ai/image/new_api.dart
 //   lib/shared/services/ai/audio/gemini.dart
 //   lib/shared/services/ai/video/new_api.dart
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../agent/client.dart';
 import '../../agent/client/openai_client.dart';
@@ -31,6 +33,12 @@ import 'video/new_api.dart';
 
 final _log = AppLogger.forModule('NewApiModels');
 
+/// 只有"根本没拿到响应"才算连不上；HTTP 4xx/5xx 都说明域名是通的。
+bool _isConnectionFailure(Object error) =>
+    error is http.ClientException ||
+    error is SocketException ||
+    error is TimeoutException;
+
 /// New API 网关返回非 200 时抛出。
 /// 以前这里抛的是 StateError，设置页只认带状态码的异常类型，于是 401
 /// 「无效的令牌」也被显示成「服务端内部错误」，把人引到错的方向。
@@ -45,6 +53,37 @@ class NewApiRequestException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// 星辰AI：先探一次主域名是否连得上；连不上就切到写死的备用域名。
+///
+/// 备用域名不展示、不可配置，只在主域名连不上时生效。探测只看"连不上"
+/// （连接失败、超时、DNS 失败），401/404 这类有 HTTP 响应的算主域名正常。
+Future<void> probeApi88BaseUrl(AiProvider config, {http.Client? httpClient}) async {
+  if (config.typeEnum != AiProviderType.api88) {
+    return;
+  }
+  final client = httpClient ?? http.Client();
+  try {
+    final request =
+        http.Request('GET', Uri.parse('$api88PrimaryBaseUrl/models'))
+          ..followRedirects = false;
+    final response = await (() async => http.Response.fromStream(
+      await client.send(request),
+    ))().timeout(const Duration(seconds: 6));
+    _log.debug('api88 probe status=${response.statusCode}');
+    // 主域名有响应就回到主域名（备用域名只在主域名连不上时使用）。
+    resetApi88BaseUrl();
+  } catch (error) {
+    if (_isConnectionFailure(error)) {
+      markApi88BaseUrlFallback();
+      _log.warning('星辰AI 主域名连不上，切到备用域名：$error');
+    }
+  } finally {
+    if (httpClient == null) {
+      client.close();
+    }
+  }
 }
 
 class NewApiClient {
@@ -88,6 +127,16 @@ class NewApiClient {
           .map((item) => NewApiModel.fromJson(item as Map<String, dynamic>))
           .toList();
     } catch (error) {
+      // 主域名连不上时切一次写死的备用域名再试；有 HTTP 响应的错误不重试。
+      if (_isConnectionFailure(error) &&
+          config.typeEnum == AiProviderType.api88 &&
+          markApi88BaseUrlFallback()) {
+        _log.warning('星辰AI 主域名连不上，改用备用域名重试：$error');
+        if (httpClient == null) {
+          transport.close();
+        }
+        return models(httpClient: httpClient);
+      }
       _log.warning(
         'GET ${uri.origin}${uri.path} '
         'type=${error.runtimeType} message=${safeMediaDiagnostic(error, config.effectiveApiKey)}',

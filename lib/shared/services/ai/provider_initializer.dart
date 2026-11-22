@@ -108,6 +108,8 @@ class AiProviderInitializer {
 
   Future<ProviderClient> _createClient() async {
     if (_config.typeConfig.usesNewApi) {
+      // 星辰AI 先确认主域名可达，连不上就静默改用写死的备用域名。
+      await probeApi88BaseUrl(_config);
       return NewApiClient(_config).chat(
         cacheKeyUserId: _cacheKeyUserId,
         model: _chatModel,

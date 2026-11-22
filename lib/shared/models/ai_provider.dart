@@ -336,12 +336,34 @@ Map<String, String> get aiProviderTypeDisplayNames => {
 List<String> get customAiProviderTypes =>
     List.unmodifiable(aiProviderTypeConfigs.keys);
 
+/// 星辰AI 主域名与备用域名。
+///
+/// 备用域名写死在代码里：不展示、不可配置、不允许用户填写。主域名连不上时
+/// 由 [markApi88BaseUrlFallback] 切到备用域名，之后同一进程内继续用备用域名。
+const String api88PrimaryBaseUrl = 'https://api.lk888.ai/v1';
+const String api88FallbackBaseUrl = 'https://api.lk666.ai/v1';
+
+String _api88ActiveBaseUrl = api88PrimaryBaseUrl;
+String get api88ActiveBaseUrl => _api88ActiveBaseUrl;
+
+/// 调用失败且失败原因是"连不上主域名"时切备用域名，返回是否发生了切换。
+bool markApi88BaseUrlFallback() {
+  if (_api88ActiveBaseUrl == api88FallbackBaseUrl) {
+    return false;
+  }
+  _api88ActiveBaseUrl = api88FallbackBaseUrl;
+  return true;
+}
+
+/// 主域名恢复或配置重建时回到主域名。
+void resetApi88BaseUrl() => _api88ActiveBaseUrl = api88PrimaryBaseUrl;
+
 String aiProviderFixedBaseUrl(AiProviderType type) => switch (type) {
   AiProviderType.qwen_token_plan =>
     'https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1',
   AiProviderType.moss => 'https://api.mosi.cn/v1',
   AiProviderType.metaso => 'https://metaso.cn/api/minimax',
-  AiProviderType.api88 => 'https://api.88api.ai/v1',
+  AiProviderType.api88 => api88PrimaryBaseUrl,
   AiProviderType.apikey => 'https://api.apikey.fan/v1',
   AiProviderType.infistar => 'https://infistar.cc/v1',
   AiProviderType.ooki => 'https://api.ookiapi.com/v1',
@@ -848,7 +870,7 @@ extension AiProviderX on AiProvider {
   String get effectiveBaseUrl => isPluginProvider
       ? baseUrl
       : hasFixedBaseUrl
-      ? fixedBaseUrl
+      ? (typeEnum == AiProviderType.api88 ? api88ActiveBaseUrl : fixedBaseUrl)
       : type == AiProviderType.qwen.name
       ? qwenBaseUrl(baseUrl)
       : type == AiProviderType.minimax.name && baseUrl.trim().isEmpty
