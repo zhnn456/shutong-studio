@@ -68,7 +68,6 @@ class NovelOverview extends StatelessWidget {
     this.onEditGoal,
     this.onPlanChapters,
     this.onEditStyle,
-    this.onKickoff,
   });
 
   final Novel novel;
@@ -96,9 +95,6 @@ class NovelOverview extends StatelessWidget {
 
   /// 文风样文入口（贴自己的文字，让 AI 照着腔调写）。
   final VoidCallback? onEditStyle;
-
-  /// 「一键起稿」：把简介 + 目标交给 AI，一次建人物卡与前 10 章骨架。
-  final VoidCallback? onKickoff;
 
   @override
   Widget build(BuildContext context) {
@@ -164,27 +160,33 @@ class NovelOverview extends StatelessWidget {
             onEditGoal: onEditGoal,
             onEditStyle: onEditStyle,
             onPlanChapters: onPlanChapters,
-            onKickoff: novel.description.trim().isEmpty
-                ? null
-                : () => onContinueWriting(
-                      context.t(
-                        LocaleKeys.flowKickoffPrompt,
-                        namedArgs: {
-                          'chapters':
-                              '${goal?.chapters ?? defaultTargetChapters}',
-                          'per':
-                              '${goal?.wordsPerChapter ?? defaultWordsPerChapter}',
-                          'batch': '10',
-                          'existing':
-                              '${chapters.where((chapter) => !chapter.isVolume).length}',
-                          'cards': '${characterProfiles.length}',
-                        },
-                      ),
-                    ),
+            // 一键起稿不再受"有没有简介"限制：没简介时提示语会先让它补简介，
+            // 这样按钮永远可点、永远看得见——之前这里返回 null，
+            // 加上调用方没传回调，按钮等于从来没渲染过。
+            onKickoff: () => onContinueWriting(_kickoffPrompt(context)),
           ),
         ],
       ),
     );
+  }
+
+  /// 「一键起稿」提示语：把简介 + 全书目标 + 已有家底交给 AI，
+  /// 明确要求只补缺口、不重建不覆盖、不写正文。
+  String _kickoffPrompt(BuildContext context) {
+    final prompt = context.t(
+      LocaleKeys.flowKickoffPrompt,
+      namedArgs: {
+        'chapters': '${goal?.chapters ?? defaultTargetChapters}',
+        'per': '${goal?.wordsPerChapter ?? defaultWordsPerChapter}',
+        'batch': '10',
+        'existing': '${chapters.where((chapter) => !chapter.isVolume).length}',
+        'cards': '${characterProfiles.length}',
+      },
+    );
+    if (novel.description.trim().isEmpty) {
+      return '${context.t(LocaleKeys.flowKickoffPromptNoIntro)}\n\n$prompt';
+    }
+    return prompt;
   }
 }
 

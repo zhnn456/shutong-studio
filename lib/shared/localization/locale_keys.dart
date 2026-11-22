@@ -6197,6 +6197,7 @@ abstract final class LocaleKeys {
   static const flowToolsStyle = 'flow.tools_style';
   static const flowToolsPlan = 'flow.tools_plan';
   static const flowToolsKickoff = 'flow.tools_kickoff';
+  static const flowKickoffPromptNoIntro = 'flow.kickoff_prompt_no_intro';
   static const workspacePendingChangesTitle = 'workspace.pending_changes_title';
   static const workspacePreview = 'workspace.preview';
   static const workspacePreviewDescription = 'workspace.preview_description';
