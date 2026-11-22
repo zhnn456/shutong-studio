@@ -146,6 +146,8 @@ class NovelOverview extends StatelessWidget {
                           'per':
                               '${goal?.wordsPerChapter ?? defaultWordsPerChapter}',
                           'batch': '10',
+                          'existing': '${chapters.where((chapter) => !chapter.isVolume).length}',
+                          'cards': '${characterProfiles.length}',
                         },
                       ),
                     ),
@@ -1430,6 +1432,17 @@ class _FlowProgressCard extends StatelessWidget {
                     onSelectionChanged(WorkspaceSelection(section: _nextSection(stage))),
               ),
             ),
+            if (onKickoff != null) ...[
+              const SizedBox(height: RevericSpacing.sm),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: RevericButton.secondary(
+                  label: context.t(LocaleKeys.flowKickoffAction),
+                  size: RevericButtonSize.compact,
+                  onPressed: onKickoff,
+                ),
+              ),
+            ],
             const SizedBox(height: RevericSpacing.x3l),
             Container(height: 1, color: colors.borderSubtle),
             const SizedBox(height: RevericSpacing.x2l),

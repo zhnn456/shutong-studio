@@ -86,7 +86,10 @@ class AppBackgroundLayer extends ConsumerWidget {
         imagePath.isNotEmpty &&
         (hasAssetBackground || backgroundFile.existsSync());
     if (backgroundColor == null && !hasBackgroundImage) {
-      return const SizedBox.expand();
+      // 未配置自定义背景时也必须画出不透明底色：窗口是无边框透明 surface，
+      // 一旦这一层什么都不画，Windows 合成器会把上一帧残留在标题栏区域透出来，
+      // 表现为顶部叠出多条旧面包屑。
+      return ColoredBox(color: colors.canvas);
     }
 
     final backgroundImageProvider = hasBackgroundImage
