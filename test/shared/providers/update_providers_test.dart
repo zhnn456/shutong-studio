@@ -133,9 +133,12 @@ void main() {
     },
   );
 
-  test('the default update source reads from R2', () {
+  // 书童自有分发：索引源仍走 zhnn456/shutong-studio 的 GitHub Releases；
+  // 上游的 R2 源已摘入实现（lib/shared/services/update/sources/r2_update_source.dart），
+  // 但未切换默认源。
+  test('the default update source reads from our GitHub releases', () {
     final container = ProviderContainer.test();
-    expect(container.read(updateSourceProvider), isA<R2UpdateSource>());
+    expect(container.read(updateSourceProvider), isA<GitHubReleasesSource>());
   });
 
   test('startup and overlapping refreshes share one request', () async {
