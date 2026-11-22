@@ -31,6 +31,22 @@ import 'video/new_api.dart';
 
 final _log = AppLogger.forModule('NewApiModels');
 
+/// New API 网关返回非 200 时抛出。
+/// 以前这里抛的是 StateError，设置页只认带状态码的异常类型，于是 401
+/// 「无效的令牌」也被显示成「服务端内部错误」，把人引到错的方向。
+class NewApiRequestException implements Exception {
+  const NewApiRequestException({
+    required this.statusCode,
+    required this.message,
+  });
+
+  final int statusCode;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class NewApiClient {
   const NewApiClient(this.config);
   final AiProvider config;
@@ -60,9 +76,11 @@ class NewApiClient {
         );
       }
       if (response.statusCode != 200) {
-        throw StateError(
-          'GET ${uri.origin}${uri.path}: HTTP ${response.statusCode} '
-          '${safeMediaDiagnostic(response.body, config.effectiveApiKey)}',
+        throw NewApiRequestException(
+          statusCode: response.statusCode,
+          message:
+              'GET ${uri.origin}${uri.path}: HTTP ${response.statusCode} '
+              '${safeMediaDiagnostic(response.body, config.effectiveApiKey)}',
         );
       }
       final json = jsonDecode(response.body) as Map<String, dynamic>;

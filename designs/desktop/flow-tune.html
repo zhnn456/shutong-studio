@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="zh" data-palette="reveric" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>书童 · 页面内流程调整对照</title>
+<style>
+  /* 令牌与 lib/shared/theme（reveric 亮色）一致，内联以便直接打开文件也能看 */
+  :root{
+    --canvas:#F2F6F4; --surface:#FFFFFF; --surface-dim:#EAF0ED;
+    --surface-container:#F6F9F7; --surface-container-high:#FFFFFF;
+    --border:#E0E8E4; --border-subtle:#EAF0ED; --border-input:#D8E1DD;
+    --text-primary:#141A18; --text-secondary:#3D4643; --text-muted:#646E6A; --text-subtle:#A2ACA8;
+    --accent:#1C2623; --accent-warm:#2D3A36; --accent-amber:#2A9C78; --on-accent:#FFFFFF;
+    --selected:#E1F1EA; --hover:#EDF3F0; --success:#1F8A68; --error:#C2392B;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--surface);color:var(--text-primary);
+       font:400 12px/1.4 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       -webkit-font-smoothing:antialiased;overflow:hidden}
+  button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+  .ic{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .ic.sm{width:14px;height:14px}
+  .ic.xs{width:12px;height:12px}
+
+  /* ── 顶部演示条（真实软件里不存在，仅用于对照） ───────────────── */
+  .bar{height:34px;display:flex;align-items:center;gap:10px;padding:0 14px;
+       background:color-mix(in srgb,var(--accent-amber) 7%,var(--surface));
+       border-bottom:1px solid color-mix(in srgb,var(--accent-amber) 20%,var(--border-subtle));
+       font-size:11.5px;color:var(--text-muted);flex:none}
+  .bar b{color:var(--text-secondary);font-weight:600}
+  .seg{display:flex;margin-left:auto;border:1px solid var(--border);border-radius:7px;overflow:hidden}
+  .seg button{padding:3px 12px;font-size:11.5px;color:var(--text-muted)}
+  .seg button.on{background:var(--accent);color:var(--on-accent)}
+
+  /* ── 应用骨架 ─────────────────────────────────────────────── */
+  .app{display:flex;height:calc(100vh - 34px);min-height:0}
+
+  /* rail 132px（真实：132） */
+  .rail{width:132px;flex:none;background:var(--surface);border-right:1px solid var(--border-subtle);
+        display:flex;flex-direction:column;min-height:0;padding-top:6px}
+  .rail-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:8px}
+  .rail-scroll::-webkit-scrollbar{width:0}
+  .grp{font-size:11px;color:var(--text-subtle);padding:14px 10px 3px}
+  .grp:first-child{padding-top:6px}
+  .nav{display:flex;align-items:center;gap:8px;height:32px;margin:1px 6px;padding:0 8px;
+       border-radius:6px;color:var(--text-secondary);font-size:12px;width:calc(100% - 12px);text-align:left}
+  .nav:hover{background:var(--hover)}
+  .nav.on{background:var(--selected);color:var(--text-primary);font-weight:600}
+  .nav .ic{color:var(--text-muted)}
+  .nav.on .ic{color:var(--accent-amber)}
+  .rail-user{flex:none;border-top:1px solid var(--border-subtle);height:44px;display:flex;align-items:center;
+             gap:8px;padding:0 12px;font-size:12px;color:var(--text-secondary)}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--success);margin-left:auto}
+
+  /* 中栏 208px（真实：140→348） */
+  .mid{width:208px;flex:none;background:var(--surface);border-right:1px solid var(--border-subtle);
+       display:flex;flex-direction:column;min-height:0}
+  .mid-head{height:42px;flex:none;display:flex;align-items:center;gap:6px;padding:0 12px}
+  .mid-head b{font-size:13px;font-weight:600}
+  .mid-head span{font-size:11px;color:var(--text-subtle)}
+  .mid-head .plus{margin-left:auto;color:var(--text-muted)}
+  .mid-bread{display:none;padding:8px 12px;font-size:11.5px;color:var(--text-subtle);gap:5px;align-items:center}
+  .mid-bread b{color:var(--text-secondary);font-weight:500}
+  .mid-empty{display:none;padding:10px 12px;font-size:11.5px;color:var(--text-subtle)}
+  .mid-search{margin:0 12px 8px;height:30px;border:1px solid var(--border);border-radius:8px;
+              display:flex;align-items:center;gap:6px;padding:0 8px;color:var(--text-subtle);font-size:11.5px}
+  .mid-scroll{flex:1;overflow-y:auto;padding:0 6px}
+  .mid-scroll::-webkit-scrollbar{width:0}
+  .row{display:flex;align-items:center;gap:6px;height:30px;border-radius:6px;padding:0 6px;
+       width:100%;text-align:left;font-size:12px;color:var(--text-secondary)}
+  .row:hover{background:var(--hover)}
+  .row.on{background:var(--selected);color:var(--text-primary);font-weight:600}
+  .row .cap{color:var(--text-subtle);font-weight:400;margin-left:2px}
+  .row.vol{padding-left:2px}
+  .row.ch{padding-left:22px}
+  .row.muted{color:var(--text-subtle)}
+  .row .end{margin-left:auto;color:var(--text-subtle)}
+  /* 调整③：置顶继续写 */
+  .cont{display:none;margin:0 8px 8px;padding:7px 8px;border-radius:8px;gap:6px;align-items:center;
+        background:color-mix(in srgb,var(--accent-amber) 8%,var(--surface));
+        border:1px solid color-mix(in srgb,var(--accent-amber) 24%,var(--border));
+        font-size:11.5px;color:var(--text-secondary);width:calc(100% - 16px);text-align:left}
+  body.fixed .cont{display:flex}
+  .cont .k{font-size:10px;color:var(--text-subtle)}
+  .cont .end{margin-left:auto;color:var(--accent-amber)}
+
+  /* 主区 */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--surface)}
+  .main-head{height:42px;flex:none;display:flex;align-items:center;gap:6px;padding:0 16px;color:var(--text-subtle);font-size:11.5px}
+  .main-head .crumb{display:flex;align-items:center;gap:6px;min-width:0}
+  .main-head .crumb b{color:var(--text-secondary);font-weight:500;white-space:nowrap}
+  .main-head .acts{margin-left:auto;display:flex;align-items:center;gap:12px;color:var(--text-muted)}
+  .main-scroll{flex:1;overflow-y:auto;padding:4px 72px 40px}
+  .main-scroll::-webkit-scrollbar{width:8px}
+  .main-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+  /* ── 概览 ───────────────────────────────────────────────── */
+  .ov-title{display:flex;align-items:center;gap:8px;margin:10px 0 8px}
+  .ov-title h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0}
+  .chip{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;
+        background:var(--surface-dim);color:var(--text-muted);font-size:11px}
+  .card{border:1px solid var(--border-subtle);border-radius:12px;padding:16px 18px;margin-bottom:12px;
+        background:var(--surface-container)}
+  .card .lbl{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted)}
+  .card .sub{font-size:11.5px;color:var(--text-subtle);margin:10px 0 4px}
+  .quote{font-family:Georgia,"Songti SC",serif;font-size:19px;line-height:1.6;margin:6px 0 6px;color:var(--text-primary)}
+  .ov-actions{display:flex;align-items:center;gap:8px;margin-top:12px}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;
+       font-size:12px;color:var(--text-secondary);border:1px solid transparent;white-space:nowrap}
+  .btn:hover{background:var(--hover)}
+  .btn.primary{background:var(--accent);color:var(--on-accent);font-weight:500}
+  .btn.primary:hover{background:var(--accent-warm)}
+  .btn.ghost{border-color:var(--border);color:var(--text-secondary);background:var(--surface)}
+  .btn.ghost:hover{border-color:var(--border-input)}
+  .prog-line{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--text-secondary);margin-top:10px}
+  .prog-line em{font-style:normal;color:var(--text-subtle);font-size:11px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .pill{height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 10px;border-radius:999px;
+        border:1px solid var(--border);font-size:11px;color:var(--text-secondary);background:var(--surface)}
+  .pill.done{border-color:color-mix(in srgb,var(--accent-amber) 34%,var(--border));
+             background:color-mix(in srgb,var(--accent-amber) 8%,var(--surface))}
+  .h3{font-size:17px;font-weight:600;margin:16px 0 6px;letter-spacing:-.01em}
+  .p-note{font-size:12.5px;color:var(--text-muted);line-height:1.7;margin:0}
+  .link{font-size:11.5px;color:var(--accent-amber);display:inline-flex;align-items:center;gap:4px;margin-top:8px}
+  .more{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-subtle);margin-top:12px}
+  .sec-h{font-size:16px;font-weight:600;margin:20px 0 10px}
+
+  /* ── 章节编辑 ───────────────────────────────────────────── */
+  .tb{display:flex;align-items:center;gap:6px;margin:6px 0 4px;flex-wrap:wrap}
+  .tb .tag{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 8px;border-radius:6px;
+           font-size:11.5px;color:var(--text-muted);border:1px solid var(--border)}
+  .tb .tag.draft{background:var(--surface-dim);border-color:transparent;color:var(--text-muted)}
+  .tb .sep{width:1px;height:16px;background:var(--border);margin:0 6px}
+  .tb .act{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 8px;border-radius:6px;
+           font-size:11.5px;color:var(--text-secondary)}
+  .tb .act:hover{background:var(--hover)}
+  .tb .right{margin-left:auto;color:var(--text-muted);font-size:11.5px;display:flex;align-items:center;gap:4px}
+  .tb2{display:flex;align-items:center;gap:8px;margin:0 0 14px}
+  .tb2 .btn{height:30px;font-size:12px;border:1px solid var(--border);background:var(--surface);color:var(--text-secondary)}
+  .tb2 .btn.primary{background:var(--accent);border-color:transparent;color:var(--on-accent)}
+  /* 调整②：四步状态 */
+  .steps{display:none;align-items:center;gap:4px;margin:8px 0 14px;
+         border:1px solid var(--border-subtle);border-radius:10px;padding:6px;background:var(--surface-container)}
+  body.fixed .steps{display:flex}
+  body.fixed .tb,body.fixed .tb2{display:none}
+  .step{display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:7px;
+        font-size:11.5px;color:var(--text-subtle);white-space:nowrap}
+  .step .num{width:16px;height:16px;border-radius:50%;border:1px solid var(--border-input);
+             display:grid;place-items:center;font-size:9.5px;color:var(--text-subtle)}
+  .step.done{color:var(--text-secondary)}
+  .step.done .num{background:color-mix(in srgb,var(--accent-amber) 16%,var(--surface));
+                  border-color:transparent;color:var(--accent-amber)}
+  .step.now{background:var(--selected);color:var(--text-primary);font-weight:600}
+  .step.now .num{background:var(--accent-amber);border-color:transparent;color:#fff}
+  .steps .sp{flex:1}
+  .steps .primary{height:30px;border-radius:999px;background:var(--accent);color:var(--on-accent);
+                  padding:0 14px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+  .ch-title{font-size:24px;font-weight:700;margin:2px 0 12px;letter-spacing:-.02em}
+  .box{border:1px solid var(--border-subtle);border-radius:10px;margin-bottom:12px;background:var(--surface)}
+  .box-h{display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;font-size:11.5px;color:var(--text-muted)}
+  .box-h .end{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--text-subtle)}
+  .box-b{padding:0 14px 12px;font-size:12.5px;line-height:1.75;color:var(--text-secondary)}
+  .cast-empty{text-align:center;padding:24px 0 10px;color:var(--text-subtle)}
+  .cast-empty b{display:block;font-size:12px;color:var(--text-muted);font-weight:500;margin-bottom:4px}
+  .cast-empty p{font-size:11.5px;margin:0 auto;max-width:300px;line-height:1.7}
+  .prose{font-family:Georgia,"Songti SC",STSong,serif;font-size:16px;line-height:1.95;color:var(--text-primary)}
+  .prose p{margin:0 0 14px}
+  .main-foot{flex:none;height:34px;border-top:1px solid var(--border-subtle);display:flex;align-items:center;
+             gap:14px;padding:0 16px;font-size:11px;color:var(--text-subtle)}
+  .main-foot .end{margin-left:auto;display:flex;align-items:center;gap:12px;color:var(--text-muted)}
+
+  /* ── 人物页 ─────────────────────────────────────────────── */
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:70%;
+         text-align:center;color:var(--text-subtle)}
+  .empty .ic{width:26px;height:26px;margin-bottom:10px;color:var(--text-subtle)}
+  .empty b{font-size:12.5px;color:var(--text-secondary);font-weight:500;margin-bottom:4px}
+  .empty p{font-size:11.5px;margin:0 0 12px}
+
+  /* ── AI 栏 569px（真实：1031→1600） ───────────────────────── */
+  .ai{width:569px;flex:none;background:var(--surface);border-left:1px solid var(--border-subtle);
+      display:flex;flex-direction:column;min-height:0}
+  .ai-head{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--border-subtle)}
+  .ai-head .ttl{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ai-head .mdl{font-size:9.5px;color:var(--text-subtle);margin-top:2px}
+  .ai-head .ic{color:var(--text-muted)}
+  .ai-head .end{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .ctx{display:none;margin:8px 14px 0;padding:7px 9px;border-radius:8px;font-size:11px;color:var(--text-muted);
+       background:color-mix(in srgb,var(--accent-amber) 6%,var(--surface));
+       border:1px solid color-mix(in srgb,var(--accent-amber) 22%,var(--border))}
+  body.fixed .ctx{display:block}
+  .ctx b{color:var(--text-secondary);font-weight:600}
+  .ai-scroll{flex:1;overflow-y:auto;padding:14px}
+  .ai-scroll::-webkit-scrollbar{width:6px}
+  .ai-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .msg{max-width:100%;margin-bottom:14px}
+  .bubble{background:var(--surface-dim);border-radius:10px;padding:12px 14px;font-size:12.5px;line-height:1.85;
+          color:var(--text-secondary);overflow-wrap:anywhere}
+  .bubble p{margin:0 0 10px}
+  .bubble p:last-child{margin-bottom:0}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--surface-dim);display:grid;place-items:center;
+          margin-top:8px;color:var(--text-subtle)}
+  .ai-input{margin:0 14px 14px;border:1px solid var(--border);border-radius:12px;padding:8px 10px 8px}
+  .ai-input .tools{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);margin-bottom:6px}
+  .ai-input .tools .file{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);
+                         border-radius:6px;padding:2px 8px}
+  .ai-input textarea{width:100%;height:42px;border:0;outline:0;resize:none;background:transparent;
+                     font:12.5px/1.6 system-ui,sans-serif;color:var(--text-subtle)}
+  .ai-input .foot{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-subtle)}
+  .ai-input .foot .mdl{margin-left:auto;display:inline-flex;align-items:center;gap:4px;color:var(--text-muted)}
+  .send{width:24px;height:24px;border-radius:6px;background:var(--accent);color:var(--on-accent);
+        display:grid;place-items:center}
+
+  /* ── 变更标记 ─────────────────────────────────────────────── */
+  .chg{display:none;position:absolute;top:-7px;right:-7px;width:16px;height:16px;border-radius:50%;
+       background:var(--accent-amber);color:#fff;font-size:9.5px;font-weight:700;place-items:center}
+  body.fixed .chg{display:grid}
+  .steps .chg{left:-6px;right:auto;top:-6px}
+  .chg-inline{display:none;width:14px;height:14px;border-radius:50%;background:var(--accent-amber);color:#fff;
+              font-size:9px;font-weight:700;place-items:center;margin-left:2px}
+  body.fixed .chg-inline{display:inline-grid}
+  .rel{position:relative}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--accent);color:var(--on-accent);
+         font-size:12px;padding:8px 14px;border-radius:999px;opacity:0;transition:.2s;pointer-events:none}
+  .toast.on{opacity:1}
+  .view{display:none}.view.on{display:flex;flex:1;min-height:0;flex-direction:column}
+  @media (max-width:1500px){.ai{width:440px}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span><b>书童 · 页面内流程调整</b>　只改现有页面内部，导航 / 路由 / 面板结构不变</span>
+  <span class="seg">
+    <button id="m-cur">现状</button>
+    <button id="m-fix">调整后</button>
+  </span>
+</div>
+
+<div class="app">
+  <!-- rail 132 -->
+  <aside class="rail">
+    <div class="rail-scroll" id="rail"></div>
+    <div class="rail-user">
+      <svg class="ic sm" viewBox="0 0 24 24" style="color:var(--text-muted)"><path d="M20 4c-6 0-11 5-11 11v5"/><path d="M20 4c0 6-4 10-9 10H6"/></svg>
+      <span>青灯客</span><span class="dot"></span>
+    </div>
+  </aside>
+
+  <!-- 中栏 208 -->
+  <nav class="mid" id="mid">
+    <div class="mid-head">
+      <b id="mid-title">章节</b><span id="mid-count">6 章</span>
+      <button class="plus" title="新建" onclick="toast('演示：新建章节')">
+        <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+    <div class="mid-bread"><b>我在南宋靠说书探案</b><span>›</span><span id="mid-bread-name">概览</span></div>
+    <button class="cont rel" onclick="toast('演示：定位到第 6 章')">
+      <span class="k">继续写</span><b style="font-weight:600">第 6 章 代签</b>
+      <span class="end"><svg class="ic xs" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      <span class="chg">3</span>
+    </button>
+    <div class="mid-search">
+      <svg class="ic xs" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      搜索章节、场景、线索
+    </div>
+    <div class="mid-scroll" id="tree"></div>
+    <div class="mid-empty" id="mid-empty">暂无内容</div>
+  </nav>
+
+  <!-- 主区 -->
+  <section class="main">
+    <!-- 概览 -->
+    <div class="view on" id="v-overview">
+      <div class="main-head">
+        <div class="crumb">
+          <svg class="ic sm" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+          <b>我在南宋靠说书探案</b><span>›</span><span>概览</span>
+        </div>
+        <div class="acts">
+          <button class="btn ghost" style="height:26px;font-size:11px" onclick="toast('演示：改编')">改编</button>
+        </div>
+      </div>
+      <div class="main-scroll">
+        <div class="ov-title">
+          <h1>我在南宋靠说书探案</h1>
+          <svg class="ic sm" viewBox="0 0 24 24" style="color:var(--text-subtle)"><path d="M4 20h4L20 8l-4-4L4 16v4z"/></svg>
+          <span class="chip">创作中</span>
+        </div>
+
+        <div class="card">
+          <div class="lbl">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 8-8"/><path d="M4 5v7h7"/></svg>
+            继续写作
+          </div>
+          <div class="sub">你上次写到：</div>
+          <div class="quote">“他听见自己的心跳，一下一下，像有人在门里拉闩。”</div>
+          <div class="sub">慢慢写，让故事自然生长吧。</div>
+          <div class="ov-actions rel">
+            <!-- 调整① -->
+            <button class="btn primary" id="ov-primary">
+              <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              <span id="ov-primary-txt">继续写第 6 章</span>
+            </button>
+            <button class="btn ghost" id="ov-secondary">
+              <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18 9.5l-4.2 1.9L12 16l-1.8-4.6L6 9.5l4.2-1.9L12 3z"/></svg>
+              <span id="ov-secondary-txt">查看大纲</span>
+            </button>
+            <button class="btn ghost" onclick="toast('演示：翻看设定')">
+              <svg class="ic sm" viewBox="0 0 24 24"><path d="M4 5h11a3 3 0 0 1 3 3v11H7a3 3 0 0 0-3 3V5z"/></svg>
+              翻看设定
+            </button>
+            <span class="chg">1</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="lbl">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M8 15l4-5 3 3 4-6"/></svg>
+            写作进度　世界观 0 · 角色 0 · 伏笔 0 · 正文 6 章
+          </div>
+          <div class="prog-line"><em>还没设定全书目标（建议先定章数与每章字数，写作节奏才有依据）</em></div>
+          <div class="chips">
+            <span class="pill done">立项</span>
+            <span class="pill">世界观</span><span class="pill">人物</span><span class="pill">大纲</span>
+            <span class="pill done">章纲</span><span class="pill done">正文 6</span><span class="pill">沉淀</span>
+          </div>
+          <div class="h3">搭世界的骨架</div>
+          <p class="p-note">先定世界规则与主要势力，后面的对话和冲突才有约束。</p>
+          <button class="link" onclick="toast('演示：去搭世界观')">
+            去搭世界观<svg class="ic xs" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="more">还差 4 项<svg class="ic xs" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+        </div>
+
+        <div class="sec-h">内容库</div>
+        <div style="display:flex;gap:12px">
+          <div class="card" style="flex:1;margin:0">
+            <div class="lbl">大纲　<em style="font-style:normal;color:var(--text-subtle)">全书总纲 · 关系状态表</em></div>
+          </div>
+          <div class="card" style="flex:1;margin:0">
+            <div class="lbl">人物　<em style="font-style:normal;color:var(--text-subtle)">还没有人物卡</em></div>
+          </div>
+        </div>
+      </div>
+      <div class="main-foot">
+        <span>已启用自动保存</span>
+        <span class="end"><span>替换</span><span>一键成稿</span><span>历史</span></span>
+      </div>
+    </div>
+
+    <!-- 章节编辑 -->
+    <div class="view" id="v-chapter">
+      <div class="main-head">
+        <div class="crumb">
+          <svg class="ic sm" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+          <b>我在南宋靠说书探案</b><span>›</span><span>章节</span><span>›</span><b>第6章 · 代签</b>
+        </div>
+        <div class="acts">
+          <svg class="ic sm" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-3"/></svg>
+          <svg class="ic sm" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9h-9a7 7 0 0 0 0 14h3"/></svg>
+          <svg class="ic sm" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+          <svg class="ic sm" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+          <svg class="ic sm" viewBox="0 0 24 24"><path d="M21 12a8 8 0 1 1-4.6-7.2"/><path d="M12 8v4l3 2"/></svg>
+        </div>
+      </div>
+
+      <div class="main-scroll">
+        <!-- 现状：两行平级按钮 -->
+        <div class="tb">
+          <span class="tag">
+            <svg class="ic xs" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>
+            第6章
+          </span>
+          <span class="tag draft">草稿</span>
+          <span class="sep"></span>
+          <span class="act">聚焦度</span>
+          <span class="act">聚焦</span>
+          <span class="act">沉淀</span>
+          <span class="act">错位</span>
+          <span class="right">
+            <svg class="ic xs" viewBox="0 0 24 24"><path d="M20 11A8 8 0 1 0 12 20"/><path d="M20 4v7h-7"/></svg>
+            重写章纲
+          </span>
+        </div>
+        <div class="tb2">
+          <button class="btn" onclick="toast('演示：写出当前稿')">
+            <svg class="ic xs" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>写出当前稿
+          </button>
+          <button class="btn" onclick="toast('演示：审校本章')">
+            <svg class="ic xs" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>审校本章
+          </button>
+          <button class="btn" onclick="toast('演示：沉淀本章')">
+            <svg class="ic xs" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>沉淀本章
+          </button>
+          <span class="chg">2</span>
+        </div>
+
+        <!-- 调整②：一条状态条 + 单一主按钮 -->
+        <div class="steps rel">
+          <span class="step done"><span class="num">✓</span>章纲</span>
+          <span class="step done"><span class="num">✓</span>正文</span>
+          <span class="step now"><span class="num">3</span>审校</span>
+          <span class="step"><span class="num">4</span>沉淀</span>
+          <span class="sp"></span>
+          <button class="primary" onclick="toast('演示：审校本章')">
+            <svg class="ic xs" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>审校本章
+          </button>
+          <span class="chg">2</span>
+        </div>
+
+        <h2 class="ch-title">代签</h2>
+
+        <div class="box">
+          <div class="box-h">
+            <svg class="ic xs" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+            章节大纲
+            <span class="end">
+              <svg class="ic xs" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </div>
+        </div>
+
+        <div class="cast-empty">
+          <b>还没有人物卡</b>
+          <p>正文里的人名暂时无法反查。到「人物」建卡后，这里会自动列出本章出场人物。</p>
+        </div>
+
+        <div class="box">
+          <div class="box-h">
+            <svg class="ic xs" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+            本章事件
+            <span class="end"><svg class="ic xs" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+          <div class="box-b">
+            一夜拖下来，三处都空了。赌房里没有，磨房里没有，他舅家在南门外五里，敲了半个时辰门，里头的老板娘说他兄弟三年没来过。
+          </div>
+        </div>
+
+        <div class="prose">
+          <p>天快亮的时候，陈七想进城。</p>
+          <p>许阿宝是在城门洞里找到的。天没亮，他蹲在墙根，抱着一包袱，等开城门。巡卒认出了他，陈七带人把门洞两头堵住，他连跑都没跑。</p>
+          <p>人被带到米行后院的时候，天刚亮。赵主簿也来了，袍子还是整整齐齐。</p>
+          <p>“宋县尉。”他说，“这案子已经报州。”</p>
+          <p>“报州的文书在路上。”宋慈说，“人在这里。”</p>
+          <p>“你要问一个学徒，问什么？”</p>
+        </div>
+      </div>
+
+      <div class="main-foot">
+        <span>已启用自动保存</span><span>字数 3千</span>
+        <span class="end"><span>替换</span><span>一键成稿</span><span>历史</span></span>
+      </div>
+    </div>
+
+    <!-- 人物 -->
+    <div class="view" id="v-character">
+      <div class="main-head">
+        <div class="crumb">
+          <svg class="ic sm" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+          <b>我在南宋靠说书探案</b><span>›</span><span>人物</span>
+        </div>
+        <div class="acts">
+          <button id="back-chapter" style="display:none;align-items:center;gap:4px;font-size:11.5px;color:var(--accent-amber)">
+            <svg class="ic xs" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>返回第 6 章
+            <span class="chg-inline">5</span>
+          </button>
+          <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18 9.5l-4.2 1.9L12 16l-1.8-4.6L6 9.5l4.2-1.9L12 3z"/></svg>
+        </div>
+      </div>
+      <div class="main-scroll">
+        <div class="empty">
+          <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <b>还没有选中人物</b>
+          <p>先新建第一个人物内容。</p>
+          <button class="btn primary" onclick="toast('演示：新建角色')">新建角色</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AI 栏 569 -->
+  <aside class="ai">
+    <div class="ai-head">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z"/></svg>
+      <div style="min-width:0">
+        <div class="ttl" id="ai-title">这本书已经有简介：目标共 100 章，每…</div>
+        <div class="mdl">deepseek · deepseek-flash</div>
+      </div>
+      <div class="end">
+        <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        <svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 2.1a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L3.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.1h5l.4-2.1a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5c.1-.3.1-.7.1-1z"/></svg>
+        <svg class="ic sm" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 4v16"/></svg>
+      </div>
+    </div>
+    <div class="ctx rel">
+      <b>正在写：第 6 章 代签</b>　章纲 1 / 角色 0 / 设定 0 / 伏笔 0
+      <span class="chg">4</span>
+    </div>
+    <div class="ai-scroll">
+      <div class="msg">
+        <div class="bubble">
+          <p>这本书已经有简介：目标共 100 章，每章约 3000 字，目前已写 6 章。@ 剑人物，请只补缺口，用 Create 工具一次补齐：</p>
+          <p>1）人物卡不足 → 只补缺。只补核心人物（主角、主要对手、关键配角），写清身份、动机、性格、弱光与鲜名 aliases 但正文尽量少用；已有的人物卡不要重复、不要覆盖。</p>
+          <p>2）章纲不足时补齐第 1 到第 10 章的骨架：标题要具体，每章 outline 按六字段写（本章目的 / 出场人物及状态 / 冲突与阻力 / 关键反转 / 伏笔 / 钩子）与摘要；已有章纲与已有摘要的一致；不要重复拆纲。</p>
+          <p>3）补出后略次要的部分不再重复 <b>。不要写正文。完成后三句话汇报：补了几个人物、补了哪几章、下一章该写什么。</b></p>
+        </div>
+        <div class="avatar">
+          <svg class="ic xs" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="ai-input">
+      <div class="tools">
+        <span class="file">
+          <svg class="ic xs" viewBox="0 0 24 24"><path d="M21 12.5l-8 8a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7-7"/></svg>
+          选择文件
+        </span>
+      </div>
+      <textarea placeholder="人物和大纲，可以和 AI 边聊边完善"></textarea>
+      <div class="foot">
+        <svg class="ic xs" viewBox="0 0 24 24"><path d="M12 4v16M6 9l6-5 6 5"/></svg>
+        <span class="mdl">
+          <span>deepseek-flash</span>
+          <svg class="ic xs" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+        <button class="send" onclick="toast('演示：发送给 AI')">
+          <svg class="ic xs" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+const ICONS = {
+  chat: '<path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-5.5A8 8 0 1 1 21 12z"/>',
+  shield: '<path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z"/>',
+  book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 5.5v16"/>',
+  list: '<path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5"/><path d="M16 5.5a3 3 0 0 1 0 5.6M18 20c0-2.4-1-4-2.6-4.8"/>',
+  flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
+  box: '<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
+  grid: '<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>',
+  graph: '<circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="9" r="2.6"/><circle cx="9" cy="17" r="2.6"/><path d="M9.3 8.4l5.4.6M8 9.5l.7 5M14.8 10.7l-4.2 5"/>',
+  trend: '<path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/>',
+  image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5-6 6"/>',
+  globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.4 3.6 8.5S14.4 18.1 12 20.5C9.6 18.1 8.4 15.1 8.4 12S9.6 5.9 12 3.5z"/>',
+  panel: '<path d="M4 5h16v14H4z"/><path d="M8 5v14M5.5 9h1M5.5 13h1"/>',
+  map: '<path d="M9 4L3 7v13l6-3 6 3 6-3V4l-6 3-6-3z"/><path d="M9 4v13M15 7v13"/>',
+  cards: '<rect x="3" y="6" width="12" height="14" rx="2"/><path d="M7 6V4h12a2 2 0 0 1 2 2v12h-2"/>',
+  circle: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12h7M12 8.5v7"/>',
+  mask: '<path d="M4 7h16v5a8 8 0 0 1-8 8 8 8 0 0 1-8-8z"/><path d="M8.5 11h.01M15.5 11h.01M9.5 15c1.6 1.2 3.4 1.2 5 0"/>',
+  theater: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 5v5M16 5v5"/>',
+  roleplay: '<path d="M20 12a8 8 0 1 0-3.2 6.4L21 20l-1.2-3.6A8 8 0 0 0 20 12z"/><path d="M9 11h.01M15 11h.01"/>',
+  feather: '<path d="M20 4c-6 0-11 5-11 11v5"/><path d="M20 4c0 6-4 10-9 10H6"/>',
+};
+
+const GROUPS = [
+  ["AI", [["聊天","chat"],["规则","shield"]]],
+  ["创作", [["章节","book"],["大纲","list"],["人物","users"],["伏笔","flag"],["素材","box"]]],
+  ["系统", [["概览","grid"],["图谱","graph"],["进度","trend"],["封面","image"]]],
+  ["世界观", [["设定","globe"],["世界观看板","panel"],["地图","map"],["图鉴","cards"]]],
+  ["灵感", [["圆桌","circle"],["独白","mask"],["剧场","theater"],["扮演","roleplay"]]],
+];
+
+function svg(path, cls = "ic") {
+  return `<svg class="${cls}" viewBox="0 0 24 24">${path}</svg>`;
+}
+
+function buildRail() {
+  const box = $("#rail");
+  box.innerHTML = GROUPS.map(([g, items]) =>
+    `<div class="grp">${g}</div>` +
+    items.map(([label, icon]) => `
+      <button class="nav" data-label="${label}">
+        ${svg(ICONS[icon])}<span>${label}</span>
+      </button>`).join("")
+  ).join("");
+  $$(".nav", box).forEach(b => b.addEventListener("click", () => {
+    const label = b.dataset.label;
+    if (label === "人物") showView("character");
+    else if (label === "章节") showView("chapter");
+    else if (label === "概览") showView("overview");
+    else toast("演示：只做了概览 / 章节 / 人物三屏");
+    markNav(label);
+  }));
+  markNav("概览");
+}
+
+function markNav(label) {
+  $$(".nav").forEach(b => b.classList.toggle("on", b.dataset.label === label));
+}
+
+const TREE = [
+  ["vol", "第 1 卷 · 卷一 闽北·醒木", "8 章"],
+  ["ch", "第1章 半回"],
+  ["ch", "第2章 格目"],
+  ["ch", "第3章 不作证"],
+  ["ch", "第4章 内闩"],
+  ["ch", "第5章 时辰"],
+  ["ch", "第6章 代签"],
+];
+
+function buildTree(active = 5) {
+  const box = $("#tree");
+  box.innerHTML = TREE.map(([kind, label, cap], i) => {
+    const cls = kind === "vol" ? "row vol" : "row ch";
+    const on = kind === "ch" && i - 1 === active ? " on" : "";
+    return `<button class="${cls}${on}" onclick="toast('演示：打开 ${label}')">
+      ${svg(kind === "vol" ? ICONS.book : '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>', "ic sm")}
+      <span>${label}</span>${cap ? `<span class="cap">${cap}</span>` : ""}
+    </button>`;
+  }).join("") + `
+    <button class="row muted" onclick="toast('演示：新增章节')">
+      ${svg('<path d="M12 5v14M5 12h14"/>', "ic sm")}<span>新增章节</span>
+    </button>`;
+}
+
+const MID_META = { overview: ["概览", ""], chapter: ["章节", "6 章"], character: ["人物", "0"] };
+
+let currentView = "overview";
+
+function showView(v) {
+  currentView = v;
+  $$(".view").forEach(el => el.classList.toggle("on", el.id === "v-" + v));
+  const [title, count] = MID_META[v];
+  $("#mid-title").textContent = title;
+  $("#mid-count").textContent = count;
+  $("#mid-bread-name").textContent = title;
+  if (v !== "character") buildTree(5);
+  markNav({ overview: "概览", chapter: "章节", character: "人物" }[v]);
+  render();
+}
+
+function render() {
+  const v = currentView;
+  const isOv = v === "overview";
+  const isChar = v === "character";
+  const fixed = document.body.classList.contains("fixed");
+  const mid = $("#mid");
+  mid.querySelector(".mid-head").style.display = isOv ? "none" : "flex";
+  mid.querySelector(".mid-search").style.display = isOv ? "none" : "flex";
+  mid.querySelector(".mid-bread").style.display = isOv ? "flex" : "none";
+  mid.querySelector(".cont").style.display = fixed && v === "chapter" ? "flex" : "none";
+  $("#tree").style.display = isOv || isChar ? "none" : "block";
+  $("#mid-empty").style.display = isChar ? "block" : "none";
+  $("#back-chapter").style.display = fixed ? "inline-flex" : "none";
+}
+
+let mode = "cur";
+function setMode(fixed) {
+  mode = fixed ? "fix" : "cur";
+  document.body.classList.toggle("fixed", fixed);
+  $("#m-cur").classList.toggle("on", !fixed);
+  $("#m-fix").classList.toggle("on", fixed);
+
+  // ① 概览主按钮
+  $("#ov-primary-txt").textContent = fixed ? "回到第 6 章" : "继续写第 6 章";
+  $("#ov-secondary-txt").textContent = fixed ? "让 AI 先起稿" : "查看大纲";
+  render();
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("on"), 1800);
+}
+
+buildRail();
+buildTree(5);
+$("#m-cur").addEventListener("click", () => setMode(false));
+$("#m-fix").addEventListener("click", () => setMode(true));
+$("#ov-primary").addEventListener("click", () => {
+  if (mode === "fix") { showView("chapter"); toast("演示：直接回到第 6 章正文"); }
+  else toast("演示：现状会开一个「继续写第 6 章」AI 会话，不进正文");
+});
+$("#ov-secondary").addEventListener("click", () => {
+  if (mode === "fix") toast("演示：让 AI 先起稿（仍走原 AI 链路）");
+  else toast("演示：查看大纲");
+});
+$("#back-chapter").addEventListener("click", () => {
+  showView("chapter");
+  toast("演示：回到第 6 章，游标回到上次位置");
+});
+
+const params = new URLSearchParams(location.search);
+const view = params.get("view");
+setMode(params.get("mode") === "fixed");
+showView(["overview", "chapter", "character"].includes(view) ? view : "overview");
+</script>
+</body>
+</html>

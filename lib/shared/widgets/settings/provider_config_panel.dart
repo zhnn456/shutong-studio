@@ -1088,6 +1088,7 @@ class _ProviderModelsDialogContentState
         _isLoading = false;
         final statusCode = switch (e) {
           _ModelsFetchHttpException() => e.statusCode,
+          NewApiRequestException() => e.statusCode,
           CodexHttpException() => e.statusCode,
           PurefoxMediaModelsException() => e.statusCode,
           _ => null,

@@ -453,11 +453,13 @@ void _testProvider(String type, String baseUrl) {
     await expectLater(
       NewApiClient(_provider(type)).models(httpClient: transport),
       throwsA(
-        isA<StateError>().having(
-          (e) => e.toString(),
-          'diagnostic',
-          allOf(contains('401'), isNot(contains('test-key'))),
-        ),
+        isA<NewApiRequestException>()
+            .having((e) => e.statusCode, 'statusCode', 401)
+            .having(
+              (e) => e.message,
+              'diagnostic',
+              allOf(contains('401'), isNot(contains('test-key'))),
+            ),
       ),
     );
     expect(calls, 1);

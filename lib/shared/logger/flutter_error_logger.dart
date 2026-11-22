@@ -23,8 +23,23 @@ void installFlutterErrorLogger({
 }) {
   FlutterError.onError = (details) {
     (presentErrorOverride ?? FlutterError.presentError)(details);
+    // 只记 exceptionAsString() 时，那些"在 Element.updateChildren 里抛、栈里没有
+    // 业务帧"的错误会变成一条无主线索（例如整块面板渲染成灰块，日志只留
+    // Null check operator）。把 library / context / informationCollector 一起写进
+    // 日志，才能定位到具体是哪个 widget 挂了。
+    final buffer = StringBuffer(details.exceptionAsString());
+    if (details.library != null) {
+      buffer.write('\nlibrary: ${details.library}');
+    }
+    if (details.context != null) {
+      buffer.write('\ncontext: ${details.context}');
+    }
+    final info = details.informationCollector?.call();
+    if (info != null && info.isNotEmpty) {
+      buffer.write('\n${info.join('\n')}');
+    }
     (logErrorOverride ?? _log.error)(
-      details.exceptionAsString(),
+      buffer.toString(),
       error: details.exception,
       stackTrace: details.stack,
     );
