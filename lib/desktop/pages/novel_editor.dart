@@ -892,9 +892,22 @@ class NovelEditorPage extends HookConsumerWidget {
         final repaired = reconcileWorkspaceSelection(
           selection: current,
           availableItemIds: availableItemIds,
-          selectFirstWhenMissing:
-              current.section == NovelWorkspaceSection.chapters ||
-              current.section == NovelWorkspaceSection.maps,
+          // 有数据就要看见数据：这些页面的中间栏在没有 itemId 时只画「还没有
+          // 选中 X」，用户写完一章点进来会以为模块是空的。进入即选中第一条，
+          // 想回到总览由用户显式清空。
+          selectFirstWhenMissing: switch (current.section) {
+            NovelWorkspaceSection.chapters ||
+            NovelWorkspaceSection.maps ||
+            NovelWorkspaceSection.characters ||
+            NovelWorkspaceSection.foreshadowings ||
+            NovelWorkspaceSection.lore ||
+            NovelWorkspaceSection.materials ||
+            NovelWorkspaceSection.skills ||
+            NovelWorkspaceSection.items ||
+            NovelWorkspaceSection.factions ||
+            NovelWorkspaceSection.creatures => true,
+            _ => false,
+          },
         );
         if (repaired == current) {
           return null;
@@ -994,9 +1007,13 @@ class NovelEditorPage extends HookConsumerWidget {
             ? context.t(LocaleKeys.workspaceExtra)
             : 'Chapter ${chapter.chapterNum ?? "?"}';
         final actionLabel = context.t(LocaleKeys.chapterRunChronicler);
-        final chroniclerPrompt = context.t(
-          LocaleKeys.chapterPublishChroniclerPrompt,
-        );
+        // 目标章节必须用真实 ID 定位：之前只带 itemId、正文里写「本章」，
+        // 编年史者会按 chapter_num 反查（本书只有 1 章时会读成第 3 章）。
+        final chroniclerPrompt =
+            '${context.t(LocaleKeys.chapterPublishChroniclerPrompt)}\n'
+            '目标章节：$chapterTitle，chapter_id = $chapterId，'
+            'path = /chapters/$chapterId。'
+            '按这个 path 直接读取正文，不要用 chapter_num 反查，不要改读其他章节。';
         final draftSignal =
             '__handoff_draft__chapter_${chapterId}_${DateTime.now().microsecondsSinceEpoch}_$builtinAgentSlugOrchestrator';
         aiPanelCollapsed.value = false;
@@ -1011,6 +1028,7 @@ class NovelEditorPage extends HookConsumerWidget {
               section: NovelWorkspaceSection.chapters,
               itemId: chapterId,
               label: chapterTitle,
+              path: '/chapters/$chapterId',
             ),
           ],
           initialText: chroniclerPrompt,

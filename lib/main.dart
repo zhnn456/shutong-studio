@@ -71,6 +71,7 @@ import 'shared/services/window_lifecycle_channel.dart';
 import 'shared/services/crash_reporting/native_crash_reporting.dart';
 import 'shared/logger/log_manager.dart';
 import 'shared/logger/flutter_error_logger.dart';
+import 'shared/diagnostics/widget_tree_dump.dart';
 import 'shared/logger/startup_failure_reporter.dart';
 import 'shared/services/single_instance_service.dart';
 import 'shared/services/system_notification_service.dart';
@@ -223,8 +224,11 @@ Future<void> _startApplication() async {
   _log.info('ImageCache configured');
 
   _log.checkpoint('Running app...');
-  runApp(
-    EasyLocalization(
+  if (const String.fromEnvironment('REVERIC_TREE_DUMP') == '1') {
+    // 临时诊断开关：只在带 --dart-define=REVERIC_TREE_DUMP=1 构建时生效。
+    startWidgetTreeDump();
+  }
+  runApp(    EasyLocalization(
       supportedLocales: const [Locale('zh', 'CN'), Locale('en')],
       path: 'assets/translations',
       assetLoader: const MergingAssetLoader(),
