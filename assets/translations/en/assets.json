@@ -32,5 +32,6 @@
   "assets.bone_leftFoot": "Left foot",
   "assets.bone_rightUpperLeg": "Right thigh",
   "assets.bone_rightLowerLeg": "Right calf",
-  "assets.bone_rightFoot": "Right foot"
+  "assets.bone_rightFoot": "Right foot",
+  "assets.media_video_shortcuts": "Space: Play/pause · ←/→: Skip {seconds}s · Esc: Close"
 }

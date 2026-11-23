@@ -10,7 +10,6 @@
 //   assets/translations/en/production.json
 //   assets/translations/zh-CN/production.json
 import 'dart:io';
-
 import 'package:sqlite3/sqlite3.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -229,12 +228,14 @@ Future<AssetRow?> pickProductionAsset(
   ProductionCanvasService service, {
   Set<String> types = const {'image', 'video', 'audio'},
   String? confirmLabel,
+  Future<void> Function(AssetRow)? addToCanvas,
 }) => showRevericDialog<AssetRow>(
   context: context,
   builder: (_) => ProductionAssetPicker(
     service: service,
     types: types,
     confirmLabel: confirmLabel,
+    addToCanvas: addToCanvas,
   ),
 );
 
@@ -266,6 +267,7 @@ Future<void> previewProductionAsset(
         type: file.type,
         name: file.name,
         autoplay: file.type == 'video',
+        pathResolver: service.library,
       ),
     );
   }

@@ -192,5 +192,11 @@
   "editor.replace_one": "替换",
   "editor.replace_with": "替换为",
   "editor.upload_cover": "上传封面",
-  "editor.cover_ai_generated_notice": "内容由人工智能模型生成"
+  "editor.cover_ai_generated_notice": "内容由人工智能模型生成",
+  "editor.image_size": "尺寸",
+  "editor.image_width": "宽度（像素）",
+  "editor.image_height": "高度（像素）",
+  "editor.image_dimension_positive": "请输入正整数。",
+  "editor.image_dimensions_incomplete": "请同时填写宽度和高度。",
+  "editor.image_quality_custom_hint": "例如 hd、standard"
 }

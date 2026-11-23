@@ -194,6 +194,9 @@ class AiChatPanel extends HookConsumerWidget {
   /// 聚焦输入框(如画布页「AI 共创」按钮)。为 null 时面板自建焦点节点。
   final FocusNode? composerFocusNode;
 
+  /// 聊天头部操作按钮的排除区域 key，透传给 [ChatHeader]。
+  final GlobalKey? headerActionsGestureExclusionKey;
+
   const AiChatPanel({
     super.key,
     this.onClose,
@@ -236,6 +239,7 @@ class AiChatPanel extends HookConsumerWidget {
     this.onOnboardingDismiss,
     this.onOpenFeature,
     this.composerFocusNode,
+    this.headerActionsGestureExclusionKey,
   }) : assert(
          onOpenFeature == null ||
              (onRequestHandoff != null && onActiveSessionIdChanged != null),
@@ -1376,6 +1380,7 @@ class AiChatPanel extends HookConsumerWidget {
                       )
                     : null,
                 avoidWindowCaption: avoidWindowCaption && !floating,
+                actionsGestureExclusionKey: headerActionsGestureExclusionKey,
                 floating: floating,
               ),
               Divider(height: 1, color: colors.border),

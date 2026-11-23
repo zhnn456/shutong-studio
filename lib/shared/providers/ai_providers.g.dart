@@ -116,7 +116,7 @@ final class AiChatRuntimeProvider
   }
 }
 
-String _$aiChatRuntimeHash() => r'5d378f71b9630f32725358a8a6da8f12ac79d40b';
+String _$aiChatRuntimeHash() => r'9ae20d91716ab2cb59ab1972e4f4e75906fa31d1';
 
 final class AiChatRuntimeFamily extends $Family
     with

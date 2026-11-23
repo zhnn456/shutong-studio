@@ -12,6 +12,8 @@
 //   assets/translations/zh-CN/production.json
 //   assets/translations/en/canvas.json
 //   assets/translations/zh-CN/canvas.json
+//   assets/translations/en/common.json
+//   assets/translations/zh-CN/common.json
 // 遵循的 Rules:
 //   .agents/rules/hooks.md
 //   .agents/rules/design-system.md
@@ -19,6 +21,7 @@
 
 import '../../../shared/hooks/use_ai_providers.dart';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -37,11 +40,14 @@ import '../../../shared/localization/locale_keys.dart';
 import '../../../shared/models/video/request.dart';
 import '../../../shared/models/audio/request.dart';
 import '../../../shared/models/audio/channels.dart';
+import '../../../shared/models/production/panorama.dart';
+import '../../../shared/providers/production_panorama.dart';
 import '../../../shared/services/production/canvas_service.dart';
 import '../../../shared/services/production/generate_orchestrator.dart';
 import '../../../shared/services/production/tidy_layout.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/app_background.dart';
+import '../../../shared/widgets/production/panorama/fullscreen.dart';
 import '../../../third/flow/vyuh_node_flow.dart' as flow;
 import '../canvas/canvas_palette.dart';
 import '../canvas/widgets/floating_cluster.dart';
@@ -113,13 +119,17 @@ class ProductionBoard extends HookConsumerWidget {
     required this.sceneLabels,
     this.onAddSegment,
     required this.onSelect,
+    this.onPaste,
+    this.importProgress,
     this.onContextMenu,
+    this.onStoryboardCellContextMenu,
     required this.onClear,
     this.beforeRemoveSelection,
     required this.onConnect,
     this.onDisconnect,
     this.onCreateGroupReference,
     required this.onOpenDirector,
+    this.onPreviewText,
     required this.camera,
     this.bar,
     this.composer,
@@ -130,6 +140,7 @@ class ProductionBoard extends HookConsumerWidget {
     this.controls = const [],
     this.empty,
     this.taskActions,
+    this.readOnly = false,
   });
   final ProductionCanvasService service;
   final String canvasId;
@@ -150,9 +161,12 @@ class ProductionBoard extends HookConsumerWidget {
   /// 场次色带底部的「分镜」：在这一场末尾新建片段。为 null 时不显示。
   final ValueChanged<String>? onAddSegment;
   final ValueChanged<CanvasNode> onSelect;
+  final VoidCallback? onPaste;
+  final ValueListenable<double?>? importProgress;
 
   /// 节点右键：节点已选中，[at] 是全局坐标。
   final void Function(CanvasNode node, Offset at)? onContextMenu;
+  final void Function(CanvasNode node, Offset at)? onStoryboardCellContextMenu;
 
   /// 点画布空白处。
   final VoidCallback onClear;
@@ -168,6 +182,9 @@ class ProductionBoard extends HookConsumerWidget {
 
   /// 导演台节点卡片上的「打开导演台」。
   final ValueChanged<CanvasNode> onOpenDirector;
+
+  /// 只读模式下双击文本节点时打开文本预览弹窗。
+  final ValueChanged<CanvasNode>? onPreviewText;
   final ProductionBoardCamera camera;
   final Widget? empty;
 
@@ -194,6 +211,9 @@ class ProductionBoard extends HookConsumerWidget {
 
   /// 节点卡片上失败提醒的动作。
   final ProductionTaskActions? taskActions;
+
+  /// 只读查看模式（画布画廊）：允许平移、缩放、选中与媒体预览，禁止拖拽、连线、编辑与删除。
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -248,6 +268,15 @@ class ProductionBoard extends HookConsumerWidget {
       [bands],
     );
     useEffect(() => controller.dispose, [controller]);
+    final paste = useRef<VoidCallback?>(null)
+      ..value = readOnly ? null : onPaste;
+    final pasteLabel = context.t(LocaleKeys.commonPaste);
+    useEffect(() {
+      controller.shortcuts.registerAction(
+        _PasteImageAction(pasteLabel, () => paste.value),
+      );
+      return null;
+    }, [controller, pasteLabel]);
     final textTitle = useMemoized(ProductionNodeTitle.new);
     useEffect(() => textTitle.dispose, [textTitle]);
     // 平移也会换掉 viewport 值；标题只跟放大倍数走，倍数不变时不让每张卡片的标题重建。
@@ -358,7 +387,9 @@ class ProductionBoard extends HookConsumerWidget {
     }, [selected]);
     controller.resolvePlugin<ProductionGroupTitles>()!
       ..headerScale = (() => headerScale.value)
-      ..onTitleTap = ((id) => titleRequest.value = (id: id, at: DateTime.now()))
+      ..onTitleTap = readOnly
+          ? null
+          : ((id) => titleRequest.value = (id: id, at: DateTime.now()))
       ..labels = {
         for (final (index, group)
             in nodes.where((n) => n.type == canvasNodeTypeGroup).indexed)
@@ -414,7 +445,10 @@ class ProductionBoard extends HookConsumerWidget {
     );
     nodeWidgets.removeWhere((id, _) => !byId.containsKey(id));
     final latestOnOpenDirector = useRef(onOpenDirector)..value = onOpenDirector;
-    final latestOnContextMenu = useRef(onContextMenu)..value = onContextMenu;
+    final latestOnPreviewText = useRef(onPreviewText)..value = onPreviewText;
+    final hasPreviewText = onPreviewText != null;
+    final contextMenus = useRef((onContextMenu, onStoryboardCellContextMenu))
+      ..value = (onContextMenu, onStoryboardCellContextMenu);
     final latestTaskActions = useRef(taskActions)..value = taskActions;
     final hasTaskActions = taskActions != null;
     // 上层每次 build 都会新建 taskActions；卡片只拿转发到最新值的稳定实例，缓存才能命中。
@@ -538,7 +572,7 @@ class ProductionBoard extends HookConsumerWidget {
       );
     };
 
-    // 库内容按 id 增量对齐到 flow：只增删节点和连线、挪位置，不整图重载，
+    // 库内容按 id 增量对齐到 flow：增删节点和连线、替换连线端点、挪位置，不整图重载，
     // 视口和选中态原地不动；节点内容变化由 nodeBuilder 读最新快照。
     useEffect(() {
       if (!content.hasData) {
@@ -557,13 +591,16 @@ class ProductionBoard extends HookConsumerWidget {
         if (existing == null ||
             existing.size.value != size ||
             existing.locked !=
-                interaction.storyboardParents.containsKey(node.id)) {
+                (readOnly ||
+                    interaction.storyboardParents.containsKey(node.id))) {
           controller.addNode(
             _flowNode(
                 node,
                 colors,
                 size: size,
-                locked: interaction.storyboardParents.containsKey(node.id),
+                locked:
+                    readOnly ||
+                    interaction.storyboardParents.containsKey(node.id),
                 derived:
                     outputIds.contains(node.id) || derivedIds.contains(node.id),
                 headerScale: () => headerScale.value,
@@ -598,6 +635,13 @@ class ProductionBoard extends HookConsumerWidget {
         }
       }
       for (final edge in edges) {
+        final existing = controller.getConnection(edge.id);
+        if (existing != null &&
+            (existing.sourceNodeId != edge.sourceNodeId ||
+                existing.targetNodeId != edge.targetNodeId)) {
+          // 输入 ID 在更换参考时保持不变；移除旧连线同时清理路径缓存和节点索引。
+          controller.removeConnection(edge.id);
+        }
         if (controller.getConnection(edge.id) == null &&
             byId.containsKey(edge.sourceNodeId) &&
             byId.containsKey(edge.targetNodeId)) {
@@ -783,8 +827,31 @@ class ProductionBoard extends HookConsumerWidget {
               return;
             }
             previewing.value = true;
+            final panorama = type == 'image'
+                ? PanoramaView.fromStyle(row.style)
+                : null;
             productionRun(context, () async {
               try {
+                if (panorama != null) {
+                  final asset = await service.library.database.assetDao
+                      .getAsset(assetId);
+                  if (asset?.path != null && context.mounted) {
+                    final panoramaController = ref.read(
+                      productionPanoramaProvider((
+                        service: service,
+                        nodeId: row.id,
+                        readOnly: readOnly,
+                      )),
+                    );
+                    panoramaController.restore(panorama);
+                    await showPanoramaFullscreen(
+                      context,
+                      service.library.resolve(asset!),
+                      panoramaController,
+                    );
+                  }
+                  return;
+                }
                 await previewProductionAsset(context, service, assetId);
               } finally {
                 previewing.value = false;
@@ -802,13 +869,20 @@ class ProductionBoard extends HookConsumerWidget {
             }
           },
           // 按下任意键时 flow 已按点选处理过；只有多选里右键时才收成单选。
-          // 分镜格没有工具条，不响应。
           onContextMenu: (node, position) {
+            if (readOnly) {
+              return;
+            }
             final row = latest.value[node.id];
-            final open = latestOnContextMenu.value;
-            if (row == null ||
-                open == null ||
-                interaction.storyboardParents.containsKey(row.id)) {
+            if (row == null) {
+              return;
+            }
+            final (open, openCell) = contextMenus.value;
+            if (interaction.storyboardParents.containsKey(row.id)) {
+              openCell?.call(row, position.offset);
+              return;
+            }
+            if (open == null) {
               return;
             }
             if (controller.selectedNodeIds.length != 1 ||
@@ -820,20 +894,25 @@ class ProductionBoard extends HookConsumerWidget {
             }
             open(row, position.offset);
           },
-          onDragStart: (_) => interaction.startDrag(),
-          onDrag: (_) => interaction.restoreFixedMembers(),
-          onDragStop: (_) {
-            final positions = interaction.finishDrag();
-            if (positions.isNotEmpty) {
-              bands.onMove?.call(positions);
-            }
-          },
-          onDragCancel: (_) => interaction.cancelDrag(),
-          // 删除只走工具条菜单；键盘删除会让 flow 和库对不上。
+          onDragStart: readOnly ? null : (_) => interaction.startDrag(),
+          onDrag: readOnly ? null : (_) => interaction.restoreFixedMembers(),
+          onDragStop: readOnly
+              ? null
+              : (_) {
+                  final positions = interaction.finishDrag();
+                  if (positions.isNotEmpty) {
+                    bands.onMove?.call(positions);
+                  }
+                },
+          onDragCancel: readOnly ? null : (_) => interaction.cancelDrag(),
+          // 禁止 flow 直接删除投影；键盘与按钮由 ProductionSelectionActions 持久化删除。
           onBeforeDelete: (_) async => false,
         ),
         connection: flow.ConnectionEvents<String, String>(
           onBeforeDelete: (connection) async {
+            if (readOnly) {
+              return false;
+            }
             final inputId = latestEdges.value
                 .where((edge) => edge.id == connection.id)
                 .firstOrNull
@@ -845,6 +924,9 @@ class ProductionBoard extends HookConsumerWidget {
             return false;
           },
           onBeforeComplete: (context) {
+            if (readOnly) {
+              return const flow.ConnectionValidationResult.deny();
+            }
             final source = latest.value[context.sourceNode.id];
             final target = latest.value[context.targetNode.id];
             final targetInfo = latestModes.value?[target?.clipId];
@@ -899,7 +981,7 @@ class ProductionBoard extends HookConsumerWidget {
           // 库在落点处先建一条乐观连线；撤掉它，交给外部选用途后写库、经 stream 回流。
           onCreated: (connection) {
             // 从库里同步进来的连线 addConnection 也会触发这里。
-            if (latestEdgeIds.value.contains(connection.id)) {
+            if (readOnly || latestEdgeIds.value.contains(connection.id)) {
               return;
             }
             final pointer = controller.pointerPosition?.offset;
@@ -926,7 +1008,7 @@ class ProductionBoard extends HookConsumerWidget {
           },
         ),
       ),
-      [controller, service],
+      [controller, service, readOnly],
     );
 
     bands
@@ -1034,8 +1116,10 @@ class ProductionBoard extends HookConsumerWidget {
                     controller: controller,
                     connectionAnimationFrameRate: 30,
                     theme: flowTheme,
-                    behavior: flow.NodeFlowBehavior.design,
-                    marqueeSelectionOnDrag: true,
+                    behavior: readOnly
+                        ? flow.NodeFlowBehavior.inspect
+                        : flow.NodeFlowBehavior.design,
+                    marqueeSelectionOnDrag: !readOnly,
                     selectionBounds: () => controller
                         .getPlugin<ProductionSelectionLayer>()!
                         .bounds,
@@ -1045,6 +1129,7 @@ class ProductionBoard extends HookConsumerWidget {
                       if (row != null && node is ProductionFlowGroup) {
                         return ProductionGroupNode(
                           group: node,
+                          readOnly: readOnly,
                           onFill: (slot) => productionRun(context, () async {
                             final asset = await pickProductionAsset(
                               context,
@@ -1096,6 +1181,8 @@ class ProductionBoard extends HookConsumerWidget {
                         fromDirector,
                         derived,
                         cardTaskActions,
+                        hasPreviewText,
+                        readOnly,
                       );
                       final cached = nodeWidgets[row.id];
                       if (cached != null && cached.inputs == inputs) {
@@ -1116,10 +1203,15 @@ class ProductionBoard extends HookConsumerWidget {
                             derived: derived,
                             onOpenDirector: () =>
                                 latestOnOpenDirector.value(row),
+                            onPreviewText: hasPreviewText
+                                ? () => latestOnPreviewText.value?.call(row)
+                                : null,
                             taskActions: cardTaskActions,
-                            textTitle: textTitle,
+                            textTitle: readOnly ? null : textTitle,
+                            readOnly: readOnly,
                           );
-                          return parent is ProductionFlowGroup &&
+                          return !readOnly &&
+                                  parent is ProductionFlowGroup &&
                                   layout is StoryboardGroupLayout
                               ? ProductionStoryboardCell(
                                   group: parent,
@@ -1146,19 +1238,20 @@ class ProductionBoard extends HookConsumerWidget {
                           ),
                         ),
                       ),
-                Positioned.fill(
-                  child: ProductionGroupOutlet(
-                    controller: controller,
-                    onCreate: onCreateGroupReference,
-                    onConnect: (groupId, targetId, at) {
-                      final source = latest.value[groupId];
-                      final target = latest.value[targetId];
-                      if (source != null && target != null) {
-                        onConnect(source, target, at);
-                      }
-                    },
+                if (!readOnly)
+                  Positioned.fill(
+                    child: ProductionGroupOutlet(
+                      controller: controller,
+                      onCreate: onCreateGroupReference,
+                      onConnect: (groupId, targetId, at) {
+                        final source = latest.value[groupId];
+                        final target = latest.value[targetId];
+                        if (source != null && target != null) {
+                          onConnect(source, target, at);
+                        }
+                      },
+                    ),
                   ),
-                ),
                 // 浮层必须在编辑器之外：编辑器根 Listener 会把其内部点击当成点画布空白。
                 if (selected != null && byId[selected] != null)
                   _Anchored(
@@ -1169,28 +1262,32 @@ class ProductionBoard extends HookConsumerWidget {
                     bottomInset: composerBottomInset,
                     headerExtent: productionNodeHeaderExtent,
                     // 文本节点的标题随正文一起编辑、一起保存；其余节点只改标题。
-                    title: switch (byId[selected]!.type) {
-                      canvasNodeTypeGroup => const SizedBox.shrink(),
-                      canvasNodeTypeText => ProductionNodeTitleField(
-                        key: ValueKey('title/$selected'),
-                        title: textTitle,
-                        nodeId: selected!,
-                      ),
-                      _ =>
-                        interaction.storyboardParents.containsKey(selected)
-                            ? const SizedBox.shrink()
-                            : ProductionNodeTitleField(
-                                key: ValueKey('title/$selected'),
-                                title: textTitle,
-                                nodeId: selected!,
-                                load: () => service.nodeTitle(selected!),
-                                commit: (text) => service.renameNode(
-                                  selected!,
-                                  text,
-                                  history: history,
-                                ),
-                              ),
-                    },
+                    title: readOnly
+                        ? const SizedBox.shrink()
+                        : switch (byId[selected]!.type) {
+                            canvasNodeTypeGroup => const SizedBox.shrink(),
+                            canvasNodeTypeText => ProductionNodeTitleField(
+                              key: ValueKey('title/$selected'),
+                              title: textTitle,
+                              nodeId: selected!,
+                            ),
+                            _ =>
+                              interaction.storyboardParents.containsKey(
+                                    selected,
+                                  )
+                                  ? const SizedBox.shrink()
+                                  : ProductionNodeTitleField(
+                                      key: ValueKey('title/$selected'),
+                                      title: textTitle,
+                                      nodeId: selected!,
+                                      load: () => service.nodeTitle(selected!),
+                                      commit: (text) => service.renameNode(
+                                        selected!,
+                                        text,
+                                        history: history,
+                                      ),
+                                    ),
+                          },
                     bar:
                         bar == null ||
                             interaction.storyboardParents.containsKey(selected)
@@ -1217,19 +1314,20 @@ class ProductionBoard extends HookConsumerWidget {
                       ),
                     ),
                   ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: RevericSpacing.x4l,
-                  child: Center(
-                    child: ProductionSelectionActions(
-                      service: service,
-                      controller: controller,
-                      beforeDelete: beforeRemoveSelection,
-                      onDeleted: onClear,
+                if (!readOnly)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: RevericSpacing.x4l,
+                    child: Center(
+                      child: ProductionSelectionActions(
+                        service: service,
+                        controller: controller,
+                        beforeDelete: beforeRemoveSelection,
+                        onDeleted: onClear,
+                      ),
                     ),
                   ),
-                ),
                 ...controls,
                 Positioned(
                   left: RevericSpacing.x2l,
@@ -1242,11 +1340,12 @@ class ProductionBoard extends HookConsumerWidget {
                         tooltip: context.t(LocaleKeys.canvasFitToView),
                         onTap: fitAll,
                       ),
-                      CanvasFloatingButton(
-                        icon: RevericIcons.account_tree,
-                        tooltip: context.t(LocaleKeys.productionTidyCanvas),
-                        onTap: tidy,
-                      ),
+                      if (!readOnly)
+                        CanvasFloatingButton(
+                          icon: RevericIcons.account_tree,
+                          tooltip: context.t(LocaleKeys.productionTidyCanvas),
+                          onTap: tidy,
+                        ),
                       ?tools,
                       CanvasZoomControl(
                         zoom: () => controller.viewportObservable.value.zoom,
@@ -1271,12 +1370,37 @@ class ProductionBoard extends HookConsumerWidget {
         ),
       ),
     );
+    if (readOnly) {
+      return board;
+    }
     return ProductionDropRegion(
       service: service,
       canvasId: canvasId,
       controller: controller,
+      importProgress: importProgress,
       child: board,
     );
+  }
+}
+
+class _PasteImageAction extends flow.NodeFlowAction<String> {
+  const _PasteImageAction(String label, this.callback)
+    : super(id: 'paste', label: label, category: 'Edit');
+
+  final VoidCallback? Function() callback;
+
+  @override
+  bool canExecute(flow.NodeFlowController<String, dynamic> controller) =>
+      callback() != null;
+
+  @override
+  bool execute(
+    flow.NodeFlowController<String, dynamic> controller,
+    BuildContext? context,
+  ) {
+    final paste = callback();
+    paste?.call();
+    return paste != null;
   }
 }
 

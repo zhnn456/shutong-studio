@@ -39,6 +39,48 @@ bool _isConnectionFailure(Object error) =>
     error is SocketException ||
     error is TimeoutException;
 
+/// 聚合网关（New API / One API 等）的 /v1/models 一般不带模态元数据，
+/// 图像模型只能从型号名识别。只依赖端点类型时，「获取模型」的图像列表
+/// 会只剩 `mj_imagine` 一条，所以这里补一层主流图像型号族的名称匹配。
+bool isGatewayImageModel(String modelId) {
+  final name = modelId.toLowerCase();
+  final segments = name.split(RegExp(r'[^a-z0-9]+'));
+  const segmentMarkers = {
+    'image',
+    'images',
+    'imagine',
+    'midjourney',
+    'mj',
+    'imagen',
+    'ideogram',
+    'flux',
+    'dalle',
+    'seedream',
+    'seededit',
+    'recraft',
+    'banana',
+  };
+  if (segments.any(segmentMarkers.contains)) {
+    return true;
+  }
+  const prefixes = [
+    'mj-',
+    'dall-e',
+    'gpt-image',
+    'stable-diffusion',
+    'sdxl',
+    'sd3',
+    'nano-banana',
+    'banana-',
+    'qwen-image',
+    'wanx',
+    'kolors',
+    'grok-image',
+    'doubao-seedream',
+  ];
+  return prefixes.any(name.startsWith);
+}
+
 /// New API 网关返回非 200 时抛出。
 /// 以前这里抛的是 StateError，设置页只认带状态码的异常类型，于是 401
 /// 「无效的令牌」也被显示成「服务端内部错误」，把人引到错的方向。
@@ -153,7 +195,10 @@ class NewApiClient {
     final list = await models();
     return (list
         .where((model) {
-          final image = lookupImageChannelModel(config.type, model.id) != null;
+          final imageByName = isGatewayImageModel(model.id);
+          final image =
+              imageByName ||
+              lookupImageChannelModel(config.type, model.id) != null;
           final audio = lookupAudioChannelModel(config.type, model.id) != null;
           final video =
               isNewApiVideoModel(model.id) ||
@@ -163,6 +208,7 @@ class NewApiClient {
           return switch (kind) {
             AiModelKind.image =>
               model.id == 'mj_imagine' ||
+                  imageByName ||
                   model.endpointTypes.contains('image-generation') ||
                   model.endpointTypes.contains('image-edit') ||
                   (model.endpointTypes.contains('gemini') && !audio && !video),
@@ -199,6 +245,8 @@ class NewApiClient {
                           'gemini',
                         }.contains,
                       )),
+            // 语音转写模型来自供应商侧配置的 asrModels，不在网关模型目录里筛选。
+            AiModelKind.asr => false,
           };
         })
         .map((model) => model.id)

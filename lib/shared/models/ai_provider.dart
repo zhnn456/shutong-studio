@@ -26,6 +26,7 @@ import '../services/proxy_client.dart';
 import 'models_catalog.dart';
 import 'plugin/text.dart';
 import 'plugin/provider_registry.dart';
+import 'transcription/catalog.dart';
 import 'audio/channels.dart';
 import 'image/channels.dart';
 import 'video/request.dart';
@@ -66,7 +67,7 @@ enum AiProviderType {
 
 enum ReasoningEffort { none, low, medium, high }
 
-enum AiModelKind { chat, image, video, audio }
+enum AiModelKind { chat, image, video, audio, asr }
 
 enum AiModelRole { planner, writer }
 
@@ -363,7 +364,7 @@ String aiProviderFixedBaseUrl(AiProviderType type) => switch (type) {
     'https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1',
   AiProviderType.moss => 'https://api.mosi.cn/v1',
   AiProviderType.metaso => 'https://metaso.cn/api/minimax',
-  AiProviderType.api88 => api88PrimaryBaseUrl,
+  AiProviderType.api88 => api88ActiveBaseUrl,
   AiProviderType.apikey => 'https://api.apikey.fan/v1',
   AiProviderType.infistar => 'https://infistar.cc/v1',
   AiProviderType.ooki => 'https://api.ookiapi.com/v1',
@@ -429,6 +430,7 @@ String qwenBaseUrl(String value) {
 
 final List<AiProvider> aiProviderBuiltinDefaults = [
   AiProvider(
+    asrModels: const [],
     id: 'metaso',
     name: '秘塔科技',
     builtin: true,
@@ -455,6 +457,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     id: 'api88',
     name: '星辰AI',
     builtin: true,
@@ -476,6 +479,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     id: 'token91',
     name: '91Token',
     builtin: true,
@@ -497,6 +501,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     id: 'apikey',
     name: 'APIKEY.FAN',
     builtin: true,
@@ -518,6 +523,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'deepseek',
@@ -539,6 +545,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'doubao',
@@ -564,6 +571,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'moonshot',
@@ -585,6 +593,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'zhipu',
@@ -614,6 +623,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'openai',
@@ -630,7 +640,11 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
       'gpt-5.3-chat-latest',
       'gpt-5.3-codex',
     ],
-    imageModels: ['gpt-image-2'],
+    imageModels: [
+      'gpt-image-2.5-flare',
+      'gpt-image-2.5-sunburst',
+      'gpt-image-2',
+    ],
     embeddingModels: const [],
     temperature: 0.7,
     maxTurns: 512,
@@ -641,6 +655,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'gemini',
@@ -672,6 +687,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'anthropic',
@@ -701,6 +717,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'purefox',
@@ -722,6 +739,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'purefox_media',
@@ -743,6 +761,7 @@ final List<AiProvider> aiProviderBuiltinDefaults = [
     deletedAt: notDeletedSentinel,
   ),
   AiProvider(
+    asrModels: const [],
     audioModels: const [],
     videoModels: const [],
     id: 'xai',
@@ -852,7 +871,8 @@ extension AiProviderX on AiProvider {
       availableModels.isNotEmpty ||
       availableImageModels.isNotEmpty ||
       availableVideoModels.isNotEmpty ||
-      availableAudioModels.isNotEmpty;
+      availableAudioModels.isNotEmpty ||
+      availableAsrModels.isNotEmpty;
 
   String? get enableValidationMessage {
     if (!isTypeSupported) {
@@ -870,7 +890,7 @@ extension AiProviderX on AiProvider {
   String get effectiveBaseUrl => isPluginProvider
       ? baseUrl
       : hasFixedBaseUrl
-      ? (typeEnum == AiProviderType.api88 ? api88ActiveBaseUrl : fixedBaseUrl)
+      ? fixedBaseUrl
       : type == AiProviderType.qwen.name
       ? qwenBaseUrl(baseUrl)
       : type == AiProviderType.minimax.name && baseUrl.trim().isEmpty
@@ -889,8 +909,10 @@ extension AiProviderX on AiProvider {
   List<String> get availableModels =>
       supportsModelKind(AiModelKind.chat) ? _normalizeModels(models) : const [];
 
-  Set<AiModelKind> get supportedModelKinds =>
-      aiProviderTypeConfigFor(type)?.supportedModelKinds ?? const {};
+  Set<AiModelKind> get supportedModelKinds => {
+    ...?aiProviderTypeConfigFor(type)?.supportedModelKinds,
+    if (supportsAsrForProvider(type)) AiModelKind.asr,
+  };
 
   bool supportsModelKind(AiModelKind kind) =>
       supportedModelKinds.contains(kind);
@@ -907,6 +929,10 @@ extension AiProviderX on AiProvider {
       ? _normalizeModels(videoModels)
       : const [];
 
+  List<String> get availableAsrModels => supportsModelKind(AiModelKind.asr)
+      ? _normalizeModels(asrModels)
+      : const [];
+
   List<String> modelsForKind(AiModelKind kind) {
     if (!supportsModelKind(kind)) return const [];
     return switch (kind) {
@@ -914,6 +940,7 @@ extension AiProviderX on AiProvider {
       AiModelKind.image => availableImageModels,
       AiModelKind.video => availableVideoModels,
       AiModelKind.audio => availableAudioModels,
+      AiModelKind.asr => availableAsrModels,
     };
   }
 
@@ -1075,6 +1102,7 @@ class AiSettings {
   final String? defaultChatModelId;
   final String? defaultChatReasoningEffort;
   final String? defaultImageModelId;
+  final String? defaultAsrModelId;
   final String? defaultPlannerModelId;
   final String? defaultWriterModelId;
 
@@ -1086,6 +1114,7 @@ class AiSettings {
     this.defaultChatModelId,
     this.defaultChatReasoningEffort,
     this.defaultImageModelId,
+    this.defaultAsrModelId,
     this.defaultPlannerModelId,
     this.defaultWriterModelId,
     this.modelNameLocale,
@@ -1112,6 +1141,7 @@ class AiSettings {
       defaultChatModelId: json['defaultChatModelId'] as String?,
       defaultChatReasoningEffort: json['defaultChatReasoningEffort'] as String?,
       defaultImageModelId: json['defaultImageModelId'] as String?,
+      defaultAsrModelId: json['defaultAsrModelId'] as String?,
       defaultPlannerModelId: json['defaultPlannerModelId'] as String?,
       defaultWriterModelId: json['defaultWriterModelId'] as String?,
     );
@@ -1122,6 +1152,7 @@ class AiSettings {
     if (defaultChatReasoningEffort != null)
       'defaultChatReasoningEffort': defaultChatReasoningEffort,
     if (defaultImageModelId != null) 'defaultImageModelId': defaultImageModelId,
+    'defaultAsrModelId': ?defaultAsrModelId,
     if (defaultPlannerModelId != null)
       'defaultPlannerModelId': defaultPlannerModelId,
     if (defaultWriterModelId != null)
@@ -1133,6 +1164,7 @@ class AiSettings {
     Object? defaultChatModelId = _sentinel,
     Object? defaultChatReasoningEffort = _sentinel,
     Object? defaultImageModelId = _sentinel,
+    Object? defaultAsrModelId = _sentinel,
     Object? defaultPlannerModelId = _sentinel,
     Object? defaultWriterModelId = _sentinel,
     Locale? modelNameLocale,
@@ -1149,6 +1181,9 @@ class AiSettings {
       defaultImageModelId: defaultImageModelId == _sentinel
           ? this.defaultImageModelId
           : defaultImageModelId as String?,
+      defaultAsrModelId: defaultAsrModelId == _sentinel
+          ? this.defaultAsrModelId
+          : defaultAsrModelId as String?,
       defaultPlannerModelId: defaultPlannerModelId == _sentinel
           ? this.defaultPlannerModelId
           : defaultPlannerModelId as String?,
@@ -1184,6 +1219,9 @@ class AiSettings {
       AiModelKind.image: _normalizeModels(
         previous.imageModels,
       ).toSet().difference(_normalizeModels(provider.imageModels).toSet()),
+      AiModelKind.asr: previous.availableAsrModels.toSet().difference(
+        provider.availableAsrModels.toSet(),
+      ),
     };
     return updated._clearDefaultSelectionsWhere((kind, optionId) {
       final prefix = '${provider.id}::';
@@ -1284,6 +1322,7 @@ class AiSettings {
   String? defaultOptionIdForKind(AiModelKind kind) => switch (kind) {
     AiModelKind.chat => defaultChatModelId,
     AiModelKind.image => defaultImageModelId,
+    AiModelKind.asr => defaultAsrModelId,
     AiModelKind.video || AiModelKind.audio => null,
   };
 
@@ -1307,6 +1346,7 @@ class AiSettings {
               ),
       ),
       AiModelKind.image => copyWith(defaultImageModelId: optionId),
+      AiModelKind.asr => copyWith(defaultAsrModelId: optionId),
       AiModelKind.video || AiModelKind.audio => throw UnsupportedError(
         'Video requests choose their model explicitly',
       ),
@@ -1342,6 +1382,7 @@ class AiSettings {
           ? defaultChatReasoningEffort
           : null,
       defaultImageModelId: keep(AiModelKind.image, defaultImageModelId),
+      defaultAsrModelId: keep(AiModelKind.asr, defaultAsrModelId),
       defaultPlannerModelId: keep(AiModelKind.chat, defaultPlannerModelId),
       defaultWriterModelId: keep(AiModelKind.chat, defaultWriterModelId),
     );

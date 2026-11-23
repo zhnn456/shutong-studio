@@ -435,5 +435,10 @@
   "ai.feedback_upload": "Upload",
   "ai.feedback_uploading": "Uploading...",
   "ai.feedback_success": "Diagnostic info uploaded. Thank you!",
-  "ai.feedback_failed": "Upload failed. Please try again."
+  "ai.feedback_failed": "Upload failed. Please try again.",
+  "ai.image_model_current_draft": "Applies to this image draft only",
+  "ai.permission_media_transcribe": "Transcribe media (upload asset)",
+  "ai.image_server_error": "Server error. Please try again later.",
+  "ai.image_response_invalid": "Response format is invalid. Please try again later.",
+  "ai.image_plugin_response_invalid": "The plugin response format is invalid. Please try again later."
 }

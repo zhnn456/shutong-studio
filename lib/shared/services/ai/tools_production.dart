@@ -213,6 +213,7 @@ extension _ProductionTools on _AiToolManagerScreenplayMixin {
     ParsedPath parsed,
     _ResourceOperation operation, {
     Map<String, dynamic> fields = const {},
+    ({String oldText, String newText, bool replaceAll})? edit,
   }) async {
     final db = _contentService.database;
     final shots = StoryboardService(db, contentKind: _targetContentKind);
@@ -246,6 +247,11 @@ extension _ProductionTools on _AiToolManagerScreenplayMixin {
         'path': '$base/nodes/${node.id}',
       };
     }
+
+    // Mutation results leave out text the caller just wrote.
+    Future<Map<String, dynamic>> nodeSummary(String id) async =>
+        (await nodeData((await db.canvasDao.getNodeById(id))!))
+          ..remove('content');
 
     Map<String, dynamic> edgeData(ProductionConnection edge) => {
       'id': edge.id,
@@ -515,13 +521,38 @@ extension _ProductionTools on _AiToolManagerScreenplayMixin {
             throw const StoryboardException('invalid_config');
           }
           await position(node, fields);
-          return {
-            'ok': true,
-            'created': true,
-            ...await nodeData((await db.canvasDao.getNodeById(node.id))!),
-          };
+          return {'ok': true, 'created': true, ...await nodeSummary(node.id)};
         }
         final node = await requireNode(parsed.locator('node_id')!);
+        if (edit != null) {
+          if (node.type != canvasNodeTypeText || operation.field != 'content') {
+            throw const StoryboardException('invalid_config');
+          }
+          final replaced = AiToolManager._replaceExactText(
+            node.content,
+            edit.oldText,
+            edit.newText,
+            path: parsed.displayPath,
+            replaceAll: edit.replaceAll,
+          );
+          if (replaced.error != null) {
+            return AiToolManager._replaceTextErrorResult(replaced);
+          }
+          if (replaced.changed) {
+            await (await _productionStyleService()).updateText(
+              node.id,
+              title: node.title,
+              content: replaced.value!,
+            );
+          }
+          return {
+            'ok': true,
+            'updated': replaced.changed,
+            'edited': replaced.changed,
+            'match_count': replaced.matchCount,
+            ...await nodeSummary(node.id),
+          };
+        }
         if (tool == _ResourceTool.remove) {
           await removeNode(node);
           return {
@@ -563,11 +594,7 @@ extension _ProductionTools on _AiToolManagerScreenplayMixin {
           );
         }
         await position(node, fields);
-        return {
-          'ok': true,
-          'updated': true,
-          ...await nodeData((await db.canvasDao.getNodeById(node.id))!),
-        };
+        return {'ok': true, 'updated': true, ...await nodeSummary(node.id)};
       });
     } on ToolOperationException catch (error) {
       return {'ok': false, 'error_code': error.code, 'error': error.message};
@@ -577,7 +604,7 @@ extension _ProductionTools on _AiToolManagerScreenplayMixin {
         error.code == 'source_missing'
             ? ToolErrorCode.not_found
             : ToolErrorCode.invalid_argument,
-        'Invalid production canvas operation: ${error.code}',
+        'Invalid production canvas operation: ${error.reason}',
       );
     } on DocumentError catch (error) {
       return _resourceError(
@@ -601,6 +628,10 @@ const _assetsHelp =
     '(processing, active, or failed with error_code). '
     'Video generation on that provider then references the certified asset '
     'instead of uploading the file. '
+    'assets transcribe: id required; audio or video. Uses the configured default '
+    'transcription model. Returns a run_id and delivers a transcript JSON file. '
+    'assets separate-audio: id required; video with an audio track. Returns a run_id '
+    'and delivers an independent M4A asset. '
     'Includes this work’s assets and shared assets, whether or not they are in the asset library. '
     'in_library is true only for assets the user added to the asset library; '
     'pickers in the app list only those, while references by asset id work either way.';
@@ -617,7 +648,14 @@ extension _AssetCommands on _AiToolManagerBase {
         'Asset queries require a screenplay or canvas work.',
       );
     }
-    if (!{'list', 'read', 'view-image', 'certify'}.contains(action)) {
+    if (!{
+      'list',
+      'read',
+      'view-image',
+      'certify',
+      'transcribe',
+      'separate-audio',
+    }.contains(action)) {
       throw const FormatException(
         'Unknown assets action. Use Run help assets.',
       );
@@ -646,6 +684,20 @@ extension _AssetCommands on _AiToolManagerBase {
         'permission_denied',
         'Cross-work asset queries are unavailable.',
       );
+    }
+    if (action == 'transcribe' || action == 'separate-audio') {
+      final manager = operationHost?.operations;
+      final context = _currentToolExecutionContext;
+      if (manager == null || context == null || id == null) {
+        throw const ToolOperationException(
+          'unavailable',
+          'Asset processing requires an active work session.',
+        );
+      }
+      final callId = _activeRunCallId ?? '';
+      return action == 'transcribe'
+          ? host.transcribe(id, context, manager, callId, nodeScope: false)
+          : host.separateAudioAsset(id, context, manager, callId);
     }
     final assets = await host.database.assetDao
         .watchAssets(

@@ -52,7 +52,7 @@ final class UpdateSourceProvider
   }
 }
 
-String _$updateSourceHash() => r'2803c8160d56a14a1da4176d7d88e992967aa837';
+String _$updateSourceHash() => r'e18189739497eb6f4e2bd3296120277594c3c4f9';
 
 /// UpdateService 单例
 

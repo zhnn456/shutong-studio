@@ -115,5 +115,8 @@
   "common.revoke": "Revoke",
   "common.resume": "Resume",
   "common.run_now": "Run now",
-  "common.grant": "Grant"
+  "common.grant": "Grant",
+  "common.custom": "Custom",
+  "common.default": "Default",
+  "common.deselect_all": "Deselect all"
 }

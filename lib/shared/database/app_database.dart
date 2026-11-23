@@ -393,6 +393,11 @@ class AiProviders extends Table {
       .map(const StringListConverter())
       .withDefault(const Constant('[]'))();
 
+  /// 语音转写（ASR）模型目录。与上游 0.10.4 的 ai_providers.asr_models 对齐。
+  TextColumn get asrModels => text()
+      .map(const StringListConverter())
+      .withDefault(const Constant('[]'))();
+
   RealColumn get temperature => real().withDefault(const Constant(0.7))();
 
   /// 扩展配置。空值用默认：enableTemperature 为 false，请求不带温度。
@@ -1284,9 +1289,12 @@ class AppDatabase extends _$AppDatabase {
   /// 供受控维护操作在内存库中生成当前 schema 参考。
   AppDatabase.forSchemaRepair(super.executor);
 
+  /// 供画廊只读预览等短期沙箱使用的临时内存库，不参与全局单例缓存。
+  AppDatabase.ephemeral(super.executor);
+
   static _CachedAppDatabase? _cachedDatabase;
 
-  static const currentSchemaVersion = 8;
+  static const currentSchemaVersion = 9;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -1373,6 +1381,18 @@ class AppDatabase extends _$AppDatabase {
         } catch (error, stackTrace) {
           _log.error(
             '[DB] ALTER ai_providers ADD config schema=8',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          rethrow;
+        }
+      }
+      if (from < 9) {
+        try {
+          await migrations.migrateToV9(migrator);
+        } catch (error, stackTrace) {
+          _log.error(
+            '[DB] ALTER ai_providers ADD asr_models schema=9',
             error: error,
             stackTrace: stackTrace,
           );

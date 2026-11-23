@@ -55,6 +55,7 @@ class ExpandedChatArea extends StatelessWidget {
     this.onActiveSessionIdChanged,
     this.onOpenSessionReference,
     this.onOpenFeature,
+    this.headerActionsGestureExclusionKey,
     required this.pendingAiChanges,
     required this.onCollapse,
   });
@@ -96,6 +97,11 @@ class ExpandedChatArea extends StatelessWidget {
 
   /// 透传给 [AiChatPanel]：跳到圆桌 / 小剧场 / 封面工作台。
   final void Function(FeatureId feature, String? seedText)? onOpenFeature;
+
+  /// 聊天头部操作按钮的排除区域 key：注册到
+  /// [DesktopWindowFrame.titleBarGestureExclusionKeys]，避免双击按钮
+  /// 触发窗口最大化/还原。
+  final GlobalKey? headerActionsGestureExclusionKey;
   final List<WorkingChange> pendingAiChanges;
   final VoidCallback onCollapse;
 
@@ -144,6 +150,8 @@ class ExpandedChatArea extends StatelessWidget {
                   onOpenSessionReference: onOpenSessionReference,
 
                   onOpenFeature: onOpenFeature,
+                  headerActionsGestureExclusionKey:
+                      headerActionsGestureExclusionKey,
                 ),
               ),
             ),

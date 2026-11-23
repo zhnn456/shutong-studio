@@ -32,5 +32,6 @@
   "assets.bone_leftFoot": "左脚",
   "assets.bone_rightUpperLeg": "右大腿",
   "assets.bone_rightLowerLeg": "右小腿",
-  "assets.bone_rightFoot": "右脚"
+  "assets.bone_rightFoot": "右脚",
+  "assets.media_video_shortcuts": "空格：播放 / 暂停 · ←/→：后退 / 前进 {seconds} 秒 · Esc：关闭"
 }

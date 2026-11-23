@@ -1579,7 +1579,7 @@ class Novel extends DataClass implements Insertable<Novel> {
   final int wordCount;
 
   /// 快速开书草稿标记：true = 尚未「加入书架」，书库不显示。
-  /// 仅由显式动作清除（编辑器「加入书架」按钮 / Run novel add-to-library），不自动清。
+  /// 由「加入书架」或显式写入作品草稿状态修改。
   final bool draft;
   final String category;
   final List<String> tags;
@@ -7918,6 +7918,16 @@ class $AiProvidersTable extends AiProviders
     requiredDuringInsert: false,
     defaultValue: const Constant('[]'),
   ).withConverter<List<String>>($AiProvidersTable.$converterembeddingModels);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String> asrModels =
+      GeneratedColumn<String>(
+        'asr_models',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      ).withConverter<List<String>>($AiProvidersTable.$converterasrModels);
   static const VerificationMeta _temperatureMeta = const VerificationMeta(
     'temperature',
   );
@@ -8070,6 +8080,7 @@ class $AiProvidersTable extends AiProviders
     audioModels,
     videoModels,
     embeddingModels,
+    asrModels,
     temperature,
     config,
     maxTurns,
@@ -8294,6 +8305,12 @@ class $AiProvidersTable extends AiProviders
           data['${effectivePrefix}embedding_models'],
         )!,
       ),
+      asrModels: $AiProvidersTable.$converterasrModels.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}asr_models'],
+        )!,
+      ),
       temperature: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}temperature'],
@@ -8362,6 +8379,8 @@ class $AiProvidersTable extends AiProviders
       const StringListConverter();
   static TypeConverter<List<String>, String> $converterembeddingModels =
       const StringListConverter();
+  static TypeConverter<List<String>, String> $converterasrModels =
+      const StringListConverter();
   static TypeConverter<AiProviderConfig, String> $converterconfig =
       const AiProviderConfigConverter();
   static TypeConverter<AiProviderConfig?, String?> $converterconfign =
@@ -8381,6 +8400,9 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
   final List<String> audioModels;
   final List<String> videoModels;
   final List<String> embeddingModels;
+
+  /// 语音转写（ASR）模型目录。与上游 0.10.4 的 ai_providers.asr_models 对齐。
+  final List<String> asrModels;
   final double temperature;
 
   /// 扩展配置。空值用默认：enableTemperature 为 false，请求不带温度。
@@ -8410,6 +8432,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
     required this.audioModels,
     required this.videoModels,
     required this.embeddingModels,
+    required this.asrModels,
     required this.temperature,
     this.config,
     required this.maxTurns,
@@ -8458,6 +8481,11 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
         $AiProvidersTable.$converterembeddingModels.toSql(embeddingModels),
       );
     }
+    {
+      map['asr_models'] = Variable<String>(
+        $AiProvidersTable.$converterasrModels.toSql(asrModels),
+      );
+    }
     map['temperature'] = Variable<double>(temperature);
     if (!nullToAbsent || config != null) {
       map['config'] = Variable<String>(
@@ -8499,6 +8527,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
       audioModels: Value(audioModels),
       videoModels: Value(videoModels),
       embeddingModels: Value(embeddingModels),
+      asrModels: Value(asrModels),
       temperature: Value(temperature),
       config: config == null && nullToAbsent
           ? const Value.absent()
@@ -8544,6 +8573,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
       embeddingModels: serializer.fromJson<List<String>>(
         json['embeddingModels'],
       ),
+      asrModels: serializer.fromJson<List<String>>(json['asrModels']),
       temperature: serializer.fromJson<double>(json['temperature']),
       config: serializer.fromJson<AiProviderConfig?>(json['config']),
       maxTurns: serializer.fromJson<int>(json['maxTurns']),
@@ -8574,6 +8604,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
       'audioModels': serializer.toJson<List<String>>(audioModels),
       'videoModels': serializer.toJson<List<String>>(videoModels),
       'embeddingModels': serializer.toJson<List<String>>(embeddingModels),
+      'asrModels': serializer.toJson<List<String>>(asrModels),
       'temperature': serializer.toJson<double>(temperature),
       'config': serializer.toJson<AiProviderConfig?>(config),
       'maxTurns': serializer.toJson<int>(maxTurns),
@@ -8602,6 +8633,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
     List<String>? audioModels,
     List<String>? videoModels,
     List<String>? embeddingModels,
+    List<String>? asrModels,
     double? temperature,
     Value<AiProviderConfig?> config = const Value.absent(),
     int? maxTurns,
@@ -8627,6 +8659,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
     audioModels: audioModels ?? this.audioModels,
     videoModels: videoModels ?? this.videoModels,
     embeddingModels: embeddingModels ?? this.embeddingModels,
+    asrModels: asrModels ?? this.asrModels,
     temperature: temperature ?? this.temperature,
     config: config.present ? config.value : this.config,
     maxTurns: maxTurns ?? this.maxTurns,
@@ -8668,6 +8701,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
       embeddingModels: data.embeddingModels.present
           ? data.embeddingModels.value
           : this.embeddingModels,
+      asrModels: data.asrModels.present ? data.asrModels.value : this.asrModels,
       temperature: data.temperature.present
           ? data.temperature.value
           : this.temperature,
@@ -8712,6 +8746,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
           ..write('audioModels: $audioModels, ')
           ..write('videoModels: $videoModels, ')
           ..write('embeddingModels: $embeddingModels, ')
+          ..write('asrModels: $asrModels, ')
           ..write('temperature: $temperature, ')
           ..write('config: $config, ')
           ..write('maxTurns: $maxTurns, ')
@@ -8742,6 +8777,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
     audioModels,
     videoModels,
     embeddingModels,
+    asrModels,
     temperature,
     config,
     maxTurns,
@@ -8771,6 +8807,7 @@ class AiProvider extends DataClass implements Insertable<AiProvider> {
           other.audioModels == this.audioModels &&
           other.videoModels == this.videoModels &&
           other.embeddingModels == this.embeddingModels &&
+          other.asrModels == this.asrModels &&
           other.temperature == this.temperature &&
           other.config == this.config &&
           other.maxTurns == this.maxTurns &&
@@ -8798,6 +8835,7 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
   final Value<List<String>> audioModels;
   final Value<List<String>> videoModels;
   final Value<List<String>> embeddingModels;
+  final Value<List<String>> asrModels;
   final Value<double> temperature;
   final Value<AiProviderConfig?> config;
   final Value<int> maxTurns;
@@ -8824,6 +8862,7 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
     this.audioModels = const Value.absent(),
     this.videoModels = const Value.absent(),
     this.embeddingModels = const Value.absent(),
+    this.asrModels = const Value.absent(),
     this.temperature = const Value.absent(),
     this.config = const Value.absent(),
     this.maxTurns = const Value.absent(),
@@ -8851,6 +8890,7 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
     this.audioModels = const Value.absent(),
     this.videoModels = const Value.absent(),
     this.embeddingModels = const Value.absent(),
+    this.asrModels = const Value.absent(),
     this.temperature = const Value.absent(),
     this.config = const Value.absent(),
     this.maxTurns = const Value.absent(),
@@ -8880,6 +8920,7 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
     Expression<String>? audioModels,
     Expression<String>? videoModels,
     Expression<String>? embeddingModels,
+    Expression<String>? asrModels,
     Expression<double>? temperature,
     Expression<String>? config,
     Expression<int>? maxTurns,
@@ -8907,6 +8948,7 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
       if (audioModels != null) 'audio_models': audioModels,
       if (videoModels != null) 'video_models': videoModels,
       if (embeddingModels != null) 'embedding_models': embeddingModels,
+      if (asrModels != null) 'asr_models': asrModels,
       if (temperature != null) 'temperature': temperature,
       if (config != null) 'config': config,
       if (maxTurns != null) 'max_turns': maxTurns,
@@ -8936,6 +8978,7 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
     Value<List<String>>? audioModels,
     Value<List<String>>? videoModels,
     Value<List<String>>? embeddingModels,
+    Value<List<String>>? asrModels,
     Value<double>? temperature,
     Value<AiProviderConfig?>? config,
     Value<int>? maxTurns,
@@ -8963,6 +9006,7 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
       audioModels: audioModels ?? this.audioModels,
       videoModels: videoModels ?? this.videoModels,
       embeddingModels: embeddingModels ?? this.embeddingModels,
+      asrModels: asrModels ?? this.asrModels,
       temperature: temperature ?? this.temperature,
       config: config ?? this.config,
       maxTurns: maxTurns ?? this.maxTurns,
@@ -9030,6 +9074,11 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
         ),
       );
     }
+    if (asrModels.present) {
+      map['asr_models'] = Variable<String>(
+        $AiProvidersTable.$converterasrModels.toSql(asrModels.value),
+      );
+    }
     if (temperature.present) {
       map['temperature'] = Variable<double>(temperature.value);
     }
@@ -9089,6 +9138,7 @@ class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
           ..write('audioModels: $audioModels, ')
           ..write('videoModels: $videoModels, ')
           ..write('embeddingModels: $embeddingModels, ')
+          ..write('asrModels: $asrModels, ')
           ..write('temperature: $temperature, ')
           ..write('config: $config, ')
           ..write('maxTurns: $maxTurns, ')
@@ -29033,6 +29083,7 @@ typedef $$AiProvidersTableCreateCompanionBuilder =
       Value<List<String>> audioModels,
       Value<List<String>> videoModels,
       Value<List<String>> embeddingModels,
+      Value<List<String>> asrModels,
       Value<double> temperature,
       Value<AiProviderConfig?> config,
       Value<int> maxTurns,
@@ -29061,6 +29112,7 @@ typedef $$AiProvidersTableUpdateCompanionBuilder =
       Value<List<String>> audioModels,
       Value<List<String>> videoModels,
       Value<List<String>> embeddingModels,
+      Value<List<String>> asrModels,
       Value<double> temperature,
       Value<AiProviderConfig?> config,
       Value<int> maxTurns,
@@ -29147,6 +29199,12 @@ class $$AiProvidersTableFilterComposer
   ColumnWithTypeConverterFilters<List<String>, List<String>, String>
   get embeddingModels => $composableBuilder(
     column: $table.embeddingModels,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+  get asrModels => $composableBuilder(
+    column: $table.asrModels,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
@@ -29281,6 +29339,11 @@ class $$AiProvidersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get asrModels => $composableBuilder(
+    column: $table.asrModels,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get temperature => $composableBuilder(
     column: $table.temperature,
     builder: (column) => ColumnOrderings(column),
@@ -29399,6 +29462,9 @@ class $$AiProvidersTableAnnotationComposer
         builder: (column) => column,
       );
 
+  GeneratedColumnWithTypeConverter<List<String>, String> get asrModels =>
+      $composableBuilder(column: $table.asrModels, builder: (column) => column);
+
   GeneratedColumn<double> get temperature => $composableBuilder(
     column: $table.temperature,
     builder: (column) => column,
@@ -29493,6 +29559,7 @@ class $$AiProvidersTableTableManager
                 Value<List<String>> audioModels = const Value.absent(),
                 Value<List<String>> videoModels = const Value.absent(),
                 Value<List<String>> embeddingModels = const Value.absent(),
+                Value<List<String>> asrModels = const Value.absent(),
                 Value<double> temperature = const Value.absent(),
                 Value<AiProviderConfig?> config = const Value.absent(),
                 Value<int> maxTurns = const Value.absent(),
@@ -29519,6 +29586,7 @@ class $$AiProvidersTableTableManager
                 audioModels: audioModels,
                 videoModels: videoModels,
                 embeddingModels: embeddingModels,
+                asrModels: asrModels,
                 temperature: temperature,
                 config: config,
                 maxTurns: maxTurns,
@@ -29547,6 +29615,7 @@ class $$AiProvidersTableTableManager
                 Value<List<String>> audioModels = const Value.absent(),
                 Value<List<String>> videoModels = const Value.absent(),
                 Value<List<String>> embeddingModels = const Value.absent(),
+                Value<List<String>> asrModels = const Value.absent(),
                 Value<double> temperature = const Value.absent(),
                 Value<AiProviderConfig?> config = const Value.absent(),
                 Value<int> maxTurns = const Value.absent(),
@@ -29573,6 +29642,7 @@ class $$AiProvidersTableTableManager
                 audioModels: audioModels,
                 videoModels: videoModels,
                 embeddingModels: embeddingModels,
+                asrModels: asrModels,
                 temperature: temperature,
                 config: config,
                 maxTurns: maxTurns,

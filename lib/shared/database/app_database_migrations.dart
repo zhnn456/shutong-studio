@@ -36,6 +36,10 @@ class AppDatabaseMigrations {
   Future<void> migrateToV8(Migrator m) =>
       m.addColumnIfMissing(db.aiProviders, db.aiProviders.config);
 
+  /// v9: 供应商新增语音转写（ASR）模型目录；旧行补空数组。
+  Future<void> migrateToV9(Migrator m) =>
+      m.addColumnIfMissing(db.aiProviders, db.aiProviders.asrModels);
+
   /// v6: 同次图片任务的有序候选结果。
   Future<void> migrateToV6(Migrator m) =>
       m.addColumnIfMissing(db.generationTasks, db.generationTasks.imageOutputs);

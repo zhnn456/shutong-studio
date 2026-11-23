@@ -51,6 +51,7 @@ class ImageTaskService {
     this.sourceName,
     this.fetchResult,
     this.pluginHost,
+    this.onGenerationAttempt,
   });
   final PluginHostService? pluginHost;
   final AppDatabase database;
@@ -60,6 +61,7 @@ class ImageTaskService {
   beforeCreate;
   final Future<void> Function(GenerationTask task) beforeSubmit;
   final Future<void> Function() recoverSources;
+  final Future<void> Function(GenerationTask task)? onGenerationAttempt;
 
   /// 结果入库时的资产名（不含扩展名）；为 null 或返回 null 时用文件名。
   final Future<String?> Function(GenerationTask task)? sourceName;
@@ -91,7 +93,10 @@ class ImageTaskService {
   Future<GenerationTask> requireRun(String id) async {
     final task = await database.generationTaskDao.getById(id);
     if (task == null || task.kind != GenerationKind.image) {
-      throw const StoryboardException('source_missing');
+      throw StoryboardException(
+        'source_missing',
+        'Image generation run $id was not found.',
+      );
     }
     return task;
   }
@@ -311,6 +316,7 @@ class ImageTaskService {
       await onPrepared?.call(id);
       _requireActive();
       final prepared = await requireRun(id);
+      await onGenerationAttempt?.call(prepared);
       if (prepared.cancelRequestedAt != null ||
           prepared.status == GenerationTaskStatus.cancelled) {
         await database.generationTaskDao.transition(
@@ -786,9 +792,7 @@ class ImageTaskService {
     try {
       for (final (index, output) in stored.indexed) {
         if (output.url != null) {
-          outputs.add(
-            ProviderUrlOutput(output.url!),
-          );
+          outputs.add(ProviderUrlOutput(output.url!));
         } else {
           final asset = output.assetId == null
               ? null

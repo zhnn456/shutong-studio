@@ -9,14 +9,17 @@
 //   assets/translations/zh-CN/screenplay.json
 //   assets/translations/en/common.json
 //   assets/translations/zh-CN/common.json
+//   assets/translations/en/production.json
+//   assets/translations/zh-CN/production.json
 // 遵循的 Rules:
 //   .agents/rules/hooks.md
 //   .agents/rules/file-access.md
 import '../../../shared/models/provider_model.dart';
 import 'dart:async';
-import 'package:reveric/shared/models/asset_purpose.dart';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:super_clipboard/super_clipboard.dart' as clip;
 import '../../../shared/models/ai_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
@@ -24,10 +27,11 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../../shared/components/reveric_icon_button.dart';
 import '../../../shared/components/reveric_segmented_control.dart';
-import '../../../shared/database/app_database.dart' show Novel;
+import '../../../shared/database/app_database.dart' show AssetRow, Novel;
 import '../../../shared/database/novel_content_database.dart';
 import '../../../shared/localization/app_localization.dart';
 import '../../../shared/localization/locale_keys.dart';
+import '../../../shared/logger/app_logger.dart';
 import '../../../shared/models/novel_workspace.dart';
 import '../../../shared/models/screenplay.dart';
 import '../../../shared/providers/maps_providers.dart';
@@ -51,9 +55,9 @@ import '../../../shared/components/reveric_context_menu.dart';
 import '../../../shared/providers/screenplay_providers.dart';
 import '../../../shared/providers/screenplay_workspace_state_provider.dart';
 import '../../../shared/services/ai/chat_attachments.dart' show NamedChatFile;
+import '../../../shared/services/ai/media/nodes.dart' show productionNodePath;
 import '../../../shared/services/production/canvas_service.dart';
 import '../../../shared/services/production/staging_export_orchestrator.dart';
-import '../../../shared/services/production/ffmpeg_runner.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/screenplay/labels.dart';
@@ -62,6 +66,7 @@ import '../canvas/widgets/floating_cluster.dart';
 import '../screenplay/chrome.dart';
 import '../storyboard/region.dart';
 import 'board.dart';
+import 'drop_orchestrator.dart';
 import 'history_region.dart';
 import 'history_actions.dart';
 import '../editing/shell.dart';
@@ -86,6 +91,8 @@ import 'grid.dart';
 import 'scene_recognition.dart';
 import '../../../shared/widgets/screenplay/director_shell.dart';
 
+final _log = AppLogger.forModule('ProductionCanvasImport');
+
 /// 向聊天发一段制片相关的话；带 [files] 时这些文件作为附件放在正文之前。
 /// [send] 为 true 时打开聊天后直接发送，否则只预填、由用户补完再发。
 /// 带 [model] 时用该模型和 [effort] 档位新开对话并直接发送。
@@ -96,6 +103,7 @@ typedef ProductionAsk =
       bool send,
       AiModelOption? model,
       String? effort,
+      List<AiContextReference> references,
     });
 
 class ProductionRegion extends HookConsumerWidget {
@@ -141,12 +149,14 @@ class ProductionRegion extends HookConsumerWidget {
                 bool send = false,
                 AiModelOption? model,
                 String? effort,
+                List<AiContextReference> references = const [],
               }) => askRef.value?.call(
                 prompt,
                 files: files,
                 send: send,
                 model: model,
                 effort: effort,
+                references: references,
               );
         Future<void> recognize(
           BuildContext context, {
@@ -217,6 +227,9 @@ class ProductionRegion extends HookConsumerWidget {
                   selectedClipId: selectedClipId,
                   sceneActions: ProductionSceneActions(
                     ask: ask,
+                    attachReference: ask == null
+                        ? null
+                        : (reference) => ask('', references: [reference]),
                     openDirector: open,
                     openEditing: openEditing,
                   ),
@@ -275,7 +288,6 @@ class ProductionCanvasRegion extends HookConsumerWidget {
     final canvasWork = novel.contentKind == contentKindCanvas;
     final path = novel.contentDatabasePath!;
     final shots = ref.watch(storyboardServiceProvider(path, novelId: novel.id));
-    final library = ref.watch(mediaLibraryServiceProvider);
     final scope = ProductionHistoryScope.of(context);
     final service = scope.service;
     final history = scope.history;
@@ -346,6 +358,7 @@ class ProductionCanvasRegion extends HookConsumerWidget {
         ? clipSnapshot.data
         : null;
     final busy = useState(false);
+    final importProgress = useValueNotifier<double?>(null);
     final registration = useRef(registerFlush)..value = registerFlush;
     useEffect(() {
       Future<void> flush() async {
@@ -587,6 +600,25 @@ class ProductionCanvasRegion extends HookConsumerWidget {
         namedArgs: {'number': '${sceneNumbers[clip.sceneId] ?? '?'}-$n'},
       );
     }
+    void attachToChat(CanvasNode node) {
+      final clipId = node.clipId;
+      final clip = clipId == selectedClip?.id
+          ? selectedClip
+          : clips.where((clip) => clip.id == clipId).firstOrNull;
+      final title = (clip?.title ?? node.title).trim();
+      final label = title.isNotEmpty
+          ? title
+          : segmentLabels[node.clipId] ?? context.t(LocaleKeys.commonUntitled);
+      sceneActions.attachReference!(
+        AiContextReference(
+          section: NovelWorkspaceSection.storyboard,
+          itemId: node.id,
+          label: label,
+          path: productionNodePath(episodeId, node.id),
+        ),
+      );
+    }
+
     final openingResults =
         selected.value != null &&
         resultsRequest.value?.nodeId == selected.value!.id;
@@ -652,14 +684,17 @@ class ProductionCanvasRegion extends HookConsumerWidget {
     }
 
     Future<CanvasNode> createAndPlace(
-      Future<CanvasNode> Function() create,
-    ) async {
+      Future<CanvasNode> Function() create, {
+      bool selectNode = true,
+    }) async {
       final node = await recordProductionChange(
         context,
         const [],
         () async => placeNew(await create(), selectNode: false),
       );
-      await select(node);
+      if (selectNode) {
+        await select(node);
+      }
       return node;
     }
 
@@ -668,16 +703,79 @@ class ProductionCanvasRegion extends HookConsumerWidget {
       if (!await session.close() || !context.mounted) {
         return;
       }
-      final asset = types == null
-          ? await pickProductionAsset(context, service)
-          : await pickProductionAsset(context, service, types: types);
-      if (asset != null) {
-        await createAndPlace(() => service.addMedia(canvas.data!.id, asset.id));
+      final canvasId = canvas.data!.id;
+      CanvasNode? placed;
+      final asset = await pickProductionAsset(
+        context,
+        service,
+        types: types ?? const {'image', 'video', 'audio'},
+        addToCanvas: (asset) async {
+          placed = await createAndPlace(
+            () => service.addMedia(canvasId, asset.id),
+            selectNode: false,
+          );
+        },
+      );
+      if (asset != null && placed != null && context.mounted) {
+        await select(placed!);
+      }
+    }
+
+    Future<void> addImportedMedia<T>(
+      List<T> items,
+      Future<AssetRow?> Function(T) importItem,
+    ) async {
+      if (!context.mounted ||
+          items.isEmpty ||
+          !await session.close() ||
+          !context.mounted) {
+        return;
+      }
+      final assets = <AssetRow>[];
+      for (final (index, item) in items.indexed) {
+        if (!context.mounted) {
+          return;
+        }
+        importProgress.value = index / items.length;
+        await productionRun(context, () async {
+          final asset = await importItem(item);
+          if (asset != null) {
+            assets.add(asset);
+          }
+        });
+      }
+      _log.info(
+        'media read completed items=${items.length} assets=${assets.length}',
+      );
+      if (assets.isEmpty || !context.mounted) {
+        return;
+      }
+      final nodes = await ProductionDropOrchestrator().placeMedia(
+        assets: assets,
+        service: service,
+        canvasId: canvas.data!.id,
+        center: camera.center,
+        history: history,
+      );
+      if (context.mounted) {
+        await select(await service.requireNode(nodes.first.id));
+      }
+    }
+
+    Future<void> showImportProgress(Future<void> Function() action) async {
+      importProgress.value = 0;
+      try {
+        await action();
+      } finally {
+        if (context.mounted) {
+          importProgress.value = null;
+        }
       }
     }
 
     Future<void> importMedia() async {
-      final file = await openFile(
+      _log.info('select started platform=$defaultTargetPlatform type=media');
+      final files = await openFiles(
         acceptedTypeGroups: [
           const XTypeGroup(
             label: 'Media',
@@ -695,18 +793,40 @@ class ProductionCanvasRegion extends HookConsumerWidget {
           ),
         ],
       );
-      if (file == null) {
+      _log.info('select completed files=${files.length}');
+      if (files.isEmpty || !context.mounted) {
         return;
       }
-      final asset = await library.importFile(
-        File(file.path),
-        name: file.name,
-        novelId: novel.id,
-        purpose: AssetPurpose.production_upload,
-        cancellation: MediaCancellation(),
+      final importer = ProductionDropOrchestrator();
+      await showImportProgress(
+        () => addImportedMedia(
+          files,
+          (file) => importer.importMedia(
+            File(file.path),
+            name: file.name,
+            service: service,
+          ),
+        ),
       );
-      await placeNew(await service.addMedia(canvas.data!.id, asset.id));
     }
+
+    Future<void> pasteMedia() => showImportProgress(() async {
+      final imageName = context.t(LocaleKeys.productionImage);
+      final clipboard = clip.SystemClipboard.instance;
+      if (clipboard == null) {
+        throw UnsupportedError('Image clipboard is unavailable');
+      }
+      final data = await clipboard.read();
+      final importer = ProductionDropOrchestrator();
+      await addImportedMedia(
+        data.items,
+        (reader) => importer.pasteImage(
+          reader: reader,
+          service: service,
+          imageName: imageName,
+        ),
+      );
+    });
 
     // 打开导演台节点对应的调度。
     Future<void> openDirector(CanvasNode node) async {
@@ -1113,6 +1233,8 @@ class ProductionCanvasRegion extends HookConsumerWidget {
                         child: ProductionBoard(
                           service: service,
                           canvasId: canvas.data!.id,
+                          onPaste: () => run(pasteMedia),
+                          importProgress: importProgress,
                           topInset: canvasWork
                               ? 0
                               : ScreenplayRegionToolbar.floatingExtent,
@@ -1134,6 +1256,22 @@ class ProductionCanvasRegion extends HookConsumerWidget {
                               ? null
                               : (sceneId) => run(() => addSegment(sceneId)),
                           onSelect: select,
+                          onStoryboardCellContextMenu:
+                              sceneActions.attachReference == null
+                              ? null
+                              : (node, at) => showRevericContextMenu(
+                                  context: context,
+                                  position: at,
+                                  entries: [
+                                    RevericMenuItem(
+                                      icon: RevericIcons.chat_bubble_outline,
+                                      label: context.t(
+                                        LocaleKeys.productionAddToChat,
+                                      ),
+                                      onTap: () => attachToChat(node),
+                                    ),
+                                  ],
+                                ),
                           onContextMenu: (node, at) async {
                             await select(node);
                             if (context.mounted &&
@@ -1228,6 +1366,10 @@ class ProductionCanvasRegion extends HookConsumerWidget {
                                   node: selected.value!,
                                   clip: selectedClip,
                                   segmentLabels: segmentLabels,
+                                  onAttachToChat:
+                                      sceneActions.attachReference == null
+                                      ? null
+                                      : attachToChat,
                                   onPreview: previewTarget == null
                                       ? null
                                       : () => productionRun(

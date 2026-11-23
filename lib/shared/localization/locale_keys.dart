@@ -6721,4 +6721,150 @@ abstract final class LocaleKeys {
   static const productionTextTryStoryboard = 'production.text_try_storyboard';
   static const productionTextTrySetting = 'production.text_try_setting';
   static const productionTextTryPolish = 'production.text_try_polish';
+
+  // ── 上游 0.10.4 新增（自动补齐，勿手工重排）
+  static const aiImageModelCurrentDraft = 'ai.image_model_current_draft';
+  static const aiPermissionMediaTranscribe = 'ai.permission_media_transcribe';
+  static const productionAssetCurrentWork =
+      'screenplay.production.assetCurrentWork';
+  static const productionAssetShared = 'screenplay.production.assetShared';
+  static const productionAssetOtherWorks =
+      'screenplay.production.assetOtherWorks';
+  static const productionAssetAddToCanvas =
+      'screenplay.production.assetAddToCanvas';
+  static const productionAssetShareAndAdd =
+      'screenplay.production.assetShareAndAdd';
+  static const productionAssetLoadFailed =
+      'screenplay.production.assetLoadFailed';
+  static const productionAssetShareFailed =
+      'screenplay.production.assetShareFailed';
+  static const productionAssetSharedPlacementFailed =
+      'screenplay.production.assetSharedPlacementFailed';
+  static const productionTranscribe = 'screenplay.production.transcribe';
+  static const productionTranscribing = 'screenplay.production.transcribing';
+  static const productionTranscriptionReady =
+      'screenplay.production.transcriptionReady';
+  static const productionTranscriptionFailed =
+      'screenplay.production.transcriptionFailed';
+  static const productionTranscriptionConfig =
+      'screenplay.production.transcriptionConfig';
+  static const productionTranscriptionStorage =
+      'screenplay.production.transcriptionStorage';
+  static const productionTranscriptionNoSpeech =
+      'screenplay.production.transcriptionNoSpeech';
+  static const productionTranscriptionLimit =
+      'screenplay.production.transcriptionLimit';
+  static const productionTranscriptionUnknown =
+      'screenplay.production.transcriptionUnknown';
+  static const aiImageServerError = 'ai.image_server_error';
+  static const aiImageResponseInvalid = 'ai.image_response_invalid';
+  static const aiImagePluginResponseInvalid =
+      'ai.image_plugin_response_invalid';
+  static const editingSpeed = 'screenplay.editing.speed';
+  static const editingNewText = 'screenplay.editing.newText';
+  static const editingRoleText = 'screenplay.editing.roleText';
+  static const editingTextTrack = 'screenplay.editing.textTrack';
+  static const editingAddText = 'screenplay.editing.addText';
+  static const editingPositionTopLeft = 'screenplay.editing.positionTopLeft';
+  static const editingPositionTopRight = 'screenplay.editing.positionTopRight';
+  static const editingPositionLeft = 'screenplay.editing.positionLeft';
+  static const editingPositionRight = 'screenplay.editing.positionRight';
+  static const editingPositionBottomLeft =
+      'screenplay.editing.positionBottomLeft';
+  static const editingPositionBottomRight =
+      'screenplay.editing.positionBottomRight';
+  static const editingHorizontal = 'screenplay.editing.horizontal';
+  static const editingVertical = 'screenplay.editing.vertical';
+  static const editingExportWatermark = 'screenplay.editing.exportWatermark';
+  static const editingExportWatermarkDetail =
+      'screenplay.editing.exportWatermarkDetail';
+  static const commonCustom = 'common.custom';
+  static const commonDefault = 'common.default';
+  static const productionAddToChat = 'production.addToChat';
+  static const productionCanvasGallery = 'production.canvas_gallery';
+  static const productionGalleryPublish = 'production.gallery_publish';
+  static const productionGalleryPublishNow = 'production.gallery_publish_now';
+  static const productionGalleryPublished = 'production.gallery_published';
+  static const productionGalleryConfirmation =
+      'production.gallery_confirmation';
+  static const productionGalleryTitleInvalid =
+      'production.gallery_title_invalid';
+  static const productionGalleryDescriptionInvalid =
+      'production.gallery_description_invalid';
+  static const productionGalleryCoverCanvas = 'production.gallery_cover_canvas';
+  static const productionGalleryChooseConversations =
+      'production.gallery_choose_conversations';
+  static const productionGalleryConversationsNone =
+      'production.gallery_conversations_none';
+  static const productionGalleryConversationContents =
+      'production.gallery_conversation_contents';
+  static const productionGalleryConversationCount =
+      'production.gallery_conversation_count';
+  static const productionGalleryNodeCount = 'production.gallery_node_count';
+  static const productionGalleryAssetCount = 'production.gallery_asset_count';
+  static const productionGalleryPinned = 'production.gallery_pinned';
+  static const productionGalleryLatest = 'production.gallery_latest';
+  static const productionGalleryMore = 'production.gallery_more';
+  static const productionGalleryEmpty = 'production.gallery_empty';
+  static const productionGalleryLoadFailed = 'production.gallery_load_failed';
+  static const productionGallerySessionsFailed =
+      'production.gallery_sessions_failed';
+  static const productionGalleryLoadMore = 'production.gallery_load_more';
+  static const productionGalleryCopy = 'production.gallery_copy';
+  static const productionGalleryOpenConversations =
+      'production.gallery_open_conversations';
+  static const productionGalleryGenerations = 'production.gallery_generations';
+  static const productionGalleryPreparing = 'production.gallery_preparing';
+  static const productionGalleryUploading = 'production.gallery_uploading';
+  static const productionGalleryFinalizing = 'production.gallery_finalizing';
+  static const productionGalleryDownloading = 'production.gallery_downloading';
+  static const productionGalleryDownloadFailed =
+      'production.gallery_download_failed';
+  static const productionGalleryPreviewFailed =
+      'production.gallery_preview_failed';
+  static const productionGalleryPublishFailed =
+      'production.gallery_publish_failed';
+  static const productionGalleryUploadExpired =
+      'production.gallery_upload_expired';
+  static const productionGalleryUploadPaused =
+      'production.gallery_upload_paused';
+  static const productionGalleryUploadBusy = 'production.gallery_upload_busy';
+  static const productionGalleryUploadRejected =
+      'production.gallery_upload_rejected';
+  static const productionGalleryPackageTooLarge =
+      'production.gallery_package_too_large';
+  static const productionGalleryCoverFailed = 'production.gallery_cover_failed';
+  static const productionGalleryMissingMedia =
+      'production.gallery_missing_media';
+  static const productionGalleryMissingConversationFile =
+      'production.gallery_missing_conversation_file';
+  static const productionGalleryInvalidConversation =
+      'production.gallery_invalid_conversation';
+  static const productionGalleryMissingStyle =
+      'production.gallery_missing_style';
+  static const productionGalleryImportUpgrade =
+      'production.gallery_import_upgrade';
+  static const productionGalleryPreviewEstimate =
+      'production.gallery_preview_estimate';
+  static const productionGalleryModel = 'production.gallery_model';
+  static const productionGalleryAgent = 'production.gallery_agent';
+  static const productionGalleryOpening = 'production.gallery_opening';
+  static const productionGalleryComposerReadOnly =
+      'production.gallery_composer_read_only';
+  static const commonDeselectAll = 'common.deselect_all';
+  static const mediaVideoShortcuts = 'assets.media_video_shortcuts';
+  static const editorImageSize = 'editor.image_size';
+  static const editorImageWidth = 'editor.image_width';
+  static const editorImageHeight = 'editor.image_height';
+  static const editorImageDimensionPositive = 'editor.image_dimension_positive';
+  static const editorImageDimensionsIncomplete =
+      'editor.image_dimensions_incomplete';
+  static const editorImageQualityCustomHint =
+      'editor.image_quality_custom_hint';
+  static const providerTranscription = 'provider.transcription';
+  static const providerDefaultTranscription = 'provider.default_transcription';
+  static const toolRunDirectorDuplicate = 'tool.run_director_duplicate';
+  static const toolRunEditingDuplicate = 'tool.run_editing_duplicate';
+  static const toolRunEditingInspectAudio = 'tool.run_editing_inspect_audio';
+  static const toolRunFfmpegInspectAudio = 'tool.run_ffmpeg_inspect_audio';
 }

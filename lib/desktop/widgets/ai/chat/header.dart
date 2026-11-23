@@ -34,13 +34,18 @@ class ChatHeader extends ConsumerWidget {
     this.onContinueSession,
     this.onClose,
     this.onExpand,
+    this.onCollapse,
     this.onOpenPermissions,
     this.onSelectSession,
     this.novelId,
     this.databasePath,
     this.activeSessionId,
     this.avoidWindowCaption = true,
+    this.clearWindowCaptionTrailing = false,
+    this.actionsGestureExclusionKey,
     this.floating = false,
+    this.readOnly = false,
+    this.readOnlySessions,
   });
 
   final AiChatSessionState sessionState;
@@ -49,6 +54,7 @@ class ChatHeader extends ConsumerWidget {
   final ValueChanged<String>? onContinueSession;
   final VoidCallback? onClose;
   final VoidCallback? onExpand;
+  final VoidCallback? onCollapse;
 
   /// 点击头像打开「助手权限」；审批关闭或无作品上下文时为空，头像不可点击。
   final VoidCallback? onOpenPermissions;
@@ -67,43 +73,65 @@ class ChatHeader extends ConsumerWidget {
   /// When true, this header is the rightmost chrome under Windows caption
   /// buttons: push content below [DesktopWindowFrame.captionSafeTopInset]
   /// so system buttons and panel actions stay on separate rows.
-  /// When false, a sibling (side panel) owns that space.
+  /// When false, a sibling (side panel) owns that space or this wide header
+  /// clears caption buttons horizontally via [clearWindowCaptionTrailing].
   final bool avoidWindowCaption;
+
+  /// When true and [avoidWindowCaption] is false, keeps the header in the top
+  /// [DesktopWindowFrame.titleBarHeight] row while reserving
+  /// [DesktopWindowFrame.trailingInset] on the right for Windows/Linux
+  /// caption buttons.
+  final bool clearWindowCaptionTrailing;
+
+  /// Optional key registered in [DesktopWindowFrame.titleBarGestureExclusionKeys]
+  /// so double-clicking header actions does not maximize the window.
+  final GlobalKey? actionsGestureExclusionKey;
 
   /// 浮窗外壳：关闭按钮语义变成「收起为悬浮球」，面板仍保持挂载。
   final bool floating;
+
+  /// 只读模式（画布画廊）：隐藏新建/展开/权限入口，直接展示会话模型名并使用静态会话切换。
+  final bool readOnly;
+
+  /// 只读模式下的静态会话列表；数量大于 1 时在标题旁展示切换下拉。
+  final List<ReadOnlyChatSessionItem>? readOnlySessions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = RevericTheme.colorsOf(context);
     final typo = RevericTheme.typographyOf(context);
     final appBackgroundActive = ref.watch(appBackgroundActiveProvider);
-    final aiSettings = ref.watch(aiSettingsProvider);
-    final providerName = sessionState.providerId != null
-        ? aiSettings.findConfigById(sessionState.providerId!)?.displayName
-        : null;
-    // 会话存的是 model id：优先解析为模型目录的展示名（Reveric 渠道），
-    // 解析不到（provider 未配置或模型已下线）时回退原始 id。
-    final availableModels = ref.watch(availableAiModelsProvider);
-    final sessionProviderId = sessionState.providerId;
-    final sessionModel = sessionState.model;
-    String? modelName = sessionModel;
-    if (sessionProviderId != null && sessionModel != null) {
-      final optionId = '$sessionProviderId::$sessionModel';
-      for (final option in availableModels) {
-        if (option.id == optionId) {
-          modelName = option.displayModelName;
-          break;
+    String? providerName;
+    String? modelName = sessionState.model;
+    if (!readOnly) {
+      final aiSettings = ref.watch(aiSettingsProvider);
+      providerName = sessionState.providerId != null
+          ? aiSettings.findConfigById(sessionState.providerId!)?.displayName
+          : null;
+      // 会话存的是 model id：优先解析为模型目录的展示名（Reveric 渠道），
+      // 解析不到（provider 未配置或模型已下线）时回退原始 id。
+      final availableModels = ref.watch(availableAiModelsProvider);
+      final sessionProviderId = sessionState.providerId;
+      final sessionModel = sessionState.model;
+      if (sessionProviderId != null && sessionModel != null) {
+        final optionId = '$sessionProviderId::$sessionModel';
+        for (final option in availableModels) {
+          if (option.id == optionId) {
+            modelName = option.displayModelName;
+            break;
+          }
         }
       }
     }
 
-    // Windows: stack under caption (top inset). Elsewhere / immersive: same
-    // title-bar row; only the rightmost header needs trailingInset.
+    // Windows docked column: stack under caption (top inset).
+    // Wide expanded header without side panel: keep in title-bar row and
+    // reserve trailingInset for Windows/Linux caption buttons.
     final topInset = avoidWindowCaption
         ? DesktopWindowFrame.captionSafeTopInset
         : 0.0;
-    final trailingInset = avoidWindowCaption && topInset == 0
+    final trailingInset =
+        (avoidWindowCaption && topInset == 0) || clearWindowCaptionTrailing
         ? DesktopWindowFrame.trailingInset
         : 0.0;
 
@@ -159,7 +187,13 @@ class ChatHeader extends ConsumerWidget {
       ],
     );
     // 有会话列表上下文时，标题区变为会话切换触发器（caret + 下拉浮层）。
+    final canSwitchReadOnlySessions =
+        readOnly &&
+        onSelectSession != null &&
+        readOnlySessions != null &&
+        readOnlySessions!.length > 1;
     final canSwitchSessions =
+        !readOnly &&
         onSelectSession != null &&
         novelId != null &&
         novelId!.isNotEmpty &&
@@ -186,12 +220,21 @@ class ChatHeader extends ConsumerWidget {
                 children: [
                   AiAvatar(
                     size: RevericSizes.aiAvatarSm,
-                    tooltip: context.t(LocaleKeys.aiPermissionsTitle),
-                    onTap: onOpenPermissions,
+                    tooltip: readOnly
+                        ? null
+                        : context.t(LocaleKeys.aiPermissionsTitle),
+                    onTap: readOnly ? null : onOpenPermissions,
                   ),
                   const SizedBox(width: RevericSpacing.sm),
                   Expanded(
-                    child: canSwitchSessions
+                    child: canSwitchReadOnlySessions
+                        ? ChatSessionSwitcher.readOnly(
+                            sessions: readOnlySessions!,
+                            activeSessionId: activeSessionId,
+                            onSelectSession: onSelectSession,
+                            child: titleColumn,
+                          )
+                        : canSwitchSessions
                         ? ChatSessionSwitcher(
                             novelId: novelId!,
                             databasePath: databasePath!,
@@ -203,26 +246,34 @@ class ChatHeader extends ConsumerWidget {
                         : titleColumn,
                   ),
                   const SizedBox(width: RevericSpacing.sm),
-                  _HeaderActions(
-                    colors: colors,
-                    // 直接新建，不再先弹「新对话 / 延续」二选一：延续降级成新
-                    // 会话里的一次性提议条（ContinueSessionOfferBar）。
-                    onRequestNewSession: onRequestNewSession,
-                    onExpand: onExpand,
-                    onClose: onClose,
-                    isRequestInFlight:
-                        runtimeState.isRequestInFlight ||
-                        runtimeState.isSessionMutationInFlight,
-                    newTooltip: runtimeState.isRequestInFlight
-                        ? context.t(LocaleKeys.aiCancelFirst)
-                        : context.t(LocaleKeys.aiChatNewConversation),
-                    expandTooltip: context.t(LocaleKeys.aiChatExpand),
-                    closeTooltip: context.t(
-                      floating
-                          ? LocaleKeys.aiChatFloatCollapse
-                          : LocaleKeys.commonClose,
+                  KeyedSubtree(
+                    key: actionsGestureExclusionKey,
+                    child: _HeaderActions(
+                      colors: colors,
+                      // 直接新建，不再先弹「新对话 / 延续」二选一：延续降级成新
+                      // 会话里的一次性提议条（ContinueSessionOfferBar）。
+                      onRequestNewSession: readOnly
+                          ? null
+                          : onRequestNewSession,
+                      onExpand: readOnly ? null : onExpand,
+                      onCollapse: readOnly ? null : onCollapse,
+                      onClose: onClose,
+                      isRequestInFlight:
+                          !readOnly &&
+                          (runtimeState.isRequestInFlight ||
+                              runtimeState.isSessionMutationInFlight),
+                      newTooltip: runtimeState.isRequestInFlight
+                          ? context.t(LocaleKeys.aiCancelFirst)
+                          : context.t(LocaleKeys.aiChatNewConversation),
+                      expandTooltip: context.t(LocaleKeys.aiChatExpand),
+                      collapseTooltip: context.t(LocaleKeys.aiChatCollapse),
+                      closeTooltip: context.t(
+                        floating
+                            ? LocaleKeys.aiChatFloatCollapse
+                            : LocaleKeys.commonClose,
+                      ),
+                      closeIcon: RevericIcons.remove,
                     ),
-                    closeIcon: RevericIcons.remove,
                   ),
                 ],
               ),
@@ -234,10 +285,18 @@ class ChatHeader extends ConsumerWidget {
   }
 
   String? _subtitleText(String? providerName, String? modelName) {
-    final modelLabel = providerName != null && modelName != null
-        ? '$providerName · $modelName'
-        : null;
-    return modelLabel;
+    final cleanProvider = providerName?.trim();
+    final cleanModel = modelName?.trim();
+    if (cleanProvider != null &&
+        cleanProvider.isNotEmpty &&
+        cleanModel != null &&
+        cleanModel.isNotEmpty) {
+      return '$cleanProvider · $cleanModel';
+    }
+    if (cleanModel != null && cleanModel.isNotEmpty) {
+      return cleanModel;
+    }
+    return null;
   }
 }
 
@@ -245,22 +304,26 @@ class _HeaderActions extends StatelessWidget {
   const _HeaderActions({
     required this.colors,
     required this.onExpand,
+    required this.onCollapse,
     required this.onRequestNewSession,
     required this.onClose,
     required this.isRequestInFlight,
     required this.newTooltip,
     required this.expandTooltip,
+    required this.collapseTooltip,
     required this.closeTooltip,
     required this.closeIcon,
   });
 
   final RevericColors colors;
   final VoidCallback? onExpand;
+  final VoidCallback? onCollapse;
   final VoidCallback? onRequestNewSession;
   final VoidCallback? onClose;
   final bool isRequestInFlight;
   final String newTooltip;
   final String expandTooltip;
+  final String collapseTooltip;
   final String closeTooltip;
   final String closeIcon;
 
@@ -275,6 +338,16 @@ class _HeaderActions extends StatelessWidget {
           iconSize: 18,
           color: colors.textSecondary,
           onPressed: onExpand,
+        ),
+      );
+    }
+    if (onCollapse != null) {
+      children.add(
+        _HeaderIconButton(
+          tooltip: collapseTooltip,
+          icon: RevericIcons.close_fullscreen_rounded,
+          color: colors.textMuted,
+          onPressed: onCollapse,
         ),
       );
     }
