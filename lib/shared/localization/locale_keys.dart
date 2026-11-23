@@ -852,6 +852,13 @@ abstract final class LocaleKeys {
   static const agentRuleNameRequired = 'agent_rule.name_required';
   static const agentRuleNextChatHint = 'agent_rule.next_chat_hint';
   static const agentRuleOverviewHint = 'agent_rule.overview_hint';
+  static const agentRulePackLibrary = 'agent_rule.pack_library';
+  static const agentRulePackSelectHint = 'agent_rule.pack_select_hint';
+  static const agentRulePackEmpty = 'agent_rule.pack_empty';
+  static const agentRulePackSearchHint = 'agent_rule.pack_search_hint';
+  static const agentRulePackImport = 'agent_rule.pack_import';
+  static const agentRulePackImported = 'agent_rule.pack_imported';
+  static const agentRulePackFailed = 'agent_rule.pack_failed';
   static const agentRuleSaveBeforeDragHint = 'agent_rule.save_before_drag_hint';
   static const agentRuleTitle = 'agent_rule.title';
   // ── agent_shortcut ────────────────────────────────────────

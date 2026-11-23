@@ -38,6 +38,7 @@ import '../../../shared/providers/novel_providers.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import 'agent_rule_copy_dialog.dart';
+import 'agent_rule_pack_dialog.dart';
 import 'home_management_cards.dart';
 
 final _log = AppLogger.forModule('AgentRulesGrid');
@@ -95,6 +96,27 @@ class AgentRulesGridPage extends HookConsumerWidget {
       );
     }
 
+    Future<void> importFromLibrary() async {
+      final imported = await showAgentRulePackDialog(
+        context: context,
+        databasePath: databasePath,
+        novelId: novelId,
+      );
+      if (imported == null || imported == 0 || !context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.t(
+              LocaleKeys.agentRulePackImported,
+              namedArgs: {'count': '$imported'},
+            ),
+          ),
+        ),
+      );
+    }
+
     return HomeManagementScaffold(
       headerGestureExclusionKey: headerGestureExclusionKey,
       icon: RevericIcons.rule_outlined,
@@ -102,10 +124,21 @@ class AgentRulesGridPage extends HookConsumerWidget {
       createLabelKey: LocaleKeys.commonCreate,
       onCreate: onCreate,
       onBack: onBack,
-      secondaryAction: TextButton.icon(
-        onPressed: () => unawaited(copyFromOtherNovel()),
-        icon: const RevericIcon(RevericIcons.copy, size: 16),
-        label: Text(context.t(LocaleKeys.agentRuleCopyFromNovel)),
+      secondaryAction: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton.icon(
+            onPressed: () => unawaited(importFromLibrary()),
+            icon: const RevericIcon(RevericIcons.rule_outlined, size: 16),
+            label: Text(context.t(LocaleKeys.agentRulePackLibrary)),
+          ),
+          const SizedBox(width: RevericSpacing.xs),
+          TextButton.icon(
+            onPressed: () => unawaited(copyFromOtherNovel()),
+            icon: const RevericIcon(RevericIcons.copy, size: 16),
+            label: Text(context.t(LocaleKeys.agentRuleCopyFromNovel)),
+          ),
+        ],
       ),
       child: rulesAsync.when(
         loading: () => const HomeManagementLoadingState(),

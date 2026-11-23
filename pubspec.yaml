@@ -262,6 +262,7 @@ flutter:
     - assets/bundled_skills/chapter-write-pipeline/SKILL.md
     - assets/bundled_skills/story-state-sync/SKILL.md
     - assets/world_samples.json
+    - assets/rule_packs/
     - assets/official_skills/
     - assets/official_skills/map-design/SKILL.md
     - assets/official_skills/map-design/references/
