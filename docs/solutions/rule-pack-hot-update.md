@@ -41,7 +41,8 @@ git push
 
 - `lib/shared/models/agent_rule_pack_manifest.dart` — 清单模型与合法性校验
 - `lib/shared/services/agent_rule_pack_service.dart` — `loadAgentRulePacks` / `describeAgentRulePackLibrary` / `refreshAgentRulePacks` / `resetAgentRulePacksToBundled`
-- `lib/desktop/widgets/agent_management/agent_rule_pack_dialog.dart` — 规则库弹窗底部的版本行与「检查更新」入口
+- `lib/desktop/widgets/agent_management/agent_rule_library_page.dart` — 规则库整页（左分类 / 中规则包 / 右包内勾选与跨包汇总），顶部版本行与「检查更新」入口
+- `lib/desktop/widgets/agent_management/agent_rules_grid_page.dart` — 智能体规则页三栏（左题材体系 / 中规则列表 / 右常驻详情）
 - `tools/build_rule_pack_manifest.py` — 生成内置清单与发布目录
 - `test/shared/agent_rule_pack_hot_update_test.dart` — 清单校验、缓存优先、篡改回退、下载落地、失败不污染缓存
 
@@ -53,3 +54,11 @@ git push
 - 远端未发布时点「检查更新」→ 提示「更新失败，继续使用当前规则库」，包数不变；
 - 手工写入 v3 缓存（含一个测试包）后重启 → 显示「v3 · 26 包 282 条 · 已热更」，左侧分类出现该包；
 - 缓存文件字节与清单不符时 → 自动回退内置，日志记录 `体积异常`，界面仍是 25 包。
+
+规则库整页（同一版本实测）：
+
+- 规则库从弹窗改为独立整页，顶部显示「规则库 v2 · 25 包 272 条 · 内置」与「检查更新」；
+- 左栏分类「全部 / 推理 / 古代 / 男频 / 女频 / 科幻 / 种田 / 系统流 / 都市 / 制度 / 短剧」，短剧 14 包全量保留；
+- 跨包勾选后右上购物车按包名累计条数，底部「导入 N 条」一次落库，返回智能体规则页并提示导入条数；
+- 已导入规则在包内灰显「已存在」、不可重复勾选，包卡显示「已导入 2/10」；
+- 智能体规则页改为三栏，导入的包规则按题材分组（实测导入短剧包后左栏出现「短剧 2」），自定义规则归「未分组」。

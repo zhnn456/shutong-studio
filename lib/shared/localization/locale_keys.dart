@@ -867,6 +867,16 @@ abstract final class LocaleKeys {
   static const agentRulePackUpToDate = 'agent_rule.pack_up_to_date';
   static const agentRulePackUpdated = 'agent_rule.pack_updated';
   static const agentRulePackUpdateFailed = 'agent_rule.pack_update_failed';
+  static const agentRulePackCategoryTitle = 'agent_rule.pack_category_title';
+  static const agentRulePackCategoryAll = 'agent_rule.pack_category_all';
+  static const agentRulePackImportedCount = 'agent_rule.pack_imported_count';
+  static const agentRulePackRuleCount = 'agent_rule.pack_rule_count';
+  static const agentRulePackRulesTitle = 'agent_rule.pack_rules_title';
+  static const agentRulePackSelectAllImportable =
+      'agent_rule.pack_select_all_importable';
+  static const agentRulePackSelectedTotal = 'agent_rule.pack_selected_total';
+  static const agentRulePackCartHint = 'agent_rule.pack_cart_hint';
+  static const agentRuleGroupTitle = 'agent_rule.group_title';
   static const agentRuleSaveBeforeDragHint = 'agent_rule.save_before_drag_hint';
   static const agentRuleTitle = 'agent_rule.title';
   // ── agent_shortcut ────────────────────────────────────────
