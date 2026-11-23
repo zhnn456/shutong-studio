@@ -534,7 +534,7 @@ class _PackRuleRow extends StatelessWidget {
                           color: colors.textMuted,
                           height: 1.45,
                         ),
-                        maxLines: 3,
+                        maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],

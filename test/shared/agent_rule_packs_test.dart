@@ -20,6 +20,11 @@ void main() {
       expect(pack.id, isNotEmpty);
       expect(pack.name, isNotEmpty);
       expect(pack.rules, isNotEmpty, reason: '${pack.name} 应至少有一条规则');
+      expect(
+        pack.rules.length,
+        greaterThanOrEqualTo(10),
+        reason: '${pack.name} 的规则条数被削薄了，应保持在 10 条以上',
+      );
       expect(ids.add(pack.id), isTrue, reason: '规则包 ID 重复: ${pack.id}');
       expect(names.add(pack.name), isTrue, reason: '规则包名称重复: ${pack.name}');
 
