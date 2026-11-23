@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>智能体规则 · 规则库 UI 方案（4 套）</title>
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --surface: #ffffff;
+    --line: #e2e2de;
+    --ink: #14161a;
+    --ink-2: #4a4f57;
+    --ink-3: #868c95;
+    --accent: #14161a;
+    --soft: #f1f1ee;
+    --soft-2: #fbfbf9;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.65 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    padding: 48px 40px 80px;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .sub { color: var(--ink-3); margin: 0 0 28px; }
+  .block { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 26px 28px; margin-bottom: 26px; }
+  .block h2 { font-size: 17px; margin: 0 0 12px; }
+  .block h3 { font-size: 14px; margin: 20px 0 8px; color: var(--ink-2); letter-spacing: 0.02em; }
+  .pain { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pain div { background: var(--soft); border-radius: 12px; padding: 14px 16px; }
+  .pain b { display: block; margin-bottom: 4px; }
+  .pain span { color: var(--ink-2); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-3); font-weight: 600; background: var(--soft-2); }
+  .scheme { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; margin-bottom: 26px; overflow: hidden; }
+  .scheme-head { padding: 22px 26px 0; display: flex; align-items: flex-start; gap: 14px; }
+  .tag { flex: none; width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 600; }
+  .scheme-head h2 { margin: 2px 0 4px; font-size: 18px; }
+  .scheme-head p { margin: 0; color: var(--ink-3); font-size: 13px; }
+  .scheme-body { padding: 20px 26px 26px; }
+  .pros { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .pros div { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+  .pros div b { display: block; margin-bottom: 6px; color: var(--ink-2); font-size: 12px; letter-spacing: .04em; }
+  .pros ul { margin: 0; padding-left: 16px; color: var(--ink-2); }
+  /* 线框公共 */
+  .wire { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+  .bar { height: 38px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; padding: 0 12px; font-size: 12px; color: var(--ink-3); background: var(--soft-2); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #d7d7d2; }
+  .col { border-right: 1px solid var(--line); padding: 10px; }
+  .col:last-child { border-right: none; }
+  .row { display: flex; align-items: stretch; }
+  .item { border-radius: 9px; padding: 7px 9px; font-size: 12px; color: var(--ink-2); }
+  .item.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+  .item.muted { color: var(--ink-3); }
+  .chip { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: 11px; color: var(--ink-3); }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pill { height: 8px; border-radius: 4px; background: #e6e6e1; }
+  .sw { width: 26px; height: 14px; border-radius: 8px; background: var(--accent); position: relative; }
+  .sw::after { content: ""; position: absolute; right: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+  .btn { border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 999px; padding: 4px 11px; font-size: 11px; }
+  .btn.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
+  .label { font-size: 11px; color: var(--ink-3); letter-spacing: .04em; margin: 0 0 6px; }
+  .note { font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+  .foot { color: var(--ink-3); font-size: 13px; }
+  .rec { border-left: 3px solid var(--accent); padding-left: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>智能体规则 · 页面与规则库改造方案</h1>
+<p class="sub">四个排布方案 + 数据模型建议。可先挑方案编号，再细化到像素与交互。</p>
+
+<div class="block">
+  <h2>要解决的两件事</h2>
+  <div class="pain">
+    <div>
+      <b>1. 规则库是弹窗，看不全</b>
+      <span>760×480 的双栏弹窗，左栏 25 个包挤在 420 高里，右栏每条规则只露 4 行，分类要靠滚动找。</span>
+    </div>
+    <div>
+      <b>2. 规则堆成一大片，没有体系；详情页空</b>
+      <span>导入 12 条后就是 30+ 张同构卡片平铺（3 列网格），看不出层次；点进去只有「名称 + 一段富文本」，剩下大半屏空白，点击成本白花。</span>
+    </div>
+  </div>
+  <p class="note">根因不在排布，而在数据：规则只有 id/name/content/enabled/sortOrder，没有「分组、来源包、一句话主张、示例、检查项」。排布只能靠猜。所以四套方案都要先补一层结构化字段。</p>
+</div>
+
+<div class="block">
+  <h2>四套方案对比</h2>
+  <table>
+    <thead>
+      <tr><th>方案</th><th>规则页形态</th><th>规则库形态</th><th>体系感</th><th>详情利用率</th><th>改造量</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><b>A 三栏主从</b></td><td>分组树 + 紧凑列表 + 常驻详情</td><td>同构三栏页（分类树 / 包列表 / 规则勾选）</td><td>强</td><td>高（详情常驻，不跳页）</td><td>大</td></tr>
+      <tr><td><b>B Tab + 折叠列表</b></td><td>顶部 Tab + 分组折叠 + 行内展开</td><td>独立 Tab，包卡网格，就地展开</td><td>中</td><td>中（行内展开，深度一般）</td><td>小</td></tr>
+      <tr><td><b>C 向导 + 卡片升级</b></td><td>卡片网格升级 + 右侧抽屉详情</td><td>三步向导 + 跨包购物车</td><td>中偏强</td><td>高（抽屉 480px 富内容）</td><td>中</td></tr>
+      <tr><td><b>D 大纲文档</b></td><td>规则大纲树 + 整页文档式阅读</td><td>作为大纲里的「未导入内置包」节点</td><td>最强</td><td>最高（一节规则连读带编辑）</td><td>最大</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 方案 A -->
+<div class="scheme">
+  <div class="scheme-head">
+    <div class="tag">A</div>
+    <div>
+      <h2>三栏主从：分组树 / 规则列表 / 常驻详情</h2>
+      <p>规则库与规则页共用同一套主从骨架，去掉弹窗与整页跳转。</p>
+    </div>
+  </div>
+  <div class="scheme-body">
+    <div class="wire">
+      <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:6px">智能体规则</span><span style="margin-left:auto" class="chip">我的规则</span><span class="chip">规则库</span><span class="btn">＋ 新建</span></div>
+      <div class="row" style="min-height:330px">
+        <div class="col" style="width:26%">
+          <p class="label">规则体系</p>
+          <div class="item on">题材定位 <span class="chip">12</span></div>
+          <div class="item">结构节奏 <span class="chip">9</span></div>
+          <div class="item">人物与视角 <span class="chip">6</span></div>
+          <div class="item">文风语言 <span class="chip">8</span></div>
+          <div class="item">逻辑约束 <span class="chip">7</span></div>
+          <div class="item">禁忌清单 <span class="chip">5</span></div>
+          <div class="item">考据制度 <span class="chip">6</span></div>
+          <div class="item muted">未分组 <span class="chip">3</span></div>
+          <div style="height:10px"></div>
+          <div class="item muted">＋ 新建分组</div>
+        </div>
+        <div class="col" style="width:40%">
+          <p class="label">题材定位 · 12 条 · 全部启用</p>
+          <div class="item on">开书定位：案件类型与叙述人称<span class="sw" style="float:right"></span><br><span style="font-size:11px;color:#868c95">先定本格/社会派/硬核刑侦、人称与血腥尺度…</span></div>
+          <div class="item">时间表制度：每人每时段在哪<span class="sw" style="float:right"></span><br><span style="font-size:11px;color:#868c95">每案一张时间表，半小时一切，空档必须写原因…</span></div>
+          <div class="item">物证清单：来源、发现者、能否伪造<span class="sw" style="float:right"></span><br><span style="font-size:11px;color:#868c95">关键物证只允许三种场景首次出现…</span></div>
+          <div class="item muted">线索公平：解答所需线索必须提前露面<span class="sw" style="float:right;background:#cfcfc9"></span></div>
+        </div>
+        <div class="col" style="width:34%;background:var(--soft-2)">
+          <p class="label">规则详情（常驻，不跳页）</p>
+          <div style="font-weight:600;margin-bottom:4px">时间表制度：每人每时段在哪</div>
+          <div style="font-size:11px;color:#868c95;margin-bottom:10px">来源 · 悬疑推理包　作用域 · 全书</div>
+          <div class="pill" style="width:92%;margin-bottom:5px"></div>
+          <div class="pill" style="width:88%;margin-bottom:5px"></div>
+          <div class="pill" style="width:74%;margin-bottom:12px"></div>
+          <div class="label">正例 / 反例</div>
+          <div style="font-size:11px;line-height:1.5;color:#4a4f57;background:#fff;border:1px solid #e2e2de;border-radius:9px;padding:7px 9px;margin-bottom:10px">✓ 九点他在茶馆，账本与小票对得上<br>✗ 解答章才说「其实他十点就回了家」</div>
+          <div class="label">检查项</div>
+          <div style="font-size:11px;color:#4a4f57">□ 每人每时段有证人　□ 空档有原因　□ 推论回到表上</div>
+          <div style="margin-top:10px;display:flex;gap:6px"><span class="btn ghost">试写对比</span><span class="btn">编辑</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">规则库页沿用同骨架：左「分类树（小说 9 类 / 短剧 1 类）」，中「包卡片列表（条数、已导入 n/m）」，右「该包规则 + 勾选 + 底部导入条」，可跨包累积。</p>
+    <div class="pros">
+      <div><b>优点</b><ul><li>点一行就能在右侧读完一条规则，彻底消灭「点开只看到两句话」</li><li>分组树天然给出体系，导入时自动落到对应分组</li><li>规则库与规则页同构，学一次就会</li></ul></div>
+      <div><b>代价</b><ul><li>1600px 宽度下三栏偏挤，左侧需支持折叠到 56px 图标条</li><li>要补数据字段并给存量规则做一次归类</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<!-- 方案 B -->
+<div class="scheme">
+  <div class="scheme-head">
+    <div class="tag">B</div>
+    <div>
+      <h2>Tab + 分组折叠列表 + 行内展开（最小改动）</h2>
+      <p>保留现有卡片语言，把弹窗改成页面 Tab，把平铺改成有标题的折叠分组。</p>
+    </div>
+  </div>
+  <div class="scheme-body">
+    <div class="wire">
+      <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span style="margin-left:6px">智能体规则 · 38</span>
+        <span style="margin-left:auto" class="chip on">我的规则</span><span class="chip">规则库</span><span class="chip">已停用 3</span><span class="btn ghost">从其他作品复制</span>
+      </div>
+      <div style="padding:12px">
+        <p class="label">题材定位 · 12 条 ▾</p>
+        <div class="item on" style="border:1px solid var(--line);margin-bottom:6px">
+          开书定位：案件类型与叙述人称<span class="sw" style="float:right"></span>
+          <div style="font-size:11px;color:#868c95;margin-top:3px">先定类型、人称、血腥尺度；同一部书不混用三种腔调。</div>
+          <div style="margin-top:8px;border-top:1px dashed #e2e2de;padding-top:8px;font-size:11px;color:#4a4f57">
+            正例：第一集先给死亡现场再交代关系　反例：开场五分钟讲家世<br>
+            检查：□ 类型已定　□ 人称一致　□ 猎奇不越界
+          </div>
+        </div>
+        <div class="item" style="border:1px solid var(--line);margin-bottom:6px">时间表制度：每人每时段在哪<span class="sw" style="float:right"></span></div>
+        <div class="item" style="border:1px solid var(--line);margin-bottom:6px">物证清单：来源、发现者、能否伪造<span class="sw" style="float:right"></span></div>
+        <p class="label" style="margin-top:14px">结构节奏 · 9 条 ▸</p>
+        <p class="label">逻辑约束 · 7 条 ▸</p>
+        <p class="label">未分组 · 3 条 ▸</p>
+      </div>
+    </div>
+    <p class="note">规则库 Tab：包卡网格（分类筛选），点卡片就地展开该包规则清单 + 「全选 / 导入 N 条」，不弹窗、不跳页。</p>
+    <div class="pros">
+      <div><b>优点</b><ul><li>改动最小，能最快上线</li><li>一屏信息密度比卡片网格高一倍以上</li><li>折叠分组立刻解决「一大片乱糟糟」</li></ul></div>
+      <div><b>代价</b><ul><li>行内展开会顶动列表，读长规则时要滚</li><li>详情深度受限于一屏宽度，做不了并排对比</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<!-- 方案 C -->
+<div class="scheme">
+  <div class="scheme-head">
+    <div class="tag">C</div>
+    <div>
+      <h2>规则库向导页 + 规则卡片升级 + 右侧抽屉详情</h2>
+      <p>规则库做成「选分类 → 选包 → 勾规则」三步，支持跨包一次导入；规则页卡片改为带要点的结构化卡。</p>
+    </div>
+  </div>
+  <div class="scheme-body">
+    <div class="wire">
+      <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:6px">规则库</span>
+        <span style="margin-left:auto" class="chip on">1 选分类</span><span class="chip on">2 选包</span><span class="chip">3 勾规则</span><span class="btn">导入 12 条</span>
+      </div>
+      <div class="row" style="min-height:200px">
+        <div class="col" style="width:26%">
+          <p class="label">分类</p>
+          <div class="item on">短剧 · 14</div>
+          <div class="item">推理 · 1</div><div class="item">都市 · 1</div><div class="item">制度 · 3</div>
+        </div>
+        <div class="col" style="width:44%">
+          <p class="label">短剧 · 14 个包</p>
+          <div class="item on" style="border:1px solid var(--line);margin-bottom:6px">都市逆袭打脸 <span class="chip">10</span><span class="chip on" style="float:right">已选 10</span><br><span style="font-size:11px;color:#868c95">年终奖 600 / 同事蹭车蹭卡</span></div>
+          <div class="item" style="border:1px solid var(--line);margin-bottom:6px">乡村助农被污名 <span class="chip">10</span><br><span style="font-size:11px;color:#868c95">修路没桥走 / 收果子被指黑心</span></div>
+          <div class="item" style="border:1px solid var(--line)">系统流爽文 <span class="chip">10</span></div>
+        </div>
+        <div class="col" style="width:30%;background:var(--soft-2)">
+          <p class="label">已选汇总（可跨包）</p>
+          <div class="item">都市逆袭打脸 · 10 条</div>
+          <div class="item">乡村助农被污名 · 2 条</div>
+          <div style="height:8px"></div>
+          <div class="label">导入到分组</div>
+          <div class="item on">题材定位 / 结构节奏（自动）</div>
+          <div style="margin-top:10px"><span class="btn">导入 12 条</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wire" style="margin-top:14px">
+      <div class="row" style="min-height:120px">
+        <div class="col" style="width:72%">
+          <p class="label">规则页：结构化卡片</p>
+          <div style="border:1px solid var(--line);border-radius:11px;padding:10px;font-size:12px">
+            <b>食品的卫生与合规是硬门槛</b> <span class="chip">餐饮手艺逆袭</span><span class="sw" style="float:right"></span>
+            <div style="color:#4a4f57;margin-top:6px">许可、后厨流程、溯源、消防、健康证；被查时要能拿出东西。</div>
+            <div style="color:#868c95;margin-top:4px">· 翻盘用合规与留痕　· 违规该认就认</div>
+          </div>
+        </div>
+        <div class="col" style="width:28%;background:var(--soft-2)">
+          <p class="label">右侧抽屉（480px）</p>
+          <div style="font-size:11px;color:#4a4f57">完整条款 / 正反例 / 检查项 / 命中章节 / 试写对比</div>
+        </div>
+      </div>
+    </div>
+    <div class="pros">
+      <div><b>优点</b><ul><li>跨包混选、一次导入，最贴近「逛规则库」的心智</li><li>抽屉详情不打断列表，还能并排对比两条规则</li></ul></div>
+      <div><b>代价</b><ul><li>卡片网格在 50+ 条时仍要滚很久</li><li>抽屉窄，长规则需二次滚动</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<!-- 方案 D -->
+<div class="scheme">
+  <div class="scheme-head">
+    <div class="tag">D</div>
+    <div>
+      <h2>规则大纲 + 文档式阅读（体系最强）</h2>
+      <p>把规则当成一本《创作手册》：左树给层级，右侧按节连读，编辑就地完成。</p>
+    </div>
+  </div>
+  <div class="scheme-body">
+    <div class="wire">
+      <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:6px">规则手册</span><span style="margin-left:auto" class="chip">编辑</span><span class="chip">预览送模型</span></div>
+      <div class="row" style="min-height:300px">
+        <div class="col" style="width:30%">
+          <p class="label">大纲</p>
+          <div class="item">▾ 悬疑推理 <span class="chip">12</span></div>
+          <div class="item on" style="padding-left:18px">▾ 题材定位</div>
+          <div class="item" style="padding-left:32px">开书定位</div>
+          <div class="item" style="padding-left:32px">时间表制度</div>
+          <div class="item" style="padding-left:18px">结构节奏</div>
+          <div class="item" style="padding-left:18px">逻辑约束</div>
+          <div class="item">▸ 短剧 · 都市逆袭打脸 <span class="chip">10</span></div>
+          <div class="item muted">▸ 未导入的内置包（14）</div>
+        </div>
+        <div class="col" style="width:70%;background:var(--soft-2)">
+          <p class="label">题材定位 · 3 条</p>
+          <div style="font-size:12px;line-height:1.7;color:#14161a">
+            <b>1. 开书定位：案件类型与叙述人称</b><span class="sw" style="float:right"></span>
+            <div style="color:#4a4f57">先定本格/社会派/硬核刑侦、人称、血腥尺度；同一部书不混用三种腔调。</div>
+            <div style="color:#868c95;font-size:11px;margin:4px 0 12px">✓ 开场先给现场再交代关系　✗ 五分钟讲家世</div>
+            <b>2. 时间表制度：每人每时段在哪</b><span class="sw" style="float:right"></span>
+            <div style="color:#4a4f57">每案一张时间表…空档必须写原因。</div>
+            <div style="color:#868c95;font-size:11px;margin:4px 0 12px">□ 每人有证人　□ 空档有因　□ 推论回表</div>
+            <b>3. 物证清单：来源、发现者、能否伪造</b><span class="sw" style="float:right"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">导入时把包内规则按关键词分配到「题材定位 / 结构节奏 / 逻辑约束 / 禁忌」等节点，未匹配的落「未分组」。</p>
+    <div class="pros">
+      <div><b>优点</b><ul><li>体系感最强，一节规则可连读，页面利用率最高</li><li>「送模型的提示词」可直接按节点顺序拼装，可解释性最好</li></ul></div>
+      <div><b>代价</b><ul><li>要做树 + 归类算法 + 迁移，改动最大</li><li>编辑要重做成行内表单，测试面变大</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<div class="block rec">
+  <h2>我的推荐：A 打底，吸收 C 的两点</h2>
+  <p>你的两个痛点分别是「看不全」和「点了白点」。A 用三栏把两者一次解决：左树给体系、右栏常驻详情让每一次点击都有收成；规则库与规则页同构，不再有弹窗。再把 C 的「跨包勾选 + 已选汇总」搬进 A 的右栏，就同时具备批量导入的爽感。</p>
+  <h3>配套数据模型（四套方案都需要，只是字段多少不同）</h3>
+  <table>
+    <thead><tr><th>字段</th><th>说明</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td><code>group</code></td><td>体系维度：题材定位 / 结构节奏 / 人物视角 / 文风语言 / 逻辑约束 / 禁忌清单 / 考据制度</td><td>导入时由包配置指定；手写规则可自动归类，也可拖动改</td></tr>
+      <tr><td><code>sourcePackId / sourcePackName</code></td><td>来源徽标，支持「从规则库导入 12 条」一键撤销</td><td>导入时写入</td></tr>
+      <tr><td><code>summary</code></td><td>一句话主张，列表行显示，避免长文塞进一行</td><td>包 JSON 新增字段；存量取 content 首句</td></tr>
+      <tr><td><code>examples</code></td><td>正例 / 反例各 1～2 条</td><td>包 JSON 新增；存量可留空</td></tr>
+      <tr><td><code>checks</code></td><td>3 条自检项，用 □ 呈现，写章后可勾</td><td>包 JSON 新增；存量可留空</td></tr>
+      <tr><td><code>sortOrder</code></td><td>组内序号，保持现有字段</td><td>已存在</td></tr>
+    </tbody>
+  </table>
+  <h3>落地顺序（选 A 时）</h3>
+  <ol style="color:#4a4f57;font-size:13px;margin:8px 0 0;padding-left:18px">
+    <li>数据层：novel 库 schema +1，加 group/source/summary/examples/checks，存量规则按关键词回填分组</li>
+    <li>规则页三栏：左树（折叠记忆）、中列表（80px 行）、右详情（常驻，含试写按钮）</li>
+    <li>规则库整页化：分类树 / 包列表 / 勾选 + 已选汇总，替代弹窗</li>
+    <li>规则包 JSON 补 summary/examples/checks，导入时顺带写入 grouping</li>
+  </ol>
+</div>
+
+<p class="foot">需要你定三件事：① 选哪套（A / B / C / D）；② 分组维度按上面 7 类，还是按「来源包」分组（悬疑推理包 / 短剧·都市逆袭包）；③ 详情面板常驻（A）还是抽屉（C）。定完我直接开工，不再来回问。</p>
+
+</div>
+</body>
+</html>

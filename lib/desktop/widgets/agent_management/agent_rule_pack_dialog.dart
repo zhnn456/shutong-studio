@@ -66,9 +66,25 @@ class _AgentRulePackDialog extends HookConsumerWidget {
     final colors = RevericTheme.colorsOf(context);
     final typo = RevericTheme.typographyOf(context);
 
-    final packsFuture = useMemoized(() => loadAgentRulePacks(), const []);
+    final reloadTick = useState(0);
+    final packsFuture = useMemoized(
+      () => loadAgentRulePacks(refresh: reloadTick.value > 0),
+      [reloadTick.value],
+    );
     final packsSnapshot = useFuture(packsFuture);
     final packs = packsSnapshot.data ?? const <AgentRulePack>[];
+
+    final libraryStatus = useState<AgentRulePackLibraryStatus?>(null);
+    final checking = useState(false);
+    useEffect(() {
+      var active = true;
+      describeAgentRulePackLibrary().then((status) {
+        if (active) {
+          libraryStatus.value = status;
+        }
+      });
+      return () => active = false;
+    }, [reloadTick.value]);
 
     final currentRules =
         ref.watch(agentRulesStreamProvider(databasePath)).asData?.value ??
@@ -151,10 +167,57 @@ class _AgentRulePackDialog extends HookConsumerWidget {
       }
     }
 
+    void showPackToast(DialogToastVariant variant, String message) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: DialogToast(variant: variant, child: Text(message)),
+        ),
+      );
+    }
+
+    Future<void> checkUpdates() async {
+      if (checking.value) {
+        return;
+      }
+      checking.value = true;
+      final result = await refreshAgentRulePacks();
+      if (!context.mounted) {
+        return;
+      }
+      checking.value = false;
+      if (result.outcome == AgentRulePackUpdateOutcome.updated) {
+        reloadTick.value = reloadTick.value + 1;
+        showPackToast(
+          DialogToastVariant.success,
+          context.t(
+            LocaleKeys.agentRulePackUpdated,
+            namedArgs: {'version': '${result.version}'},
+          ),
+        );
+      } else if (result.outcome == AgentRulePackUpdateOutcome.latest) {
+        showPackToast(
+          DialogToastVariant.info,
+          context.t(
+            LocaleKeys.agentRulePackUpToDate,
+            namedArgs: {'version': '${result.version}'},
+          ),
+        );
+      } else {
+        showPackToast(
+          DialogToastVariant.error,
+          context.t(LocaleKeys.agentRulePackUpdateFailed),
+        );
+      }
+    }
+
     return RevericDialog.panel(
       title: Row(
         children: [
-          RevericIcon(RevericIcons.rule_outlined, size: 18, color: colors.accent),
+          RevericIcon(
+            RevericIcons.rule_outlined,
+            size: 18,
+            color: colors.accent,
+          ),
           const SizedBox(width: RevericSpacing.sm),
           Text(context.t(LocaleKeys.agentRulePackLibrary)),
         ],
@@ -177,6 +240,9 @@ class _AgentRulePackDialog extends HookConsumerWidget {
                   searching: search.active,
                   searchController: search.controller,
                   selectedPackId: selectedPackId.value,
+                  status: libraryStatus.value,
+                  checking: checking.value,
+                  onCheckUpdate: checkUpdates,
                   onSelect: (id) => selectedPackId.value = id,
                 ),
               ),
@@ -253,7 +319,9 @@ class _AgentRulePackDialog extends HookConsumerWidget {
                               itemCount: selectedPack.rules.length,
                               itemBuilder: (context, index) {
                                 final rule = selectedPack.rules[index];
-                                final exists = existingNames.contains(rule.name);
+                                final exists = existingNames.contains(
+                                  rule.name,
+                                );
                                 return _PackRuleRow(
                                   rule: rule,
                                   exists: exists,
@@ -313,6 +381,9 @@ class _PackListColumn extends StatelessWidget {
     required this.searching,
     required this.searchController,
     required this.selectedPackId,
+    required this.status,
+    required this.checking,
+    required this.onCheckUpdate,
     required this.onSelect,
   });
 
@@ -322,6 +393,9 @@ class _PackListColumn extends StatelessWidget {
   final bool searching;
   final TextEditingController searchController;
   final String? selectedPackId;
+  final AgentRulePackLibraryStatus? status;
+  final bool checking;
+  final VoidCallback onCheckUpdate;
   final ValueChanged<String> onSelect;
 
   /// 包数量变多（小说 + 短剧）后，按 category 分段显示，避免一长条平铺。
@@ -356,6 +430,11 @@ class _PackListColumn extends StatelessWidget {
     final colors = RevericTheme.colorsOf(context);
     final typo = RevericTheme.typographyOf(context);
 
+    final statusValue = status;
+    final versionLabel = statusValue == null
+        ? ''
+        : '${context.t(LocaleKeys.agentRulePackVersion, namedArgs: {'version': '${statusValue.version}', 'packs': '${statusValue.packCount}', 'rules': '${statusValue.ruleCount}'})} · ${context.t(statusValue.isHotUpdate ? LocaleKeys.agentRulePackSourceHot : LocaleKeys.agentRulePackSourceBundled)}';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -372,9 +451,7 @@ class _PackListColumn extends StatelessWidget {
         const SizedBox(height: RevericSpacing.sm),
         Expanded(
           child: loading
-              ? Center(
-                  child: CircularProgressIndicator(color: colors.accent),
-                )
+              ? Center(child: CircularProgressIndicator(color: colors.accent))
               : packs.isEmpty
               ? Center(
                   child: Text(
@@ -415,6 +492,50 @@ class _PackListColumn extends StatelessWidget {
                     );
                   },
                 ),
+        ),
+        const SizedBox(height: RevericSpacing.xs),
+        Container(
+          padding: const EdgeInsets.only(top: RevericSpacing.xs),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: colors.borderSubtle,
+                width: RevericSizes.dividerThickness,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  versionLabel,
+                  style: typo.uiTiny.copyWith(color: colors.textSubtle),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (checking)
+                Text(
+                  context.t(LocaleKeys.agentRulePackChecking),
+                  style: typo.uiTiny.copyWith(color: colors.textSubtle),
+                )
+              else
+                InkWell(
+                  onTap: onCheckUpdate,
+                  borderRadius: BorderRadius.circular(RevericRadius.small),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: RevericSpacing.xxs,
+                      vertical: RevericSpacing.xxs,
+                    ),
+                    child: Text(
+                      context.t(LocaleKeys.agentRulePackCheckUpdate),
+                      style: typo.uiTiny.copyWith(color: colors.accent),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ],
     );
@@ -478,7 +599,9 @@ class _PackListItem extends StatelessWidget {
                     child: Text(
                       pack.name,
                       style: typo.uiSmall.copyWith(
-                        color: active ? colors.textPrimary : colors.textSecondary,
+                        color: active
+                            ? colors.textPrimary
+                            : colors.textSecondary,
                         fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                       ),
                       maxLines: 1,

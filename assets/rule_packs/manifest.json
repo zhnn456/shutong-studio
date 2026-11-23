@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "version": 2,
+  "builtAt": "2026-11-23",
+  "files": [
+    {
+      "file": "rule_packs.json",
+      "bytes": 49507,
+      "sha256": "96ab1b74725e0e1bca14852d3486a0685ad11aa6d6164b530ec92d0e22a58bd1"
+    },
+    {
+      "file": "short_drama_packs.json",
+      "bytes": 42982,
+      "sha256": "02a08f45569b775a5a5cb5b38480610ab337b3cba00a605031cd39c13ba6c8bf"
+    }
+  ]
+}

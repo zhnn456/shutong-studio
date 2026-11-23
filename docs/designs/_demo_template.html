@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>方案 A · 智能体规则 Demo</title>
+<style>
+  *{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+  html,body{height:100%}
+  body{margin:0;background:#e9e9e4;font:13px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:#14161a;display:flex;align-items:center;justify-content:center;padding:18px}
+  .win{width:1460px;height:900px;background:#f6f6f4;border-radius:16px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);display:flex;flex-direction:column;position:relative}
+  .titlebar{height:44px;flex:none;background:#fff;border-bottom:1px solid #e4e4df;display:flex;align-items:center;gap:12px;padding:0 16px}
+  .traffic{display:flex;gap:6px}
+  .traffic i{width:9px;height:9px;border-radius:50%;background:#dcdcd7;display:block}
+  .titlebar .appname{font-size:12.5px;color:#868c95}
+  .titlebar .work{margin-left:6px;font-size:12.5px;color:#14161a;font-weight:600}
+  .ws-body{flex:1;display:flex;min-height:0}
+  .nav{width:196px;flex:none;background:#f6f6f4;border-right:1px solid #e4e4df;padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+  .nav .grp{font-size:11px;color:#a2a8b0;letter-spacing:.06em;padding:10px 8px 4px}
+  .nav .it{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;color:#4a4f57;font-size:13px}
+  .nav .it.on{background:#e8e8e2;color:#14161a;font-weight:600}
+  .nav .dot{width:5px;height:5px;border-radius:50%;background:#c3c8cf}
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .head{flex:none;padding:16px 22px 0;background:#f6f6f4}
+  .head .row1{display:flex;align-items:center;gap:12px}
+  .head h1{margin:0;font-size:19px;letter-spacing:-.01em}
+  .head .cnt{font-size:12px;color:#8b9199;font-variant-numeric:tabular-nums}
+  .head .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .btn{border:1px solid #14161a;background:#14161a;color:#fff;border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .btn.ghost{background:#fff;color:#14161a;border-color:#dcdcd7}
+  .btn.ghost:hover{border-color:#b9b9b2}
+  .tabs{display:flex;gap:4px;margin:14px 0 0}
+  .tab{padding:7px 14px;border-radius:9px;color:#6b717a;cursor:pointer;font-size:13px}
+  .tab.on{background:#fff;color:#14161a;font-weight:600;box-shadow:0 1px 0 #e4e4df}
+  .tab b{font-weight:600;color:#a2a8b0;margin-left:4px;font-variant-numeric:tabular-nums}
+  .tab.on b{color:#8b9199}
+  .head .divider{height:1px;background:#e4e4df;margin:12px -22px 0}
+  .search{flex:none;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #e4e4df;border-radius:9px;padding:6px 10px;width:220px}
+  .search input{border:none;outline:none;font:inherit;width:100%;background:transparent;color:#14161a}
+  .search input::placeholder{color:#b0b6be}
+  .search svg{width:13px;height:13px;stroke:#b0b6be;fill:none;stroke-width:1.8}
+  .view{flex:1;min-height:0;display:none}
+  .view.on{display:flex}
+  .tree{width:248px;flex:none;border-right:1px solid #e4e4df;padding:14px 10px;background:#fbfbf9;overflow:auto}
+  .tree .cap{font-size:11px;color:#a2a8b0;letter-spacing:.06em;padding:0 8px 8px;display:flex;align-items:center;justify-content:space-between}
+  .tree .cap span{cursor:pointer;color:#8b9199}
+  .gi{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;cursor:pointer;color:#4a4f57}
+  .gi:hover{background:#f1f1ec}
+  .gi.on{background:#e8e8e2;color:#14161a;font-weight:600}
+  .gi .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gi .n{font-size:11px;color:#a2a8b0;font-variant-numeric:tabular-nums}
+  .gi.on .n{color:#6b717a}
+  .gi.all{color:#14161a;font-weight:600;margin-bottom:2px}
+  .list{flex:1;min-width:0;border-right:1px solid #e4e4df;display:flex;flex-direction:column;background:#fff}
+  .list .lh{flex:none;display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #eeeeea;background:#fff}
+  .list .lh .t{font-size:13px;font-weight:600}
+  .list .lh .m{font-size:11.5px;color:#a2a8b0;font-variant-numeric:tabular-nums}
+  .list .lh .allsw{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8b9199}
+  .rows{flex:1;min-height:0;overflow:auto;padding:6px 8px 18px}
+  .rows::-webkit-scrollbar,.tree::-webkit-scrollbar,.db::-webkit-scrollbar,.lib-cat::-webkit-scrollbar,.lib-packs::-webkit-scrollbar{width:9px}
+  .rows::-webkit-scrollbar-thumb,.tree::-webkit-scrollbar-thumb,.db::-webkit-scrollbar-thumb,.lib-cat::-webkit-scrollbar-thumb,.lib-packs::-webkit-scrollbar-thumb{background:#dcdcd7;border:3px solid #fff;border-radius:9px}
+  .r{display:flex;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;position:relative}
+  .r:hover{background:#fafaf7}
+  .r.on{background:#f4f4ee}
+  .r.on::before{content:"";position:absolute;left:2px;top:11px;bottom:11px;width:2px;border-radius:2px;background:#14161a}
+  .r .body{flex:1;min-width:0}
+  .r .nm{display:flex;align-items:center;gap:7px;font-size:13px;color:#14161a}
+  .r.off .nm{color:#a2a8b0}
+  .r .nm span.nt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .r .sub{margin-top:2px;font-size:11.5px;color:#8b9199;line-height:1.55;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .r .meta{display:flex;gap:6px;margin-top:5px}
+  .chip{display:inline-block;border:1px solid #e4e4df;border-radius:6px;padding:0 6px;font-size:10.5px;color:#8b9199;line-height:17px;white-space:nowrap}
+  .chip.pk{background:#f6f6f2;border-color:#ecece6}
+  .sw{flex:none;width:30px;height:17px;border-radius:9px;background:#d8d8d2;position:relative;transition:.16s;margin-top:2px}
+  .sw.on{background:#14161a}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:.16s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .sw.on::after{left:15px}
+  .detail{width:400px;flex:none;display:flex;flex-direction:column;background:#fbfbf9}
+  .detail .dh{flex:none;padding:14px 20px 12px;border-bottom:1px solid #e9e9e3}
+  .crumb{font-size:11px;color:#a2a8b0;display:flex;gap:5px;align-items:center;margin-bottom:9px}
+  .crumb b{color:#6b717a;font-weight:500}
+  .detail h2{margin:0 0 6px;font-size:16.5px;line-height:1.4;letter-spacing:-.01em}
+  .detail .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .detail .db{flex:1;min-height:0;overflow:auto;padding:16px 20px}
+  .detail .db::-webkit-scrollbar-thumb{background:#e2e2dc;border:3px solid #fbfbf9;border-radius:9px}
+  .sec{font-size:10.5px;color:#a2a8b0;letter-spacing:.08em;margin:18px 0 7px}
+  .sec:first-child{margin-top:0}
+  .cl{display:flex;gap:9px;margin-bottom:9px;font-size:12.5px;line-height:1.75;color:#33373d}
+  .cl .no{flex:none;width:16px;color:#c0c5cc;font-variant-numeric:tabular-nums;font-size:11px;padding-top:2px}
+  .ck{display:flex;gap:8px;font-size:12.5px;color:#4a4f57;padding:5px 0;line-height:1.6;cursor:pointer}
+  .ck .box{flex:none;width:13px;height:13px;border:1.5px solid #c8cdd4;border-radius:4px;margin-top:3px}
+  .ck.done .box{background:#14161a;border-color:#14161a}
+  .ck.done span{color:#a2a8b0;text-decoration:line-through}
+  .rel{display:flex;align-items:center;gap:7px;font-size:12px;color:#4a4f57;padding:7px 0;cursor:pointer;border-bottom:1px dashed #f0f0ea}
+  .rel i{width:4px;height:4px;border-radius:50%;background:#c3c8cf;flex:none}
+  .rel span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rel:hover{color:#14161a}
+  .hit{margin-top:6px;border:1px solid #ecece6;background:#fff;border-radius:9px;overflow:hidden}
+  .hit .hh{display:flex;justify-content:space-between;padding:7px 10px;font-size:11px;color:#8b9199;background:#fafaf7;border-bottom:1px solid #f2f2ec}
+  .hit .hl{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:12px;color:#4a4f57;border-bottom:1px solid #f7f7f2}
+  .hit .hl:last-child{border:none}
+  .hit .hl em{font-style:normal;color:#8b9199;font-size:11px;margin-left:auto;font-variant-numeric:tabular-nums}
+  .detail .df{flex:none;padding:11px 20px;border-top:1px solid #e9e9e3;display:flex;gap:8px;align-items:center;background:#fbfbf9}
+  .detail .df .del{margin-left:auto;border:none;background:transparent;color:#a2a8b0;cursor:pointer;font:inherit;padding:6px 4px}
+  .detail .df .del:hover{color:#d2483d}
+  .lib-cat{width:230px;flex:none;border-right:1px solid #e4e4df;padding:14px 10px;background:#fbfbf9;overflow:auto}
+  .lib-packs{width:400px;flex:none;border-right:1px solid #e4e4df;background:#fff;overflow:auto;padding:8px}
+  .pcard{border:1px solid #ecece6;border-radius:11px;padding:11px 12px;margin-bottom:7px;cursor:pointer;background:#fff}
+  .pcard:hover{border-color:#cfcfc8}
+  .pcard.on{border-color:#14161a;background:#fafaf7}
+  .pcard .pn{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
+  .pcard .pn .imp{margin-left:auto;font-size:10.5px;font-weight:400;color:#6b717a;background:#f1f1ec;border-radius:5px;padding:1px 6px}
+  .pcard .pn .imp.all{color:#fff;background:#14161a}
+  .pcard .ps{margin-top:4px;font-size:11.5px;color:#8b9199;line-height:1.55}
+  .lib-detail{flex:1;min-width:0;display:flex;flex-direction:column;background:#fbfbf9}
+  .cart{flex:none;padding:10px 16px;background:#f6f6f2;border-bottom:1px solid #e9e9e3;display:flex;align-items:center;gap:8px;font-size:11.5px;color:#6b717a;flex-wrap:wrap}
+  .cart .citem{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #e4e4df;border-radius:6px;padding:1px 6px;color:#4a4f57}
+  .cart .citem b{font-weight:600;color:#14161a}
+  .cart .sum{margin-left:auto;color:#14161a;font-weight:600;font-variant-numeric:tabular-nums}
+  .lr{display:flex;gap:9px;padding:9px 12px;border-radius:9px;cursor:pointer;align-items:flex-start}
+  .lr:hover{background:#fff}
+  .lr .box{flex:none;width:14px;height:14px;border:1.5px solid #c8cdd4;border-radius:4px;margin-top:2px;background:#fff;position:relative}
+  .lr.sel .box{background:#14161a;border-color:#14161a}
+  .lr.sel .box::after{content:"";position:absolute;left:3.5px;top:1px;width:5px;height:8px;border:solid #fff;border-width:0 1.6px 1.6px 0;transform:rotate(42deg)}
+  .lr .lt{flex:1;min-width:0}
+  .lr .lt b{display:block;font-size:12.5px;font-weight:600;color:#14161a}
+  .lr.locked{opacity:.6}
+  .lr.locked .box{background:#f1f1ec;border-color:#dcdcd7}
+  .lr.locked:hover{background:transparent}
+  .lr .lt p{margin:2px 0 0;font-size:11.5px;color:#8b9199;line-height:1.55}
+  .toast{position:absolute;left:50%;bottom:26px;transform:translate(-50%,14px);background:#14161a;color:#fff;border-radius:11px;padding:10px 16px;font-size:12.5px;opacity:0;pointer-events:none;transition:.24s;display:flex;align-items:center;gap:9px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:9}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+  .toast u{text-decoration:none;color:#b9c0c9}
+  .foot{flex:none;height:32px;border-top:1px solid #e4e4df;background:#fbfbf9;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:11px;color:#a2a8b0}
+  .empty{padding:50px 20px;text-align:center;color:#b0b6be;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="win">
+  <div class="titlebar">
+    <div class="traffic"><i></i><i></i><i></i></div>
+    <span class="appname">书童AI工作台</span>
+    <span class="work">《我在南宋靠说书探案》</span>
+  </div>
+
+  <div class="ws-body">
+    <div class="nav">
+      <div class="grp">写作</div>
+      <div class="it"><i class="dot"></i>作品总览</div>
+      <div class="it"><i class="dot"></i>章节</div>
+      <div class="it"><i class="dot"></i>大纲</div>
+      <div class="it"><i class="dot"></i>剧本 · 画布</div>
+      <div class="grp">智能体</div>
+      <div class="it on"><i class="dot"></i>智能体规则</div>
+      <div class="it"><i class="dot"></i>提示词</div>
+      <div class="it"><i class="dot"></i>模型与供应商</div>
+      <div class="grp">数据</div>
+      <div class="it"><i class="dot"></i>使用统计</div>
+    </div>
+
+    <div class="main">
+      <div class="head">
+        <div class="row1">
+          <h1>智能体规则</h1>
+          <span class="cnt" id="headCnt"></span>
+          <div class="right">
+            <div class="search">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
+              <input id="q" placeholder="搜规则名或内容" />
+            </div>
+            <button class="btn ghost" title="demo 未实现">从其他作品复制</button>
+            <button class="btn" title="demo 未实现">＋ 新建规则</button>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab on" data-tab="mine">我的规则 <b id="tabMineN"></b></div>
+          <div class="tab" data-tab="lib">规则库 <b>25 包 / 272 条</b></div>
+        </div>
+        <div class="divider"></div>
+      </div>
+
+      <div class="view on" id="view-mine">
+        <div class="tree" id="tree"></div>
+        <div class="list">
+          <div class="lh">
+            <span class="t" id="listTitle">全部规则</span>
+            <span class="m" id="listMeta"></span>
+            <div class="allsw">全组启用<span class="sw on" id="groupSw"></span></div>
+          </div>
+          <div class="rows" id="rows"></div>
+        </div>
+        <div class="detail" id="detail"></div>
+      </div>
+
+      <div class="view" id="view-lib">
+        <div class="lib-cat" id="libCat"></div>
+        <div class="lib-packs" id="libPacks"></div>
+        <div class="lib-detail">
+          <div class="cart" id="cart"></div>
+          <div class="detail" style="width:auto;flex:1" id="libDetail"></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span>方案 A 可交互 demo</span>
+        <span style="color:#c8cdd4">·</span>
+        <span>数据来自真实 25 包 272 条规则</span>
+        <span style="color:#c8cdd4">·</span>
+        <span>试写 / 新建 / 从其他作品复制 暂未接逻辑</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+__DATA__

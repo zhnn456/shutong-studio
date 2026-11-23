@@ -859,6 +859,14 @@ abstract final class LocaleKeys {
   static const agentRulePackImport = 'agent_rule.pack_import';
   static const agentRulePackImported = 'agent_rule.pack_imported';
   static const agentRulePackFailed = 'agent_rule.pack_failed';
+  static const agentRulePackVersion = 'agent_rule.pack_version';
+  static const agentRulePackSourceBundled = 'agent_rule.pack_source_bundled';
+  static const agentRulePackSourceHot = 'agent_rule.pack_source_hot';
+  static const agentRulePackCheckUpdate = 'agent_rule.pack_check_update';
+  static const agentRulePackChecking = 'agent_rule.pack_checking';
+  static const agentRulePackUpToDate = 'agent_rule.pack_up_to_date';
+  static const agentRulePackUpdated = 'agent_rule.pack_updated';
+  static const agentRulePackUpdateFailed = 'agent_rule.pack_update_failed';
   static const agentRuleSaveBeforeDragHint = 'agent_rule.save_before_drag_hint';
   static const agentRuleTitle = 'agent_rule.title';
   // ── agent_shortcut ────────────────────────────────────────
@@ -1784,7 +1792,8 @@ abstract final class LocaleKeys {
   static const chapterPublishChroniclerPrompt =
       'chapter.publish_chronicler_prompt';
   static const chapterRunChronicler = 'chapter.run_chronicler';
-  static const chapterStatDraft = 'chapter.stat_draft';  static const chapterStatWriting = 'chapter.stat_writing';
+  static const chapterStatDraft = 'chapter.stat_draft';
+  static const chapterStatWriting = 'chapter.stat_writing';
   static const chapterStatReviewed = 'chapter.stat_reviewed';
   static const chapterStatPublished = 'chapter.stat_published';
   static const chapterWriteThis = 'chapter.write_this';
@@ -1792,8 +1801,7 @@ abstract final class LocaleKeys {
   static const chapterWriteThisPrompt = 'chapter.write_this_prompt';
   static const chapterSettleThisPrompt = 'chapter.settle_this_prompt';
   static const chapterWriteNeedOutline = 'chapter.write_need_outline';
-  static const chapterWriteNeedOutlineBody =
-      'chapter.write_need_outline_body';
+  static const chapterWriteNeedOutlineBody = 'chapter.write_need_outline_body';
   static const chapterWriteGoOutline = 'chapter.write_go_outline';
   static const chapterWriteAnyway = 'chapter.write_anyway';
   static const chapterSettleThis = 'chapter.settle_this';
@@ -1806,7 +1814,8 @@ abstract final class LocaleKeys {
   static const chapterBriefDraftHint = 'chapter.brief_draft_hint';
   static const chapterBriefDraftPrompt = 'chapter.brief_draft_prompt';
   static const chapterWritePrevUnsettled = 'chapter.write_prev_unsettled';
-  static const chapterWritePrevUnsettledBody = 'chapter.write_prev_unsettled_body';
+  static const chapterWritePrevUnsettledBody =
+      'chapter.write_prev_unsettled_body';
   static const chapterWritePrevGoSettle = 'chapter.write_prev_go_settle';
   static const chapterWritePrevAnyway = 'chapter.write_prev_anyway';
   static const chapterWriteOverwriteTitle = 'chapter.write_overwrite_title';
@@ -5005,20 +5014,14 @@ abstract final class LocaleKeys {
       'settings.license_signature_invalid';
   static const settingsLicenseErrorNotFound =
       'settings.license_error_not_found';
-  static const settingsLicenseErrorLimit =
-      'settings.license_error_limit';
-  static const settingsLicenseErrorExpired =
-      'settings.license_error_expired';
+  static const settingsLicenseErrorLimit = 'settings.license_error_limit';
+  static const settingsLicenseErrorExpired = 'settings.license_error_expired';
   static const settingsLicenseErrorSuspended =
       'settings.license_error_suspended';
-  static const settingsLicenseErrorLocked =
-      'settings.license_error_locked';
-  static const settingsLicenseErrorNetwork =
-      'settings.license_error_network';
-  static const settingsLicenseDeviceBound =
-      'settings.license_device_bound';
-  static const settingsLicenseDeactivate =
-      'settings.license_deactivate';
+  static const settingsLicenseErrorLocked = 'settings.license_error_locked';
+  static const settingsLicenseErrorNetwork = 'settings.license_error_network';
+  static const settingsLicenseDeviceBound = 'settings.license_device_bound';
+  static const settingsLicenseDeactivate = 'settings.license_deactivate';
   static const settingsLicenseDeactivateDone =
       'settings.license_deactivate_done';
   static const settingsLicenseBuy = 'settings.license_buy';
@@ -5873,8 +5876,7 @@ abstract final class LocaleKeys {
       'workspace.character_locate_count';
   static const workspaceCharacterLocateApply =
       'workspace.character_locate_apply';
-  static const workspaceCharacterLocateNone =
-      'workspace.character_locate_none';
+  static const workspaceCharacterLocateNone = 'workspace.character_locate_none';
   static const workspaceChapterCastTitle = 'workspace.chapter_cast_title';
   static const workspaceChapterCastBody = 'workspace.chapter_cast_body';
   static const workspaceChapterCastOutline = 'workspace.chapter_cast_outline';
@@ -5952,12 +5954,18 @@ abstract final class LocaleKeys {
       'workspace.foreshadow_payoff_hint';
   static const workspaceForeshadowSetupHint = 'workspace.foreshadow_setup_hint';
   static const workspaceForeshadowings = 'workspace.foreshadowings';
-  static const workspaceForeshadowDistribution = 'workspace.foreshadow_distribution';
-  static const workspaceForeshadowDistributionSummary = 'workspace.foreshadow_distribution_summary';
-  static const workspaceForeshadowChapterSetup = 'workspace.foreshadow_chapter_setup';
-  static const workspaceForeshadowChapterPayoff = 'workspace.foreshadow_chapter_payoff';
-  static const workspaceForeshadowChapterOverdue = 'workspace.foreshadow_chapter_overdue';
-  static const workspaceForeshadowChapterUnset = 'workspace.foreshadow_chapter_unset';
+  static const workspaceForeshadowDistribution =
+      'workspace.foreshadow_distribution';
+  static const workspaceForeshadowDistributionSummary =
+      'workspace.foreshadow_distribution_summary';
+  static const workspaceForeshadowChapterSetup =
+      'workspace.foreshadow_chapter_setup';
+  static const workspaceForeshadowChapterPayoff =
+      'workspace.foreshadow_chapter_payoff';
+  static const workspaceForeshadowChapterOverdue =
+      'workspace.foreshadow_chapter_overdue';
+  static const workspaceForeshadowChapterUnset =
+      'workspace.foreshadow_chapter_unset';
   static const workspaceForeshadowingsHint = 'workspace.foreshadowings_hint';
   static const workspaceRelations = 'workspace.relations';
   static const foreshadowingStatusPending =

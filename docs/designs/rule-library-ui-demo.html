@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>方案 A · 智能体规则 Demo</title>
+<style>
+  *{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+  html,body{height:100%}
+  body{margin:0;background:#e9e9e4;font:13px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:#14161a;display:flex;align-items:center;justify-content:center;padding:18px}
+  .win{width:1460px;height:900px;background:#f6f6f4;border-radius:16px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);display:flex;flex-direction:column;position:relative}
+  .titlebar{height:44px;flex:none;background:#fff;border-bottom:1px solid #e4e4df;display:flex;align-items:center;gap:12px;padding:0 16px}
+  .traffic{display:flex;gap:6px}
+  .traffic i{width:9px;height:9px;border-radius:50%;background:#dcdcd7;display:block}
+  .titlebar .appname{font-size:12.5px;color:#868c95}
+  .titlebar .work{margin-left:6px;font-size:12.5px;color:#14161a;font-weight:600}
+  .ws-body{flex:1;display:flex;min-height:0}
+  .nav{width:196px;flex:none;background:#f6f6f4;border-right:1px solid #e4e4df;padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+  .nav .grp{font-size:11px;color:#a2a8b0;letter-spacing:.06em;padding:10px 8px 4px}
+  .nav .it{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;color:#4a4f57;font-size:13px}
+  .nav .it.on{background:#e8e8e2;color:#14161a;font-weight:600}
+  .nav .dot{width:5px;height:5px;border-radius:50%;background:#c3c8cf}
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .head{flex:none;padding:16px 22px 0;background:#f6f6f4}
+  .head .row1{display:flex;align-items:center;gap:12px}
+  .head h1{margin:0;font-size:19px;letter-spacing:-.01em}
+  .head .cnt{font-size:12px;color:#8b9199;font-variant-numeric:tabular-nums}
+  .head .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .btn{border:1px solid #14161a;background:#14161a;color:#fff;border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .btn.ghost{background:#fff;color:#14161a;border-color:#dcdcd7}
+  .btn.ghost:hover{border-color:#b9b9b2}
+  .tabs{display:flex;gap:4px;margin:14px 0 0}
+  .tab{padding:7px 14px;border-radius:9px;color:#6b717a;cursor:pointer;font-size:13px}
+  .tab.on{background:#fff;color:#14161a;font-weight:600;box-shadow:0 1px 0 #e4e4df}
+  .tab b{font-weight:600;color:#a2a8b0;margin-left:4px;font-variant-numeric:tabular-nums}
+  .tab.on b{color:#8b9199}
+  .head .divider{height:1px;background:#e4e4df;margin:12px -22px 0}
+  .search{flex:none;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #e4e4df;border-radius:9px;padding:6px 10px;width:220px}
+  .search input{border:none;outline:none;font:inherit;width:100%;background:transparent;color:#14161a}
+  .search input::placeholder{color:#b0b6be}
+  .search svg{width:13px;height:13px;stroke:#b0b6be;fill:none;stroke-width:1.8}
+  .view{flex:1;min-height:0;display:none}
+  .view.on{display:flex}
+  .tree{width:248px;flex:none;border-right:1px solid #e4e4df;padding:14px 10px;background:#fbfbf9;overflow:auto}
+  .tree .cap{font-size:11px;color:#a2a8b0;letter-spacing:.06em;padding:0 8px 8px;display:flex;align-items:center;justify-content:space-between}
+  .tree .cap span{cursor:pointer;color:#8b9199}
+  .gi{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;cursor:pointer;color:#4a4f57}
+  .gi:hover{background:#f1f1ec}
+  .gi.on{background:#e8e8e2;color:#14161a;font-weight:600}
+  .gi .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gi .n{font-size:11px;color:#a2a8b0;font-variant-numeric:tabular-nums}
+  .gi.on .n{color:#6b717a}
+  .gi.all{color:#14161a;font-weight:600;margin-bottom:2px}
+  .list{flex:1;min-width:0;border-right:1px solid #e4e4df;display:flex;flex-direction:column;background:#fff}
+  .list .lh{flex:none;display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #eeeeea;background:#fff}
+  .list .lh .t{font-size:13px;font-weight:600}
+  .list .lh .m{font-size:11.5px;color:#a2a8b0;font-variant-numeric:tabular-nums}
+  .list .lh .allsw{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8b9199}
+  .rows{flex:1;min-height:0;overflow:auto;padding:6px 8px 18px}
+  .rows::-webkit-scrollbar,.tree::-webkit-scrollbar,.db::-webkit-scrollbar,.lib-cat::-webkit-scrollbar,.lib-packs::-webkit-scrollbar{width:9px}
+  .rows::-webkit-scrollbar-thumb,.tree::-webkit-scrollbar-thumb,.db::-webkit-scrollbar-thumb,.lib-cat::-webkit-scrollbar-thumb,.lib-packs::-webkit-scrollbar-thumb{background:#dcdcd7;border:3px solid #fff;border-radius:9px}
+  .r{display:flex;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;position:relative}
+  .r:hover{background:#fafaf7}
+  .r.on{background:#f4f4ee}
+  .r.on::before{content:"";position:absolute;left:2px;top:11px;bottom:11px;width:2px;border-radius:2px;background:#14161a}
+  .r .body{flex:1;min-width:0}
+  .r .nm{display:flex;align-items:center;gap:7px;font-size:13px;color:#14161a}
+  .r.off .nm{color:#a2a8b0}
+  .r .nm span.nt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .r .sub{margin-top:2px;font-size:11.5px;color:#8b9199;line-height:1.55;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .r .meta{display:flex;gap:6px;margin-top:5px}
+  .chip{display:inline-block;border:1px solid #e4e4df;border-radius:6px;padding:0 6px;font-size:10.5px;color:#8b9199;line-height:17px;white-space:nowrap}
+  .chip.pk{background:#f6f6f2;border-color:#ecece6}
+  .sw{flex:none;width:30px;height:17px;border-radius:9px;background:#d8d8d2;position:relative;transition:.16s;margin-top:2px}
+  .sw.on{background:#14161a}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:.16s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .sw.on::after{left:15px}
+  .detail{width:400px;flex:none;display:flex;flex-direction:column;background:#fbfbf9}
+  .detail .dh{flex:none;padding:14px 20px 12px;border-bottom:1px solid #e9e9e3}
+  .crumb{font-size:11px;color:#a2a8b0;display:flex;gap:5px;align-items:center;margin-bottom:9px}
+  .crumb b{color:#6b717a;font-weight:500}
+  .detail h2{margin:0 0 6px;font-size:16.5px;line-height:1.4;letter-spacing:-.01em}
+  .detail .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .detail .db{flex:1;min-height:0;overflow:auto;padding:16px 20px}
+  .detail .db::-webkit-scrollbar-thumb{background:#e2e2dc;border:3px solid #fbfbf9;border-radius:9px}
+  .sec{font-size:10.5px;color:#a2a8b0;letter-spacing:.08em;margin:18px 0 7px}
+  .sec:first-child{margin-top:0}
+  .cl{display:flex;gap:9px;margin-bottom:9px;font-size:12.5px;line-height:1.75;color:#33373d}
+  .cl .no{flex:none;width:16px;color:#c0c5cc;font-variant-numeric:tabular-nums;font-size:11px;padding-top:2px}
+  .ck{display:flex;gap:8px;font-size:12.5px;color:#4a4f57;padding:5px 0;line-height:1.6;cursor:pointer}
+  .ck .box{flex:none;width:13px;height:13px;border:1.5px solid #c8cdd4;border-radius:4px;margin-top:3px}
+  .ck.done .box{background:#14161a;border-color:#14161a}
+  .ck.done span{color:#a2a8b0;text-decoration:line-through}
+  .rel{display:flex;align-items:center;gap:7px;font-size:12px;color:#4a4f57;padding:7px 0;cursor:pointer;border-bottom:1px dashed #f0f0ea}
+  .rel i{width:4px;height:4px;border-radius:50%;background:#c3c8cf;flex:none}
+  .rel span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rel:hover{color:#14161a}
+  .hit{margin-top:6px;border:1px solid #ecece6;background:#fff;border-radius:9px;overflow:hidden}
+  .hit .hh{display:flex;justify-content:space-between;padding:7px 10px;font-size:11px;color:#8b9199;background:#fafaf7;border-bottom:1px solid #f2f2ec}
+  .hit .hl{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:12px;color:#4a4f57;border-bottom:1px solid #f7f7f2}
+  .hit .hl:last-child{border:none}
+  .hit .hl em{font-style:normal;color:#8b9199;font-size:11px;margin-left:auto;font-variant-numeric:tabular-nums}
+  .detail .df{flex:none;padding:11px 20px;border-top:1px solid #e9e9e3;display:flex;gap:8px;align-items:center;background:#fbfbf9}
+  .detail .df .del{margin-left:auto;border:none;background:transparent;color:#a2a8b0;cursor:pointer;font:inherit;padding:6px 4px}
+  .detail .df .del:hover{color:#d2483d}
+  .lib-cat{width:230px;flex:none;border-right:1px solid #e4e4df;padding:14px 10px;background:#fbfbf9;overflow:auto}
+  .lib-packs{width:400px;flex:none;border-right:1px solid #e4e4df;background:#fff;overflow:auto;padding:8px}
+  .pcard{border:1px solid #ecece6;border-radius:11px;padding:11px 12px;margin-bottom:7px;cursor:pointer;background:#fff}
+  .pcard:hover{border-color:#cfcfc8}
+  .pcard.on{border-color:#14161a;background:#fafaf7}
+  .pcard .pn{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
+  .pcard .pn .imp{margin-left:auto;font-size:10.5px;font-weight:400;color:#6b717a;background:#f1f1ec;border-radius:5px;padding:1px 6px}
+  .pcard .pn .imp.all{color:#fff;background:#14161a}
+  .pcard .ps{margin-top:4px;font-size:11.5px;color:#8b9199;line-height:1.55}
+  .lib-detail{flex:1;min-width:0;display:flex;flex-direction:column;background:#fbfbf9}
+  .cart{flex:none;padding:10px 16px;background:#f6f6f2;border-bottom:1px solid #e9e9e3;display:flex;align-items:center;gap:8px;font-size:11.5px;color:#6b717a;flex-wrap:wrap}
+  .cart .citem{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #e4e4df;border-radius:6px;padding:1px 6px;color:#4a4f57}
+  .cart .citem b{font-weight:600;color:#14161a}
+  .cart .sum{margin-left:auto;color:#14161a;font-weight:600;font-variant-numeric:tabular-nums}
+  .lr{display:flex;gap:9px;padding:9px 12px;border-radius:9px;cursor:pointer;align-items:flex-start}
+  .lr:hover{background:#fff}
+  .lr .box{flex:none;width:14px;height:14px;border:1.5px solid #c8cdd4;border-radius:4px;margin-top:2px;background:#fff;position:relative}
+  .lr.sel .box{background:#14161a;border-color:#14161a}
+  .lr.sel .box::after{content:"";position:absolute;left:3.5px;top:1px;width:5px;height:8px;border:solid #fff;border-width:0 1.6px 1.6px 0;transform:rotate(42deg)}
+  .lr .lt{flex:1;min-width:0}
+  .lr .lt b{display:block;font-size:12.5px;font-weight:600;color:#14161a}
+  .lr.locked{opacity:.6}
+  .lr.locked .box{background:#f1f1ec;border-color:#dcdcd7}
+  .lr.locked:hover{background:transparent}
+  .lr .lt p{margin:2px 0 0;font-size:11.5px;color:#8b9199;line-height:1.55}
+  .toast{position:absolute;left:50%;bottom:26px;transform:translate(-50%,14px);background:#14161a;color:#fff;border-radius:11px;padding:10px 16px;font-size:12.5px;opacity:0;pointer-events:none;transition:.24s;display:flex;align-items:center;gap:9px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:9}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+  .toast u{text-decoration:none;color:#b9c0c9}
+  .foot{flex:none;height:32px;border-top:1px solid #e4e4df;background:#fbfbf9;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:11px;color:#a2a8b0}
+  .empty{padding:50px 20px;text-align:center;color:#b0b6be;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="win">
+  <div class="titlebar">
+    <div class="traffic"><i></i><i></i><i></i></div>
+    <span class="appname">书童AI工作台</span>
+    <span class="work">《我在南宋靠说书探案》</span>
+  </div>
+
+  <div class="ws-body">
+    <div class="nav">
+      <div class="grp">写作</div>
+      <div class="it"><i class="dot"></i>作品总览</div>
+      <div class="it"><i class="dot"></i>章节</div>
+      <div class="it"><i class="dot"></i>大纲</div>
+      <div class="it"><i class="dot"></i>剧本 · 画布</div>
+      <div class="grp">智能体</div>
+      <div class="it on"><i class="dot"></i>智能体规则</div>
+      <div class="it"><i class="dot"></i>提示词</div>
+      <div class="it"><i class="dot"></i>模型与供应商</div>
+      <div class="grp">数据</div>
+      <div class="it"><i class="dot"></i>使用统计</div>
+    </div>
+
+    <div class="main">
+      <div class="head">
+        <div class="row1">
+          <h1>智能体规则</h1>
+          <span class="cnt" id="headCnt"></span>
+          <div class="right">
+            <div class="search">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
+              <input id="q" placeholder="搜规则名或内容" />
+            </div>
+            <button class="btn ghost" title="demo 未实现">从其他作品复制</button>
+            <button class="btn" title="demo 未实现">＋ 新建规则</button>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab on" data-tab="mine">我的规则 <b id="tabMineN"></b></div>
+          <div class="tab" data-tab="lib">规则库 <b>25 包 / 272 条</b></div>
+        </div>
+        <div class="divider"></div>
+      </div>
+
+      <div class="view on" id="view-mine">
+        <div class="tree" id="tree"></div>
+        <div class="list">
+          <div class="lh">
+            <span class="t" id="listTitle">全部规则</span>
+            <span class="m" id="listMeta"></span>
+            <div class="allsw">全组启用<span class="sw on" id="groupSw"></span></div>
+          </div>
+          <div class="rows" id="rows"></div>
+        </div>
+        <div class="detail" id="detail"></div>
+      </div>
+
+      <div class="view" id="view-lib">
+        <div class="lib-cat" id="libCat"></div>
+        <div class="lib-packs" id="libPacks"></div>
+        <div class="lib-detail">
+          <div class="cart" id="cart"></div>
+          <div class="detail" style="width:auto;flex:1" id="libDetail"></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span>方案 A 可交互 demo</span>
+        <span style="color:#c8cdd4">·</span>
+        <span>数据来自真实 25 包 272 条规则</span>
+        <span style="color:#c8cdd4">·</span>
+        <span>试写 / 新建 / 从其他作品复制 暂未接逻辑</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+const DATA = {"packs": [{"id": "suspense_mystery", "name": "悬疑推理", "category": "推理", "summary": "诡计公平、线索可推、侦探有能力边界与代价", "rules": [{"name": "开书定位：案件类型与叙述人称", "content": "开书先定三件事：一是类型（本格重诡计／社会派重动机／硬核刑侦重程序），二是叙述人称（第一人称现场感强但只能写主角所见，第三人称可写多线但必须交代主视角不在场时看到了什么），三是血腥尺度（写伤口、尸表、气味，但不写猎奇式解剖特写）。同一部书不混用三种腔调。"}, {"name": "时间表制度：每人每时段在哪", "content": "每个案发日画一张时间表：死者、凶手、每位嫌疑人在每个时段（建议按半小时切）的所在、同行者、见证人。所有人物的行动必须对得上这张表；出现空档就写明空档原因（独处、说谎、无人证、记忆偏差）。主角的推论必须回到表上，不允许只在脑内成立。"}, {"name": "物证清单：来源、发现者、能否伪造", "content": "每个单元案列一张物证清单：物品、原始位置、发现者、发现时间、保存链、是否可被伪造。关键物证只允许在三种场景首次出现——现场勘验、遗物整理、证人当场出示；禁止解答章凭空拿出新物证。"}, {"name": "线索公平：解答所需线索必须提前露面", "content": "解答要用到的每一条关键线索，必须在揭露前以读者可读的形式出现过至少一次（对话、物证、时间表、行为反常），并给读者一次可推理的停顿（旁人点出异常、主角驻足复盘）。主角最后不能靠独白补全证据，也不能只说「我早就觉得不对」。"}, {"name": "红鲱鱼要有人物动机", "content": "每个单元案配 3 条真线索、2 条误导线索。误导必须由人物动机解释其存在（谁在遮掩、遮掩什么、为谁遮掩），结案时用一两句话交代这条误导为何合理。禁止纯靠叙述者隐瞒制造的假线索。"}, {"name": "嫌疑人梯度：3～5 人各一套动机", "content": "嫌疑人控制在 3～5 人，每人都要有独立动机（私利、恐惧、爱、荣誉、报复）与不在场证明；至少一人在读者视角里值得同情，至少一人明显可疑却无罪。动机强度决定他愿意承担的风险层级，写清这一点。"}, {"name": "讯问：只问可验证的细节", "content": "问话落到具体：几点、吃了什么、谁在场、灯亮着没有、走了哪条路、用了多久。抓矛盾用具体对照——「你刚说九点在家，可便利店小票是九点二十」；禁止「是你杀的吧」式的逼问出证据，也禁止嫌疑人一吓就全招。"}, {"name": "法医与科学常识边界", "content": "只写常识级判断：尸僵约死后 1～3 小时起、12 小时前后遍布、24 小时后渐缓；尸斑 1～2 小时显现、8～12 小时渐固定；尸温逐时下降、胃内容物排空按进食时间推。需要实验室结论时必须走送检、排队、等报告，不能当场出结果，也不能靠一句「化验显示」跳过等待。"}, {"name": "监控与通讯限制", "content": "摄像头有死角、有故障、会被覆盖（常见只存 7～30 天）；调取要走手续、等审批；手机有信号盲区、电量与静音。禁止「调一遍监控就全看见」「查一下定位就全知道」的万能手段；每次技术手段都要写出它没拍到什么。"}, {"name": "侦探边界与越界代价", "content": "主视角只有普通人的技能与资源：会看尸表、会查旧档、会问人、会读人心；没有实验室、没有跨省权限、没有无限人手。每次越界都要付代价（请假被扣、欠下人情、违规留痕被上级警告、家属施压）。破案能力随案成长，但成长要有具体来源。"}, {"name": "结构：单元案 3～6 章，主线不早揭底", "content": "单元案 3～6 章闭合；每结一案至少推进一格主线（新势力、新内鬼、新代价、新悬案），并留一个未解释的物件或人名。全书主线大谜不早于三分之二处揭底，揭底前至少三次局部触及（每次只给一角，不给全貌）。"}, {"name": "章末钩子与破案后的残留", "content": "每章末尾留三类钩子之一：新证据、反常细节、对人的威胁；禁用「突然一声尖叫」式的空钩。破案后必须写残留：认错过人、放走过一次、有人因此受损、主角付出名声或关系代价。不留残留的完美结案只允许出现在短篇。"}]}, {"id": "ancient_politics", "name": "古风权谋", "category": "古代", "summary": "权力地图清楚、计谋不降智、每次赢都要付代价", "rules": [{"name": "朝代坐标与制度底本", "content": "开书即定朝代，或架空但对应一个真实时代为制度底本（官制、军制、赋税、礼制各取一套，不混用）。细节无据可考时用「按旧例」「循故事」带过，宁可模糊也不写错。"}, {"name": "权力地图：谁握粮、谁握兵、谁欠人情", "content": "写清三方以上势力：皇权（皇帝／太后／宗室）、相权（中书或内阁）、军权（禁军／边军／藩镇）、财权（盐铁、漕运、市舶）、地方（州郡与世家）。逐项标注谁握着粮道、谁掌兵符、谁欠谁的人情。每一次翻盘都必须落在已有结构上，不许凭空冒出新势力救场。"}, {"name": "情报有价、传信有延时", "content": "情报要花钱、要人命、要等：驿站常行日 200～300 里、加急 400～600 里；一封密信从边关到京通常 5～15 日，走水路更慢或更快都写清原因。人物「知道消息」的时间必须与情报路径对上；禁止主角瞬间掌握天下事。"}, {"name": "决策程序：谁拟、谁署、谁用印", "content": "朝堂程序写实：廷议→拟旨→用印→颁行。区分中旨（内庭降出）与正旨（外朝颁行）的分量差，矫诏必然留下把柄。任何一纸命令都要能说清是谁拟的、谁署的名、谁用的印；写不出这三样，这道命令就不该生效。"}, {"name": "计谋三件套：目标、手段、后手", "content": "每个计谋写全：目标（要谁死／要什么名分／要谁欠人情）、手段（借谁的刀、用哪条规矩）、后手（失败怎么办、被识破怎么退）。全书至少有一次计谋只成一半，至少一次被对手识破——主角靠退得干净活下来，而不是靠对手放过。"}, {"name": "反派不降智：会查、会升级、会攻软肋", "content": "对手按自身利益行事：会做背景调查、会在失败后升级手段、会反过来利用主角的软肋（家人、旧恩、名分）。打脸靠信息差、程序漏洞或时机，不靠对手当场犯蠢、自曝、说漏嘴。"}, {"name": "代价与反噬：不允许只赢不输", "content": "每成一事付出一项代价：一个盟友疏远、一条暗线暴露、一次名分受损、国库或军心吃紧。连续两章只赢不输，必须补一次实质损失（人可以死、事可以败、名可以污）。代价要能被后续情节接住，不能写完就忘。"}, {"name": "礼制与称谓：对上、对下、平辈", "content": "称谓分场合：对上自称臣／臣妾／下官，对下称名，平辈称字；官场称官衔（「侍郎」「相公」），市井称郎君、娘子、员外。跪拜、避讳、服饰颜色按品级与场合写（如唐制三品以上紫、五品以上绯、七品以上绿），不得让下级在公开场合与上官分庭抗礼。"}, {"name": "台词克制：一场对话只换一条真信息", "content": "朝堂与后宅的对话以试探、反问、递话为主，人物不解释自己的算计；一场对话只交换一次真实信息，其余用动作、停顿、递物、眼神完成。重要的表态写在行为上，不写在宣言上。"}, {"name": "后宅与内廷：账、例、传话", "content": "后宅是资源分配场：嫁妆、月例、庶嫡、仆役归属、份例都要有账；内廷靠名分与传话运作，一次召见、一句闲话的分量要写清来路（谁传的、传到谁耳朵里）。后宫斗争要落到月例、位分、子嗣与外朝亲属，不写纯情绪互撕。"}, {"name": "战争与后勤：粮秣先行", "content": "出兵必算粮（成人日粮约二升、一月六斗左右）、饷、路、时令；战役结果由补给、地形、情报决定，不由武将单挑决定。写一场仗至少交代三件事：粮从哪来、走哪条道、下雨或下雪会怎样。"}, {"name": "女性角色与整书禁忌", "content": "女性角色有自己的目标与判断，能独立办成一件事，不作奖励、诱饵或单纯的情报来源。禁写：无代价的屠戮、穿越者用现代常识碾压所有人、反派为衬托主角集体犯蠢、主角一路只赢不输、把宫斗写成泼妇对骂。"}]}, {"id": "male_power_fantasy", "name": "男频爽文", "category": "男频", "summary": "爽点密集、打脸有结构、金手指与战力都不许飘", "rules": [{"name": "一句话卖点与前三章任务", "content": "全书能用一句话说清：谁、靠什么、要掀翻什么。前三章必须完成四件事——交代处境与压迫者、亮出金手指、给第一次小收益、让最大对手的影子出现。不写十万字还没登场的主线。"}, {"name": "金手指规则卡", "content": "首次使用就写清五件事：触发条件、冷却、上限、代价（资源、寿命、暴露风险）、失效情形。后续按同一规则兑现，禁止临时加能力。每次动用都要让读者看见代价的一角，代价不能只写在旁白里。"}, {"name": "爽点五类与密度", "content": "爽点分五类：收益（钱、物、功法）、打脸（对手失态）、解谜（局被拆穿）、护短（护住自己人）、扬名（第三方公开认可）。每章至少一个可见进展；三章一次小打脸，十章一次大场；连续两章不给收益，必须补一个更强的悬念或更大的压迫。"}, {"name": "打脸三拍：压迫—反转—见证", "content": "压迫：对手先占上风，并造成可计量的损失（钱、名额、脸面、人）。反转：主角用已铺垫过的底牌翻盘，底牌必须在之前露过面。见证：公开场合完成，让第三方当场改口或失态。三拍缺一拍，打脸就软；只有「反转」没有「见证」的打脸，读者不爽。"}, {"name": "反派分级与手段升级", "content": "小反派 1～3 章解决，制造日常摩擦；中反派 10～20 章，牵出一条地方或家族线；大反派贯穿全书，掌握主角最缺的东西（名分、资源、人命）。每一级反派必须比上一级多一种手段（钱→人手→官面→规则→人心），不许同一招用到底。"}, {"name": "升级与资源换算", "content": "境界、等级、货币、资源都用固定单位，每次突破写清前后差距与直观对照（能打几人、能扛几招、能换多少钱、能买几亩）。同境界差距控制在三成以内，跨两境必被压制。前期写过的数值不许翻倍重算。"}, {"name": "能力边界表：越级要写条件", "content": "开书列一张能做什么、不能做什么的边界表。越级取胜必须写清条件（地形、偷袭、奇物、对手有伤、对方轻敌），条件缺一不可。禁止为圆情节临时改设定、临时加境界、临时捡宝。"}, {"name": "收益必须有归属", "content": "每次所得（钱、地盘、人脉、功法、名分）都要落到后续用途：养兵、开店、还债、救人、换名分。只涨数值不影响剧情的奖励一律不写。收益之后三章内必须出现用它的一次场面，否则这个奖励就是废的。"}, {"name": "憋屈不超过一章", "content": "被压制、被误解、被夺走、被羞辱的情节不超过一章；且当章末必须给出反制的抓手（一条线索、一个人、一次机会），让读者看得见翻盘路径与找谁算账。连续两章憋屈，必须立刻给一次小反制。"}, {"name": "配角与感情线比例", "content": "兄弟、师长、下属各有独立利益，会帮也会反，至少有一个曾让主角吃过亏。女性角色感情线篇幅不超过全书五分之一，感情推进不打断主线节奏；不写三章连着的感情戏，也不写只用来加血的工具人。"}, {"name": "章节规格与断章", "content": "每章 2000～3000 字；开篇 200 字内交代处境与目标；章末断在动作或宣战上（出手前、话说一半、门被推开）。不写大段设定讲解当开篇，不写把冲突全放在章末一句旁白里。"}, {"name": "整书禁忌清单", "content": "禁写：无差别碾压、无理由屠戮、主角为推进剧情而降智、靠天降系统解决一切、反派为衬托主角集体犯蠢、主线掉线三章、把读者情绪按住不给出口、用旁白宣布「他赢了」而不给场面。"}]}, {"id": "female_emotion", "name": "女频情感", "category": "女频", "summary": "情绪节点清楚、女主立得住、名场面有密度", "rules": [{"name": "类型与基调先定", "content": "先定关系类型（先婚后爱／破镜重圆／替身反转／救赎／青梅／双强）与基调（甜、虐、爽、治愈）。全书不换调：甜文不写长期虐，虐文不许长期无糖，爽文不许女主一直挨打。基调定死，读者才知道自己在读什么。"}, {"name": "人物内核三条", "content": "男女主各写三条：核心渴望、旧伤口、不能碰的底线。所有冲突都必须踩在这三条上——不是「他误会了」，而是「他踩了她的底线」。写不出这三条，人物就只是情绪反应器。"}, {"name": "情感四节点与支撑事件", "content": "关系按试探→靠近→交付→承诺推进，每个节点要有一次明确事件支撑：共患难、替对方担责、说出真相、当众选择。禁止用「时间过去三个月，他们自然亲近了」推进；每进一步都要有一次具体付出。"}, {"name": "每章一条情绪曲线", "content": "每章至少一次情绪转折（期待落空、旧事被揭、态度反转、被人护住），章末停在一个未解决的情绪点上。连续两章同一情绪（全甜或全虐）必须换气口：给一段日常、一个笑点、一次小的被看见。"}, {"name": "名场面密度与后续变化", "content": "每 5 章至少一个可被截图传播的名场面（对峙、告白、护短、翻盘、当众选择），写足场景、天气、动作与前后的落差。名场面之后必须有一章关系或格局的变化，不许名场面放完就归零。"}, {"name": "误会与冷战时限", "content": "误会当章或次章内被推动化解；化解靠行动与证据（他做了、她看见了），不靠旁人解释、不靠喝醉说漏。冷战最多两章，冷战期间双方必须各有一件自己的事在做，不做互相折磨的空转。"}, {"name": "女主必须立得住", "content": "女主除感情线外有一条自己的事业／复仇／成长线，关键转折由她自己选择；遇险先自己动手，男主只能补位不能代打。女主的能力要有练出来的过程与一次失败，不允许天生全能。"}, {"name": "男主不渣化、不降智", "content": "男主的选择要有可理解的立场（家族、职责、旧伤）；伤害女主时给出真实原因与后续补偿（不是一句道歉了事）。禁止为虐而虐、为剧情降智、以侮辱性言语或暴力制造冲突，也不把控制与占有写成深情。"}, {"name": "女频爽点三类", "content": "爽点集中在三类：被偏爱（他为我破例）、被看见（我的付出有人知道）、正当反杀（靠证据与能力打回去）。反杀不用撒泼与吵闹，被偏爱必须让第三方看见，不靠女主自我感动。"}, {"name": "亲密戏尺度与作用", "content": "亲密戏以氛围、触碰、停顿、呼吸推进，写到情绪与信任的变化为止；不写露骨身体描写，不写与关系无关的亲密场面。每场亲密戏必须改变一件事：关系、误会、立场或秘密。"}, {"name": "配角各有算盘", "content": "闺蜜、家人、情敌、上司各按自身利益行动，会帮也会反；至少有一个配角的选择让主角真实吃过亏。配角不写成纯功能性工具人，也不写成只为主角情绪服务的传声筒。"}, {"name": "整书禁忌清单", "content": "禁写：无脑雌竞、把虐待与控制写成深情、靠失忆与绝症推进感情、女主全程等人救、男主一句话解决所有问题、误会拖过三章、配角凭空黑化、结局靠跳时间收尾。"}]}, {"id": "scifi_setting", "name": "科幻设定", "category": "科幻", "summary": "技术自洽带代价、社会随之改变、术语不互换", "rules": [{"name": "硬软定位与尺度", "content": "先定类型：硬科幻写机制与代价，软科幻写社会与人心，太空歌剧写格局与人物。同一部书不混用三套尺度；写硬的地方必须给数据，写软的地方必须给立场。"}, {"name": "技术说明书五件套", "content": "每项核心技术列五项：能量来源、材料来源、算力来源、维护周期、失效模式。第一次出现时给读者一个可感类比（多久、多远、多少钱、几个人操作），让读者能估量它的分量。"}, {"name": "守恒与延迟：不许超光速免单", "content": "不违反质量能量守恒；不写无延迟通信、无工质无限加速、凭空无限能源。跨星通信与航行必须付出时间（秒、分、年），延迟要成为情节的障碍——指挥延迟、消息过时、亲人已老。"}, {"name": "一处技术一处代价", "content": "每项先进技术配一项副作用：辐射、寿命、数据泄露、伦理争议、阶层垄断、生态破坏。副作用至少真实发作一次并造成损失（有人残、有人死、有人被排除在外），不能只在设定集里存在。"}, {"name": "社会结构必须随之改变", "content": "技术要改变职业、法律、阶级与家庭形态，并写出具体场景：新工种（义体维修师）、新罪名（记忆盗取）、新贫富差距（接入权分层）、新家庭形态（代孕与养育人分离）。技术不能只做道具与背景板。"}, {"name": "术语表与单位表", "content": "关键术语（装置、单位、协议、组织、缩写）首次出现即固定写法与含义，全书不得互换称呼或二次定义；单位统一（米／秒、光秒、标准年、当量），不混用科幻单位与日常量词。"}, {"name": "人物不被设定吞掉", "content": "设定服务于人的选择：每个人物有立场与代价，不做科普讲解员。技术高潮必须落在人的决断（关不关、救不救、说不说），不能落在参数解释与说明书朗读。"}, {"name": "信息传播有路径与审查", "content": "消息传播走具体通道：谁先知道、谁被瞒、谁有权限、被谁审查。写到「消息公布」必须交代渠道与延迟，写到「被封」必须交代执行者与手段。不允许一个匿名帖子瞬间改变全世界。"}, {"name": "场景质感与操作步骤", "content": "操作写步骤与手感：界面反馈、噪音、耗材、异味、故障指示灯、手套里的汗。一次关键操作至少写清两个可触细节和一个可能出错的地方，让技术有重量。"}, {"name": "伦理冲突贯穿", "content": "至少一条伦理线贯穿全书：谁被牺牲、谁被代表、谁没有选择权。冲突靠制度与资源分配推进，不靠反派个人邪恶；对立双方都要有站得住的说法，读者要能犹豫站哪边。"}, {"name": "禁止魔法式解释", "content": "不把「量子」「纳米」「AI 自我进化」「基因解锁」当万能理由；任何超常现象要么给出可检验的机制描述（怎么做到、成本多少、会怎么坏），要么明确标记为未解之谜并承担悬念，不许两样都不做。"}, {"name": "整书禁忌清单", "content": "禁写：一键解决一切的科技、无代价的永生与复活、科学家全员疯癫、反派为了邪恶而邪恶、术语前后互换、把「未来」写成只有霓虹灯与飞车、用技术细节掩盖人物动机缺失。"}]}, {"id": "farming_life", "name": "种田文", "category": "种田", "summary": "农时对得上、账能算清、日常里埋真冲突", "rules": [{"name": "地域、年代与气候先定", "content": "先定地域（江南水乡／北方旱地／山区）、年代与气候带；作物、衣着、税制、吃食都与之一致。南北作物不分季节地出现，是最容易被读者一眼看穿的硬伤。"}, {"name": "十二月农事历", "content": "开书列一张十二月农事表：耕地、下种、育苗、插秧、追肥、除草、收割、晒场、冬藏、腌腊。每章提到农活，都对得上当前月份与节气；农闲季节写副业与家事，不硬塞农活。"}, {"name": "家务账：一家几口一年吃多少", "content": "写清几口人、几亩地、一年口粮（成人月粮约一斗半到两斗，粗粮细粮分别算）、种子与农具开销、能卖多少剩多少。任何一笔大钱出现前，先有攒钱的过程；家里余粮多少，必须能对着账算出来。"}, {"name": "亩产、租佃与雇工", "content": "亩产、租佃方式（分成或定额，分成常见四六、五五）、雇工工钱按书内设定统一；灾年减产的连锁反应要写（租子交不上、口粮不够、典当衣物）。禁止一季翻身、一日暴富、随手就是几十两银子。"}, {"name": "升级路径：修—改—作—商", "content": "改良按顺序来：先修农具（省力）→再改水利（保收）→再上作坊（增值）→再开铺子（渠道）。每一级写清材料来源、人工成本、工期与失败风险；跳级必须有代价（借钱、欠人情、被人抢功）。"}, {"name": "手艺要写到一个能模仿的动作", "content": "种田文的爽感在细节：堆肥配比、育秧水层深浅、灶上火力、腌制时辰、酒曲用量、豆腐点卤的手感。每个手艺段落至少写清一个具体动作与一个常见失败（发酸、烧锅、塌窖）。"}, {"name": "关系网即资源网", "content": "邻里、族老、里正、货郎、郎中各有诉求；办事靠人情交换（帮工、赊账、说亲、借牲口），有来有往。禁止主角一句话让全村无偿出力，也禁止全村无来由地针对主角。"}, {"name": "赋税与官府怎么落地", "content": "赋役、摊派、灾年蠲免按书中制度写；写清谁收（里正催、里胥记账）、怎么收（折银还是折粮）、交不上怎么办（典当、卖地、逃户、求人情）。官府既是压力也是机会，写到衙门就要写具体差役与规费。"}, {"name": "日常里埋具体冲突", "content": "每 2～3 章的日常段落埋一处具体矛盾：地界、水渠、婚事、赊账、牲口、口舌、匠人跳单。用小冲突推动关系与下一阶段目标，冲突解决后必须留下一个变化（欠人情、结亲、得名声）。"}, {"name": "吃食与节令做情绪节点", "content": "吃食按地域与季节写（时令菜、腌菜、腊味、年节蒸糕），节令仪式（社日、尝新、做年、谢神）承担情绪转折；不写成菜谱流水账，每道吃食要挂在一个人或一件事上。"}, {"name": "阶段目标要有数字门槛", "content": "每个阶段的欲望具体：买两亩水田（要多少两）、给弟弟娶亲（彩礼加席面多少）、修一间西屋（工料多少）。目标达成要有清楚的门槛与过程，不能靠一句「日子渐渐好起来」越过。"}, {"name": "整书禁忌清单", "content": "禁写：随手发明现代机械、全村一夜脱贫、官府对主角格外优待、病虫害与天灾一笔带过、时间跳跃吃掉农时、把乡邻全写成坏人、靠现代食谱一招通吃。"}]}, {"id": "island_survival_system", "name": "荒岛求生系统文", "category": "系统流", "summary": "系统先立规则后运行、资源有限、危机靠旧东西解决", "rules": [{"name": "开局三章：落难、系统、第一任务", "content": "前三章完成：怎么落难（海难、空难、被弃）、系统怎么出现、面板能看到什么、第一次任务与奖励怎么给。系统规则一次讲完（获取方式、积分来源、兑换清单、冷却、上限），后面不再改。"}, {"name": "资源账：每样都要有余量", "content": "淡水（常温静息每日约 1.5～3 升，高温劳作加倍）、食物（每日 1500～2000 大卡）、火种、体力、工具耐久都要有数字。每次取用与消耗写清余量；剩余多少水、还能撑几天，读者要能算出来。"}, {"name": "求生优先级：水→火→庇护→食物→工具→医疗→信号", "content": "按这个顺序解决问题，未解决前一层不得跳到后一层。例外只能由伤病或天气逼出来（伤口感染逼出医疗，暴雨逼出庇护），并且要为跳级付出代价——某样东西没做，后面必然回来咬人。"}, {"name": "系统规则在运行", "content": "兑换有积分价格与冷却，任务有限时与失败惩罚，积分来源固定（签到、探索、达成里程碑、击杀威胁）。禁止无限刷取、临时新增功能、系统随手送大礼。主角的每一次变强都要能在面板上找到依据。"}, {"name": "岛屿地图固定成图", "content": "海岸线、礁盘、潮汐、风向、淡水点、悬崖、林地、山洞的位置关系固定成一张图；每次行动写路线与耗时（绕岛一周几小时、爬到山顶多久、去西湾一次往返半天）。前后地理不许矛盾。"}, {"name": "潮汐、天气与季节", "content": "潮汐约每昼夜两涨两落，涨落各约六小时；退潮可捡贝类、可走礁盘，涨潮会断路。暴雨、暴晒、夜寒、台风按季节轮换，每一次极端天气都要写清对体力、伤口、营地与水源的影响。"}, {"name": "工具链一级靠一级", "content": "从石片→石斧→削尖木矛→鱼篓与渔网→陶器煮水→晒盐→绳与藤→庇护加固→信号烟火，每级都靠上一级的产物。升级要写失败次数与工时（烧坏几个陶坯、断几根绳子），不做一步到位的奇迹工具。"}, {"name": "伤病与卫生真实发作", "content": "伤口清创、感染红肿热痛、寄生虫、腹泻、晒伤、失温、脱水都会真实发作并影响行动（手抖、走不动、发热说胡话）。处理只能用岛上材料：煮过的水、盐水、草木灰、火烧消毒、烧热的石头。医疗资源永远不够。"}, {"name": "日程与营地升级", "content": "写清日间分工（取水、觅食、加固、瞭望）与夜间守卫轮班；每 3～5 章写一次营地升级（排水沟、棚顶、火塘、储藏架、陷阱圈）。营地状态要能看出主角这一阶段的能力水平。"}, {"name": "危机由已铺垫的东西化解", "content": "每次大危机都靠已出现过的工具、技能或系统功能解决；新道具在动用前必须有线索或兑换记录。禁止天降神器、恰好路过的船、救命的巧合；读者要能回想起「这东西他早就做了」。"}, {"name": "系统不替主角决策", "content": "系统只给数据、提示、警告与倒计时，不给答案；选择和后果由人物承担。选错的代价必须真实落地（扣积分、受伤、错过期限、丢掉机会），系统也不替主角兜底复活。"}, {"name": "整书禁忌清单", "content": "禁写：无限积分、无代价制造一切、遇到危险必然开挂、把荒岛写成度假村、忘记救援线（每 10 章至少一次瞭望、烟火、刻 SOS、观察洋流垃圾）、忽略卫生与淡水成本。"}]}, {"id": "restaurant_face_slap", "name": "饭店转让打脸吸血亲戚", "category": "都市", "summary": "账能算、亲戚吸血有台阶、打脸靠证据链", "rules": [{"name": "店面与定位先落地", "content": "写清地段、面积、租金、座位数、翻台率、客单价、招牌菜 3～5 道。定位（家常、快餐、私房、夜宵）决定菜单结构与毛利；写每一场戏前，主角该知道今天大概能卖多少钱。"}, {"name": "成本结构表", "content": "固定成本（租金、人工、水电）与变动成本（食材、损耗 3%～5%、包装、平台抽佣）分开算；用「日均需卖多少桌／多少钱才不亏」的盈亏平衡点表述。每一笔让店赔钱的操作，都要给出数字原因（打了七折、白送两桌、涨租两千、多养一个闲人）。"}, {"name": "毛利率与净利", "content": "堂食毛利率约 55%～65%，外卖扣点与包装后更低，净利率通常 10%～20%。写主角赚钱要写净利，不能只报流水；写亲戚搞事要写它吃掉的是哪一块利润，读者要能跟着算。"}, {"name": "客流节奏与备货", "content": "区分工作日与周末、午市与晚市、晴天与雨天；写旺季备货、淡季控本、节令菜单。不只写「生意火爆」——要写几点排队、排多长、卖完哪道菜、剩多少料。"}, {"name": "供应链与账期", "content": "供货商保留 2～3 个可替换，写清比价、账期（现结或月结）、退换规则与断供风险；至少写一次被卡货（涨供价、断货、掺次品）后的替代方案与代价。"}, {"name": "亲戚吸血五级台阶", "content": "一级借钱（小额、说急用、不打条）；二级蹭吃蹭喝（带人来、点贵的、说记我账上）；三级塞人进店（亲戚的孩子来上班、工资还高）；四级搬弄是非、拉客源、越过店长直接指挥；五级逼转让、逼低价、抢配方与招牌。每级都配说辞（亲情、面子、为你好、我帮你担着），得寸进尺按台阶推进，不许一次跳到底。"}, {"name": "打脸必须落在证据链", "content": "每次翻盘都要有可查凭据：合同条款、银行流水、监控录像（通常存 30 天）、供货单、工资签收、平台评价、合法取得的录音。一场打脸至少两样证据形成闭环，并说明对方为什么辩不了。"}, {"name": "口碑是第三方证据", "content": "用顾客、外卖评分、老主顾、街坊、同行的话作第三方证明；打脸时让旁观者当场改口、让围观者用脚投票（有人排队、有人退订）。第三方评价必须写具体人具体话，不写「大家纷纷称赞」。"}, {"name": "手艺是硬底牌", "content": "核心优势写在菜品细节：刀工、火候、配比、出锅时长、成本率、限量的理由。技术优势不能被一句「有钱」抹平，也不靠玄学秘方；对手能学的部分要写出学不会的那一层（手感、耐心、供应链）。"}, {"name": "合同、许可与现实手续", "content": "租赁与优先承租权、转让费与债务承担、员工合同与工伤、食品经营许可与消防检查，关键节点按手续走。冲突靠条款、流程、举报与诉讼解决，不靠砸店与打人。"}, {"name": "打脸节奏：先吃亏再反制", "content": "三章一次小场（讨回一笔钱、护住一次招牌、拆穿一个谎），十章一次大场（当众对账、夺回产权、公开供货黑幕）。每次打脸前先让主角真实吃亏一次（赔钱、被泼脏水、员工被挖走、评分被刷），反制才有重量。"}, {"name": "结局与禁忌", "content": "冲突解决后留现实后果：账清了、关系断了、店重新排队，也留下疲惫与修复成本。禁写：主角靠撒泼取胜、以暴力解决问题、亲戚一夜之间全变好人、靠贵人一句话定输赢、把吸血写成无脑恶而无人性逻辑。"}]}, {"id": "tang_bureaucracy", "name": "唐代官场制度设定", "category": "制度", "summary": "三省六部与政事堂、九品三十阶、三复奏与铨选按唐制", "rules": [{"name": "时间坐标：先定年号与时期", "content": "写明具体年号与在位皇帝。唐前期（三省长官为相）、中期（政事堂、同中书门下平章事）、后期（翰林学士与宦官干政、节度使坐大）差别极大，全书写法锁定一个时期，不前后混用。"}, {"name": "中央运转：中书拟、门下驳、尚书行", "content": "政令流转为中书省草拟→门下省审议（可封驳退回）→尚书省执行，尚书省下辖六部二十四司；九寺五监承办具体事务。写一道政令要能说出经过哪几道门，禁止出现唐代没有的机构名称。"}, {"name": "宰相与政事堂", "content": "宰相不是一人专称：三省长官及加「同中书门下平章事」者皆为相，议事在政事堂。写中枢决策用「政事堂议定后奏闻」，不写「宰相一人下令」；宰相之间也有分歧与倾轧，写出来才像唐朝。"}, {"name": "品级、散官、勋官三样齐备", "content": "官分九品、品有正从，四品以下又分上下，共三十阶。写一个人要交代职事官（实际差事）、散官（待遇等级）、勋官（军功荣誉）；升迁走考课（四善二十七最）与年限，不靠一句话提拔。"}, {"name": "地方：道—州（府）—县与属官", "content": "刺史（府尹）、县令为主官，下设别驾、长史、司马、丞、主簿、尉；基层有里正、坊正、村正。州县按户口分上中下三等，等级决定属官编制与俸禄；写官署要有衙前、差役、书手的具体分工。"}, {"name": "司法流程与死刑复奏", "content": "大理寺审判、刑部复核、御史台监察；死刑须奏报皇帝核准，京师五复奏、诸州三复奏。县令可初审但不可定生死，不得跳过复核；写冤案要写清哪一道程序被绕过、被谁绕过。"}, {"name": "选官与铨选", "content": "入仕有科举（进士最难、明经次之）、门荫、军功、流外入流；授官走吏部铨选，每年冬集，看身、言、书、判。写升迁必须给出年限、考课等第与举荐人，不许凭空任命。"}, {"name": "军制与兵权", "content": "府兵隶折冲府，另有禁军（南衙十六卫与北衙禁军）；节度使掌边镇军政财，中后期渐成尾大之势。调兵须凭符契与敕书，不能凭一将号令；写兵变要写清粮饷与赏赐的拖欠。"}, {"name": "公文与称谓", "content": "公文用敕、牒、符、状、判、奏抄；自称臣、下官、某，对上官称官衔（「侍郎」「尚书」），平辈称字；避当朝帝王讳。服饰颜色按品级（三品以上紫、五品以上绯、七品以上绿），不得让下级在公堂上与上官分庭抗礼。"}, {"name": "钱粮与赋税", "content": "租庸调与两税法不可混用（建中元年行两税法）；写清米价、绢价与钱帛换算的量级，钱粮数字要能对上人口与亩数。写官府办差就要写钱从哪出、由谁经手、损耗几何。"}, {"name": "社会与风习", "content": "士族门第仍有分量，婚姻看郡望；长安有坊墙与东西两市（市有开市闭市的鼓声），夜有宵禁；寺院、胡商、邸店是实景。写市井要带出坊籍、市籍与行会，不只是「街上很热闹」。"}, {"name": "留白原则与禁忌", "content": "制度细节无据可考时写「按旧例」「依故事」模糊带过，宁可留白也不臆造条文数字。禁写：明清式「大人」「老爷」称呼、内阁票拟与批红、锦衣卫与厂卫、三省六部之外凭空增设的机构、唐代尚未行用的器物与货币。"}]}, {"id": "song_bureaucracy", "name": "北宋官场制度设定", "category": "制度", "summary": "官、职、差遣分离，二府三司，路州县四司与台谏", "rules": [{"name": "时间坐标与元丰改制", "content": "标明年代。元丰改制（1078—1085）前后官制不同：改制前官为寄禄、差遣为实职；改制后三省六部恢复实任、三司并入户部。全书不混用两套，若故事跨改制，要写出改制带来的震动与人事洗牌。"}, {"name": "官、职、差遣三样分离", "content": "官（寄禄官）定俸禄与品阶，职（馆阁贴职如直龙图阁、直秘阁）是荣衔，差遣才是实际差事。写人出场时三者齐备，绝不把寄禄官当实职；同一人可「官小差遣大」，这正是宋制的味道。"}, {"name": "中枢二府分权", "content": "政事归中书门下（同中书门下平章事为相、参知政事为副），军务归枢密院（与政事堂分权，合称二府）。重大决策须廷议、进呈、皇帝裁定；宰相与枢密使互不统属，写权力斗争要写这种制度性摩擦。"}, {"name": "财政三司与转运", "content": "三司（盐铁、度支、户部）总天下财赋，与二府分权；各路转运使掌漕运与上供。写军费、赈灾、和籴时须交代钱从哪一路来、由谁押运、损耗几成，不许凭空有粮有银。"}, {"name": "路州县与四司掣肘", "content": "路设转运使司（财赋漕运）、提点刑狱司（司法复核）、安抚使司（军事边防）、提举常平司（仓储赈济）；州设知州与通判共署公文，通判可驳正并可直达朝廷；县设知县、丞、主簿、尉。写一桩政令要能凑齐知州签、通判押。"}, {"name": "台谏监察与弹章", "content": "御史台（台院、殿院、察院）掌弹劾，谏院掌规谏，合称台谏；可风闻言事，弹章直达御前，被弹者须待罪自辩，常以差遣外放收场。台谏可被宰相借刀，也可反噬宰相，写朝堂要写这条线。"}, {"name": "选官、磨勘与改官", "content": "科举为主途（进士最重，三年一开），另有恩荫、荐举、摄官、流外。选人改京官须磨勘年限与数人荐举；写一次任命要交代迁转层级（选人→京官→朝官→差遣），不写凭空破格。"}, {"name": "货币与物价量级", "content": "铜钱与铁钱分区行用，四川有交子（后为钱引）；一贯足陌千文、省陌约七百七十文。写清米价（每斗数十至百文量级）、绢价与雇工日钱，避免随手写出几百两银子的天文数字（宋人以钱帛为主，大宗才用银）。"}, {"name": "军制与边防", "content": "禁军为主力、厢军供役、乡兵守土；统兵归三衙（殿前司、侍卫马军司、侍卫步军司），调兵归枢密院，兵权两分。边防写堡寨、榷场、岁币与和战之争，写战争要写粮道与马匹。"}, {"name": "社会风习与称谓", "content": "士人重科举、同年、座主门生；城市有瓦子勾栏、夜市不禁，坊墙早废。称谓用官衔与「相公」「官人」「员外」「娘子」，禁写「大人」「老爷」「娘娘千岁」等明清宫廷用语。"}, {"name": "文献与行政细节", "content": "公文有劄子、奏状、申状、牒、榜；中书与枢密用「劄子」议政，台谏用弹章，地方用申状上报。写行政要有吏人承办、有档案（架阁）、有期限（限期勘结），公文不是一句话就办成。"}, {"name": "留白原则与禁忌", "content": "细节无据可考时写「依故事」「循旧例」，宁可模糊不臆造。禁写：内阁票拟与批红、锦衣卫与厂卫、宰相一人独断、唐代节度使与租庸调、明清式跪拜与「大人」称呼、宋人日常以银锭付账。"}]}, {"id": "ming_bureaucracy", "name": "明朝官场制度设定", "category": "制度", "summary": "内阁票拟、司礼监批红，三司府州县与卫所厂卫", "rules": [{"name": "时间坐标：洪武到崇祯", "content": "写明具体年号与时期：洪武废丞相、永乐设内阁与东厂、嘉靖隆庆内阁权盛、万历以后党争与矿税、崇祯朝频繁换相。制度随年号变化，不许把洪武与万历的官制混在一部书里。"}, {"name": "中枢运转：票拟与批红", "content": "外朝奏疏→内阁票拟（贴黄小票拟意见）→司礼监秉笔太监批红→六科抄发执行。写中枢必须交代票拟与批红的往复，内阁与内监互相牵制；禁写「宰相下令」「大学士直接调兵」。"}, {"name": "六部、九卿与三法司", "content": "六部（吏户礼兵刑工）各设尚书、左右侍郎；都察院设左都御史与十三道监察御史；刑部主审、大理寺复核、都察院纠察，合为三法司，大狱须会审。写审案要写会审与复核，不许一部独断。"}, {"name": "六科封驳与通政司", "content": "六科给事中（吏户礼兵刑工）掌封驳、注销、抄发；诏令不经六科可被驳回，弹章经通政司递入。写一道旨意落地，要能说清谁抄发、谁封驳、谁注销，这是明代言官能量的来源。"}, {"name": "地方：三司分权与府州县", "content": "省设布政使司（民政财赋）、按察使司（司法监察，副使佥事分道）、都指挥使司（军事），三司互不统属；府设知府、同知、通判、推官；州设知州、同知；县设知县、县丞、主簿、典史。写一省之事要看三司如何推诿与配合。"}, {"name": "品级、散阶与服制", "content": "官九品、品分正从共十八级，另有散阶与勋级。补子按品级（文官一品仙鹤、三品孔雀、五品白鹇、七品鸂鶒、九品练雀；武官一二品狮子、三品虎、五品熊、九品海马），腰带、伞盖、住宅不得越制；服饰写错就是硬伤。"}, {"name": "卫所、军户与兵权两分", "content": "军户世袭军籍，卫（约五千六百人）、千户所（一千一百二十人）、百户所（一百一十二人）；统兵归五军都督府，调兵归兵部，出兵须请旨与调令。写打仗要写军饷、军户逃亡与卫所废弛，不只写将军英勇。"}, {"name": "厂卫介入要有旨意", "content": "锦衣卫掌侦缉与诏狱（洪武十五年设），东厂由司礼监提督（永乐十八年），西厂（成化）、内行厂（正德）时设时废。厂卫拿人须有旨意或堂官授意，不得随意抓官；写厂卫要写它的情报来源与冤狱成本。"}, {"name": "科举与胥吏", "content": "科举路径：童试→院试（秀才）→乡试（举人，子午卯酉年秋闱）→会试（贡士，次年春闱）→殿试（进士，一甲三名、二甲、三甲）；另有监生、吏员考选。具体事务大量由胥吏承办，官掌印、吏办事，陋规常例要写得出来。"}, {"name": "文书类型与用语", "content": "题本（公事用印）、奏本（私事不用印）、揭帖、咨文、牌票、勘合；上行用呈、咨，下行用札付、牌。格式与用语不同，不得混用；写公文要写清用印、签押、封发与回执。"}, {"name": "钱粮、赋役与俸禄", "content": "早期宝钞与铜钱并行，中期白银渐成主币；赋役有里甲、均徭，万历行一条鞭法（赋役折银）。官员俸禄薄，实际收入靠常例与馈送，写官场清贫与灰色收入都要对得上这两笔账。"}, {"name": "留白原则与禁忌", "content": "细节无据可考时写「查旧例」「依《会典》」，具体条文与数字宁缺不臆造。禁写：宰相与三省六部的拟诏封驳流程、唐代节度使、清代顶戴花翎与「大人」称呼、锦衣卫随便抓人、内阁可直接调兵。"}]}, {"id": "short_craft", "name": "短剧通则（所有流派通用）", "category": "短剧", "summary": "1～2 分钟一集、5 秒抓人、30 秒一翻、集末留钉", "rules": [{"name": "单集规格三定", "content": "一集 1～2 分钟（题材特殊可到 3 分钟），剧本 300～500 字，2～4 场戏。超过 4 场就拆成两集；一集讲不完的不是好结构，是没收住。全剧按 60～100 集规划，第一季先做 30 集。"}, {"name": "前 5 秒必须给冲突", "content": "开场第一个镜头就是耳光、摔门、身份暴露、证据拍桌、一句狠话、一具尸体。禁止用起床、走路、旁白、回忆、风景开场；观众手指在滑，没有义务等你铺垫。"}, {"name": "前 30 秒交代处境", "content": "30 秒内让观众知道四件事：主角是谁、被谁压着、想要什么、代价是什么。用画面和台词给，不用旁白念；《七零辣妻》式的开局是「醒来摸到伤＋看见日历＋一句台词」，30 秒全交代完。"}, {"name": "每 30 秒一次翻转", "content": "在一集之内至少安排一次信息揭露、态度反转或反击动作，节奏大致是：0～5 秒钩子、5～40 秒把矛盾顶上去、40～75 秒给一次情绪回报、最后 15 秒留扣。禁止整集原地吵架、反复重复同一种情绪。"}, {"name": "集末卡点的四种写法", "content": "卡点只用四类：门被推开、真相到嘴边没说、反击刚要开始、人物遇险。必须切在结果之前，不做总结、不说道理、不写「未完待续」。观众要知道下一集回答什么问题。"}, {"name": "一集一个冲突、最多三个角色", "content": "一集只打一个矛盾，出场角色不超 3 个（主角、对手、关键第三方）。多线并进留到大节点或整季分集规划；角色一多，竖屏就认不清脸，情绪就散。"}, {"name": "台词短句化", "content": "单句台词不超 15 字，一个回合不超 4 句。用动作代替形容，用反问代替解释，用重复对方的话制造羞辱感。禁止人物互相解释自己的心情与立场。"}, {"name": "场景成本控制", "content": "全剧主场景 3～6 个，80% 的戏集中在两个场景（家／办公室／店／祠堂）。每加一个新场景必须带来冲突或反转，否则合并进已有场景；大场面（宴会、婚礼、法庭）一季不超过 3 场。"}, {"name": "前 6 集定生死、付费卡点放在 10～20 集", "content": "第 1 集给最大的冤屈或最大的身份反转；第 3 集第一次小翻盘；第 6 集之前必须让观众看到主角的底牌一角。付费卡点设在 10～20 集之间矛盾最紧、观众最想骂人的地方，卡点前一集要把情绪顶满。"}, {"name": "删集自检与竖屏构图", "content": "删掉这一集，后面剧情不受影响，就压掉或合并。竖屏 9:16 以近景、特写为主，一镜一人，情绪写在脸上和手上；避免横向大场面、多人并排站、远景交代环境。每集末尾自问一句：观众现在最想知道的是什么。"}]}, {"id": "short_urban_slap", "name": "都市逆袭打脸", "category": "短剧", "summary": "年终奖 600 转身公司亏 6000 万、同事蹭车蹭卡造谣被当众揭穿", "rules": [{"name": "开局给可量化的不公", "content": "第一集就把亏欠写成数字：年终奖 600 元对比同事 6 万、被扣工资 800、被蹭车 37 次、被刷走 2 万的卡、被抢的项目分红。数字要能被角色当台念念出来，观众才替主角记账。"}, {"name": "主角底牌先藏一件", "content": "主角必须握着一张没说出口的牌：真实身份、独家技术、客户资源、股权、上级的信任。前 6 集只露一角（一句暗示、一次被撞见的通话），10～15 集全亮。整剧只亮一次，用在该亮的地方。"}, {"name": "打脸三件套：数字、证据、见证人", "content": "每次翻盘都要三样齐全：可核对的数字（600 与 6000 万）、可出示的证据（聊天记录、考勤、流水、录音、监控）、在场的第三方（同事、客户、亲戚、邻居）。缺见证人的打脸只是自我安慰，不爽。"}, {"name": "反派生事要升级", "content": "反派按阶梯出招：抢功→甩锅→造谣→卡流程→拉上级压人→逼签协议。每级比上一级多一样东西（脸皮、人多、规则、权力），不许从第 1 集坏到最后一集用同一招。"}, {"name": "每一次忍让都计价", "content": "主角每退一步，就记一笔账：钱、时间、名誉、机会。这笔账要在中段被当面念出来（我替你背了 3 次锅、垫了 2 万、加了 40 个班），忍让才有重量，反制才够爽。"}, {"name": "离开本身就是最大的反制", "content": "最强的一击往往不是吵架，而是抽身：主角一走，公司丢了 6000 万订单、客户跟着走、项目停摆、亲戚的店没人撑。走之前把损失的可能性摆明，走之后让结果自己说话。"}, {"name": "反转密度：小反转每 2～3 集，大反转每 8～10 集", "content": "小反转给一次具体回收：揭穿一个谎、拿回一笔钱、抢回一个客户、让造谣者当众改口。大反转给格局变化：身份公开、对手倒台、公司求他回去、家族改口认人。反转之间不能空着，两集必须有一次情绪回报。"}, {"name": "打脸之后必须落地", "content": "每场打脸都要有现实结果：钱退回来了、造谣者被处理、合同签了、报警立案、辞职生效。不能只在嘴上赢；赢了之后还要付代价（得罪人、被孤立、赔一笔），才像真的。"}, {"name": "感情副线不抢戏", "content": "都市打脸剧的感情戏每集不超过 20 秒，只承担两个功能：给主角动机（护住谁）、给主角软肋（被拿谁威胁）。女角色有自己的判断与行动，不当奖励，也不当被救的道具。"}, {"name": "整剧禁忌清单", "content": "禁写：主角靠撒泼与动手取胜、靠天降贵人一句话定输赢、反派无脑作恶、全村全公司一起坏、主角一路只赢不亏、结局靠一段演讲收尾、把羞辱戏写成单纯的暴力猎奇。"}]}, {"id": "short_rural_aid", "name": "乡村助农被污名", "category": "短剧", "summary": "修路修桥自己没桥走、收农产品被指黑心、货全毁了", "rules": [{"name": "开局一个「我为全村好」的具体工程", "content": "第一集给一件看得见的好事：修路 3 万、修桥 8 万、垫钱收果子、免费拉货。钱从哪来必须写清（借款、卖车、抵押、贷款），主角付出了什么，观众要心疼。"}, {"name": "污名化走三步", "content": "第一步质疑动机（图名、想当村干部、想骗补贴），第二步质疑钱（贪了、吃回扣、账不清），第三步毁物证（举报、退货、拦车、砸货、断水电）。三步走完，主角才真正被逼到墙角。"}, {"name": "农产品链条要能算", "content": "收购价、运费、仓储、损耗（生鲜 10%～30%）、销路、账期，每个环节都能被人卡住。写清一车果子多少钱、坏掉多少、赔了多少，观众才知道这一刀有多狠。"}, {"name": "集体沉默要有理由", "content": "村民不帮腔要给原因：怕得罪人、怕退钱、怕下次没人收、被人许了好处。留 1 个敢说话的证人（老会计、老支书、被主角帮过的人），关键时候站出来。"}, {"name": "被毁之后靠证据说话", "content": "采购单、过磅单、转账记录、监控、质检报告、平台订单、微信聊天都要留。翻盘时一张一张摆到桌上，让围观的人自己看，不靠主角喊冤。"}, {"name": "公开对账就是最大的打脸", "content": "选一个有见证的场合：祠堂、村委、集市、收购点。把进价、运费、损耗、卖价一条条念清，让骂他黑心的人当场算一遍。骂声止于数字，不止于吵架。"}, {"name": "修路修桥的反转要落在地上", "content": "反转用具体结果呈现：主干道绕开他家、桥修在下游、通行权被卡、验收不给过、补贴被截。反制靠规则与市场——重新申报、换路线、走别的销路、让利益方自己来求。"}, {"name": "给村里真收益，旁观者才会倒戈", "content": "用工、分红、合作社、代销、修渠，让跟着他干的人真拿到钱。第 8～12 集必须有一次「原本骂他的人来求合作」的场面，这是乡村剧最爽的一拍。"}, {"name": "与乡镇干部的关系写实", "content": "有支持也有推诿：支持的要担责，推诿的要留痕。推进靠程序（申报、验收、补贴、备案）而不是领导一句话；写清一层一层盖的章，冲突才有厚度。"}, {"name": "整剧禁忌清单", "content": "禁写：一夜致富、全村坏透无人性、靠打砸与堵路解决问题、政策与补贴细节乱编、主角被污名后靠打架翻盘、把农村写成只会欺负人的背景板。"}]}, {"id": "short_system_win", "name": "系统流爽文", "category": "短剧", "summary": "废材孤儿接手破鱼塘，系统一步步把烂摊子盘活", "rules": [{"name": "开局三件套：最惨、一个烂产业、系统", "content": "第一集给三样东西：最惨的处境（孤儿、欠债、被夺产、被赶出门）、一个没人要的产业（破鱼塘、废店、荒山、旧厂）、系统怎么出现（绑定、签到、任务触发）。三样在 30 秒内交代完。"}, {"name": "系统规则一次讲完，后面不改", "content": "任务类型、积分来源、兑换清单与价格、冷却、失败惩罚，第一集全部写明。后续按同一规则运行；危急时刻不许临时新增功能，否则观众立刻失去信任。"}, {"name": "第一次任务当集完成", "content": "第一集必须完成第一个任务并拿到第一次可见收益：一网鱼、一筐苗、第一笔钱、第一批客。奖励要能被看见、被数出来，观众才有「跟着他干」的代入感。"}, {"name": "资源账要能算", "content": "鱼苗尾数、饲料成本、水位水质、出鱼周期（3～6 个月）、每亩产量、卖价与损耗都要有数。收益必须对得起投入；不能今天投 500、明天赚 50 万。"}, {"name": "升级序列一级靠一级", "content": "破塘→清淤→增氧→鱼苗孵化→加工→冷链→合作社→品牌。每级都用上一级的产物与积累，写下失败次数（死过一塘鱼、坏过一批货），成长才有重量。"}, {"name": "危机由旧工具化解", "content": "缺氧、暴雨、偷鱼、病害、断销路、被断水电——每次大危机都靠已铺垫的工具、技能或系统功能解决。新道具动用前必须有线索或兑换记录，不许天降神器。"}, {"name": "爽点密度：每 2～3 集一次", "content": "爽点类型：打脸质疑者、拿下第一笔订单、第一次被镇上认可、第一次有人来求合作。每 8～10 集给一次大场面（收购商压价被反杀、竞争对手承包失败、县里来人考察）。"}, {"name": "反派三阶，手段升级", "content": "同村眼红者（堵路、造谣）→鱼贩与包工头（压价、断货、抢塘）→镇上有关系的人（卡证、抢标、断水）。每级多一种手段，不许同一招用到底。"}, {"name": "系统只给数据和提示，不给答案", "content": "系统给倒计时、警告、面板数值，不给「下一步该做什么」。选择与后果由人物承担：选错就死鱼、亏钱、错过期限，系统不兜底、不复活。"}, {"name": "整剧禁忌清单", "content": "禁写：无限刷积分、瞬间巨富、系统代打一切、忘记养殖与经营成本、把村民写成全恶、把主角写成不需要学习的全才。"}]}, {"id": "short_food_business", "name": "餐饮手艺逆袭", "category": "短剧", "summary": "给侄子掌勺被扣钱，转身接手老饭店做成本地顶流", "rules": [{"name": "第一集用一道菜立住手艺", "content": "3 分钟内完成一次出锅：火候、刀工、下料顺序、出锅时长，写清招牌菜成本率不超过 35%。让镜头拍出香气与卖相，观众要馋；手艺是这部剧唯一不可替代的底牌。"}, {"name": "被剥削要具体到数字", "content": "工资被扣 800、奖金被吞、菜谱被抄走、署名被顶、被赶出门只给 200。每一笔都要有画面（转账、扣款单、被撕的账本），恨才立得住。"}, {"name": "老店现状能算清", "content": "月租 1.2 万、40 个座位、日流水 3000、毛利率 55%、净利不到 5%、后厨 3 人。主角接手时把账算一遍，观众就知道这店为什么快死，也知道他凭什么能救。"}, {"name": "改造三步：稳出品、拉客流、再扩", "content": "先标准化 3 道招牌菜（配比、火候、出菜时间），再用套餐与外卖拉客流，最后才涨价或扩店。跳步就会翻车；每一步都要写成本与工期。"}, {"name": "打脸用餐饮行业的硬指标", "content": "客流、评分（4.9 与 3.2）、排队时长、回头率（≥60%）、月流水对比、平台榜单名次。让对手在数据面前没法辩，不靠主角喊「我做得更好吃」。"}, {"name": "手艺不可替代，只教一半", "content": "对手能抄菜单，抄不走手感：含盐量、油温、出菜节奏、老汤养护。关键一道菜只教一半工序，徒弟学废的场面要拍出来，这是主角的护城河。"}, {"name": "反派按台阶逼人", "content": "亲戚抢功→挖走厨师→造谣卫生问题→举报检查→逼低价转让。每一级都配一句冠冕堂皇的说辞（我帮你管、为你好、别丢人），得寸进尺按台阶走。"}, {"name": "卫生与合规是硬门槛", "content": "食品经营许可、后厨流程、食材溯源、消防、员工健康证，被查时要能拿出东西。翻盘用合规与留痕，不用求情；违规该认就认，认完再改。"}, {"name": "每 3 集给一个小反转", "content": "小反转指：拿回一道招牌菜、赢一次比试、签下一个供货商、评分反超、老客回流。第 10 集左右给一次大场：当众比菜、公开账目、把店盘回来。"}, {"name": "整剧禁忌清单", "content": "禁写：靠贵人一句话翻身、靠撒泼与砸店取胜、把菜谱写成玄学秘方、零成本开店、卫生问题用一句道歉带过、把顾客写成只会跟风的人。"}]}, {"id": "short_love_reversal", "name": "情感反转·追妻火葬场", "category": "短剧", "summary": "她跟男闺蜜旅游，他转身娶了前女友", "rules": [{"name": "第一集给「被轻贱」的具体场面", "content": "用一个可看的动作开场：她当众挽住别人、一句刺耳的原话、空掉的座位、退掉的机票。伤害要落在画面上，不落在旁白里。"}, {"name": "主角不哭、不闹、不解释", "content": "主角立刻做一个决定性动作：删号码、退房、签字、领证、搬走。情绪留在动作里，台词越短越狠。哭求和下跪一次就掉价，观众不会再心疼。"}, {"name": "新关系必须立得住", "content": "新对象（前女友／相亲对象）有自己的目标与条件，不是用来气人的工具。她要有要求、有拒绝、有一次反过来质问主角：你是真的想跟我过，还是想赢她。"}, {"name": "反转节点表", "content": "第 3 集她发现位置被替代、第 6 集开始嫉妒、第 10 集求复合被拒、第 15 集付出代价自证、结局她认输或成长。节点提前定好，别让情绪自己乱跑。"}, {"name": "追妻三阶：试探、失控、付代价", "content": "试探（发消息、堵门、偶遇）→失控（当众失态、插手新关系、闹到对方单位）→付代价（放弃利益、被当众拒绝、公开道歉）。没有第三阶就不算火葬场，只算纠缠。"}, {"name": "不回头要有一句能记住的理由", "content": "拒绝的理由要具体、可复述：那天你选了他、那句话我记了三年、我已经不是等你的那个人。不用大道理，用一句能当台词的短话，重复一次就够。"}, {"name": "情绪翻转每集一次，甜虐交替", "content": "每集一次情绪翻转：期待落空、旧事被揭、态度反转、被人护住。连续两集同一情绪（全甜或全虐）必须换气口；连虐不超过 2 集，第 3 集必须给一次小回报。"}, {"name": "第三者不能只靠旁白变坏", "content": "男闺蜜／绿茶要有一场自证其坏的戏：当众贬低、算计、抢功、拿她当筹码。观众要亲眼看见他做了什么，而不是听人说「他不是好人」。"}, {"name": "结局给现实代价", "content": "结局必须有人真的失去（工作、名声、家人信任），也有人真的长大（学会独立、学会道歉）。不能只留一张结婚照，也不能让伤害一句道歉就清零。"}, {"name": "整剧禁忌清单", "content": "禁写：无脑雌竞互撕、把控制与监视写成深情、误会拖过三集、女主全程等人救、男主一句「我爱你」解决所有问题、拿绝症与失忆当唯一反转。"}]}, {"id": "short_ceo_romance", "name": "豪门契约虐恋", "category": "短剧", "summary": "契约婚、先婚后爱、带球跑，甜要具体、虐要落在现实", "rules": [{"name": "契约条款要具体", "content": "婚期 1 年、月生活费 5 万、不得公开、不得干涉私事、违约赔 500 万、到期净身出户。条款写清，冲突才有依据；后面每一次撕合约、改条款都是戏。"}, {"name": "男女主各有一个不能说的目的", "content": "她要户口、救命钱、护住家人、拿回母亲的房子；他要继承权、挡掉联姻、查一桩旧案。目的藏到第 6～10 集露一角，动机一露，关系就变味。"}, {"name": "甜点密度：每集一个具体宠点", "content": "宠点要具体可见：挡酒、护场、买下整个店、替他挡一巴掌、当众改口叫「我太太」。禁止用旁白说她很幸福；甜要落在动作与旁人反应上。"}, {"name": "虐点落在现实，不落在「你听我解释」", "content": "虐靠外部压力：家族反对、债务、病情、身份差、旧案。少写无信息量的误会对话；误会一集内必须推进，靠行动化解，不靠旁人解释。"}, {"name": "反转台阶", "content": "假戏真做→身份曝光→契约作废→带球／带娃→家族反扑→旧案翻出。每一阶至少 2～3 集，别在 5 集里把所有牌打完。"}, {"name": "反派是家族与利益", "content": "婆婆、私生子、商业对手、旧未婚妻各有算盘，恶要有利益逻辑（争产、保位、报复）。不写成纯恶；也不让反派排队送死。"}, {"name": "女主自立一条线", "content": "女主有自己的工作、技能或复仇目标，能自己解决一次大危机（拿证据、谈合同、救人）。关键转折由她选择，男主只能补位不能代打。"}, {"name": "亲密尺度克制", "content": "以氛围、触碰、停顿推进，竖屏用近景与眼神，写到信任变化为止。不写露骨身体描写；每场亲密戏必须改变一件事（关系、误会、秘密、立场）。"}, {"name": "每 5 集一个名场面", "content": "当众护妻、撕契约、验 DNA、摔戒指、公开认爱、替她挨打。名场面要有人围观、有前后落差；名场面之后必须有一集关系或格局的变化。"}, {"name": "整剧禁忌清单", "content": "禁写：侮辱性台词当甜、家暴与控制写成深情、怀孕解决一切矛盾、女配只会哭与下药、全员恋爱脑、用失忆与绝症收尾。"}]}, {"id": "short_war_god", "name": "赘婿战神归来", "category": "短剧", "summary": "当众受辱、隐藏身份、阶梯打脸、旧部来投", "rules": [{"name": "第一集给最大羞辱", "content": "当众下跪、被退婚、被赶出祠堂、被骂废物、被泼酒。要有围观者、有人录像、有人笑。羞辱越具体，后面的翻盘越解气。"}, {"name": "隐藏身份要有触发条件", "content": "写清三件事：什么时候亮、亮给谁看、亮完付什么代价（旧敌上门、旧部来投、家人暴露）。身份不是开关，是引爆装置。"}, {"name": "爽点按阶梯给", "content": "第 3 集小打脸（护住妻子一次）、第 6 集身份露一角（一句话让对手变脸）、第 10 集打脸豪门（当众压住场面）、第 15 集旧部来投（格局反转）。别在第 2 集就把底牌全掀。"}, {"name": "反派分层，手段升级", "content": "岳家旁支（嘴与脸面）→地方势力（钱与人手）→旧对手（权与旧账）。每一级多一种手段，打脸方式也要换：从打嘴，到断财路，到翻旧案。"}, {"name": "打脸必须有见证", "content": "选人多的地方：商会、宴会、婚礼、宗祠、拍卖会。让第三方当场改口、跪下、让位。关起门来赢不算爽，观众要看旁人脸色变。"}, {"name": "战力与权势不许崩", "content": "一出手能解决什么要写清：能打几个人、能调多少人、能动多少钱、能压住哪一级。前面写过的边界后面不能翻倍；越级必须有条件（人手、地形、情报、对方有伤）。"}, {"name": "家人是软肋也是动机", "content": "妻子、孩子、老母被威胁时才动真格。感情线只提供动机与软肋，不拖主线；妻子要有自己的判断，能救一次场、也能拦一次错。"}, {"name": "每集留一个扣", "content": "暗处有人打电话、胎记被认出、老部下跪在门口、请柬上写着旧名、档案被翻出。卡点切在「他是谁」这个问题上，观众才想点下一集。"}, {"name": "亮身份之后必须接责任", "content": "亮了身份就要接手旧部、旧债、旧仇、旧案，不能爽完就走。代价要真实（被追杀、被请去坐镇、家人被盯上），格局才立得住。"}, {"name": "整剧禁忌清单", "content": "禁写：无脑碾压、单挑定胜负、反派排队送死、战争像儿戏、把女性当奖品、靠一句「你知道我是谁吗」解决全部冲突。"}]}, {"id": "short_rebirth_revenge", "name": "重生复仇", "category": "短剧", "summary": "回到关键那一天，逐条对账、提前一步、蝴蝶效应", "rules": [{"name": "重生点要精准", "content": "回到哪一天、哪件事之前，必须是最关键的那一刻：婚礼前夜、签合同前 3 小时、孩子出事前、被推下楼梯前。重生点决定整剧的时间压力。"}, {"name": "上一世的账要列清", "content": "谁害她、怎么害、损失多少（钱、命、名声、孩子），一条条列出来。重生后逐条对账，观众跟着数，每回收一条就是一次爽点。"}, {"name": "先知优势有边界", "content": "只记得关键节点与结果，不记得细节（具体数字、名字、地点）；改一次就会引来新变化。禁止全知全能，否则后面所有冲突都失去张力。"}, {"name": "复仇按对象排序", "content": "从最弱的帮凶下手（保姆、司机、闺蜜），逐个上溯到操盘的人（继母、未婚夫、家族）。先清理小角色，观众每 2～3 集有一次确认感。"}, {"name": "每集一个「提前一步」", "content": "抢在对方之前做事：拿回合同、换掉药、截住证据、拦住车、提前报警、先一步示爱。动作要具体到时间点，观众才觉得她赢得有理。"}, {"name": "蝴蝶效应必须出现一次", "content": "至少一次因为她的改变，好人反而受害（朋友被牵连、母亲被提前动手），逼她重新选择、承担后果。没有代价的重生是开挂，不是复仇。"}, {"name": "关系要重新评估", "content": "上一世的仇人可能是被利用的人，上一世错过的人可能有别的立场。男女主关系重写，不沿用旧结论；判断靠新证据，不靠旧记忆。"}, {"name": "反派会升级", "content": "被挫败后换手段：栽赃→买凶→联姻→举报→断供。每级多一样东西；反派也要有情报与后手，不能只等她出手。"}, {"name": "结局闭环：每人一种代价", "content": "每个害她的人都要付出代价，且方式各不相同（坐牢、破产、被揭穿、失去孩子、被反噬）。同一招清算所有人，收尾就散了。"}, {"name": "整剧禁忌清单", "content": "禁写：全知全能、复仇像开挂、反派集体变蠢、靠一句道歉和解、把重生写成单纯的先知赚钱、忽略蝴蝶效应。"}]}, {"id": "short_cute_baby", "name": "萌宝·真假千金", "category": "短剧", "summary": "萌宝助攻、身份线索阶梯、认亲靠证据", "rules": [{"name": "萌宝三个功能，不是只会卖萌", "content": "助攻（制造同框、传话、撮合）、揭露（说出关键信息、拿出旧照片）、护短（挡人、喊人、报警）。每集安排一个明确功能，台词短而准，单句不超 12 字。"}, {"name": "假千金不能是纯恶", "content": "她的恶要有动机：被养大不想失去、被威胁、被利用、怕被赶出去。给她一次犹豫或一次退让，人物才立得住，也才打得下去。"}, {"name": "身份线索阶梯", "content": "胎记→旧照片→DNA→旧保姆→医院记录→族谱，每 3～5 集露一条，不要一次全出。每条线索都要被人抢、被人毁、被人质疑一次。"}, {"name": "认亲不靠一句话", "content": "认亲要三样齐：可验证的证据、长辈态度转变、家庭利益重排（家产、抚养权、名分）。只靠一句「她才是亲生女儿」不算认亲，只算吵架。"}, {"name": "家庭利益要算清", "content": "家产、继承、抚养权、学费、医疗费、房子，冲突落在这些东西上。写清争的是多少钱、哪套房、谁的监护权，观众才知道为什么撕。"}, {"name": "卡点写在孩子身上", "content": "门被推开看见亲子鉴定、孩子喊出「妈妈」、报告被撕、孩子被抱走、旧保姆出现。集末用孩子制造悬念，比用大人吵架有效。"}, {"name": "不许伤害孩子", "content": "威胁可以（被抱走、被藏起来、被吓），直接虐童与打孩子不写。保护孩子是全剧底线，也是主角所有行动的正当性。"}, {"name": "甜点密度：每 2 集一次", "content": "团圆饭、护崽、被认可、孩子考第一、第一次叫爸爸。甜点要有人围观（亲戚、邻居、老师），甜才有对比。"}, {"name": "反转台阶", "content": "假千金作妖→线索出现→DNA 反转→家族内斗→真凶浮出→名分归位。剧集前段靠作妖拉恨，后段靠证据翻盘；每 8～10 集一次大反转。"}, {"name": "整剧禁忌清单", "content": "禁写：孩子纯工具、真假千金无逻辑互撕、靠一场哭解决全部矛盾、长辈一句话定生死、把抚养权争夺写成道德审判。"}]}, {"id": "short_era_family", "name": "年代逆袭·后妈", "category": "短剧", "summary": "七八十年代的日子账、票证细节、把日子过好就是打脸", "rules": [{"name": "年代坐标要写实", "content": "年份、票证、粮票布票、单位、住房、工资（月 30～60 元）、物价都要对得上。一个搪瓷缸、一辆自行车、一张粮票就能定位年代；器物错了，观众立刻出戏。"}, {"name": "开局给孩子一个麻烦", "content": "第一集：后妈进门、孩子生病、前妻或婆婆刁难、口粮不够。冲突落在过日子上，不落在讲道理上；孩子是这部剧的情绪核心。"}, {"name": "生存线具体到票据", "content": "粮、布、油、房、工作、上学，每件事都要有票、有门路、有人情。写清这个月还剩多少粮、借了谁的票、什么时候还。"}, {"name": "主角优势来自见识，不是超能力", "content": "会做吃的、会算账、会读书、看得懂风向（承包、集市、个体户、副业）。优势要有来源（上辈子的经验、娘家学的、读过的书），不能凭空全能。"}, {"name": "打脸靠日子过好", "content": "不比嘴仗，比可见变化：新棉被、能吃上肉、孩子成绩、家里添置、被评先进。让挑剔的人自己看见变化，比当面对骂有力。"}, {"name": "婆婆妯娌台阶", "content": "挑刺→夺权（管家权、钥匙、账本）→栽赃（丢东西、说闲话）→拉拢外人（娘家、邻居、干部）。每一级都配一句「我是为这个家」，恶要有家常味。"}, {"name": "每集一个小爽点", "content": "一顿好饭、一次被邻居夸、一次评先进、孩子第一次护她、一次把账算明白。年代剧的爽点是「过得比昨天好」，不是打脸豪门。"}, {"name": "情感克制", "content": "牵手、递物、一起干活、帮着扛事推进感情；不用现代甜宠话术，不写露骨亲密。爱情是日子的一部分，不是日子的全部。"}, {"name": "时代机会点每 10 集一次", "content": "承包、赶集、缝纫、养殖、代课、跑运输、开小卖部——每 10 集给一次机会，主角要抓住并付代价（借钱、赔本、被举报）。机会必须符合当时政策边界。"}, {"name": "整剧禁忌清单", "content": "禁写：现代器物穿越、无票据的富足生活、一夜暴富、全村无脑坏、把艰苦写成浪漫、把孩子写成只会哭的工具。"}]}, {"id": "short_palace_scheme", "name": "古装宫斗宅斗", "category": "短剧", "summary": "位分即资源、规矩即反派、每次赢都有人见血", "rules": [{"name": "开局一个位分、一个罪名", "content": "位分决定资源（月例、宫人、请医、见驾），罪名决定生死（私通、巫蛊、毒害、欺君）。第一集就把这两样摆出来，主角的处境不需要解释。"}, {"name": "后宫资源表要能算", "content": "月例多少两、几个宫人、能不能请太医、每月能见驾几次、炭与衣料几时领。斗争落在这些具体资源上，不落在大喊「我要你死」。"}, {"name": "计谋三件套：目标、手段、后手", "content": "每个计谋写清要什么、借哪条规矩或谁的手、失手怎么退。至少一次计谋只成一半，至少一次被对手识破——主角靠退得干净活下来。"}, {"name": "台词三分：暗示、试探、递话", "content": "一场对话只交换一条真信息，其余用动作与眼神；重要的表态写在行为上（送什么、拦什么、不说什么）。禁写现代白话与直白宣战。"}, {"name": "礼制与称谓不能错", "content": "位分、跪拜、服饰颜色、避讳、自称（臣妾、嫔妾、奴婢）按等级与场合；见驾、传旨、赏赐的流程写清楚。错一处就露怯，观众立刻出戏。"}, {"name": "反转节奏：2～3 集一翻，10 集一大案", "content": "小反转：证物反转、认罪反咬、假孕被揭、亲信倒戈。大案：巫蛊、毒杀、私通、谋逆，每 10 集一次，牵扯三房以上。"}, {"name": "最大的反派是规矩本身", "content": "家法、宫规、嫡庶、礼教比单个坏人更难打。赢的路径是借规矩打规矩（请家法、请旨、请宗亲），不是靠皇帝一句话开恩。"}, {"name": "女主自救一次", "content": "至少一次大危机由她自己解决：留证据、买通关键人、算准时机、以退为进。男主可以补位、可以兜底，但不能每次都代打。"}, {"name": "代价要见血", "content": "每次赢都要有人被贬、被杖、被赶出宫、被夺子，甚至死人。主角也要付出（失宠、失友、背上恶名）。只赢不输的宫斗没有重量。"}, {"name": "整剧禁忌清单", "content": "禁写：明清制度混搭、现代词汇与网络梗、宫女随便骂主子、无代价连胜、把皇帝写成随叫随到的工具人、把宫斗写成泼妇对骂。"}]}, {"id": "short_xianxia", "name": "古装玄幻·修仙逆袭", "category": "短剧", "summary": "被夺机缘、体系带数字、越级要写条件", "rules": [{"name": "开局一个被夺的机缘", "content": "灵根被夺、丹药被抢、宗门被灭、师父被害、名额被顶。开局必须有一个能立刻复仇的具体损失，不要从修炼入门讲起。"}, {"name": "修炼体系要有数字", "content": "境界分几层、每层几重、突破需要什么（丹药几枚、灵石多少、闭关几日）、每升一层能多做什么。数字写死，后面不许翻倍重算。"}, {"name": "金手指规则一次讲完", "content": "触发条件、消耗、冷却、反噬一次写清；后续按同一规则兑现。禁临时加能力、临时捡功法；每次动用都要看见代价。"}, {"name": "每 3 集一次进阶或打脸", "content": "进阶（突破、炼成新术）与打脸（斗法赢、宗门认错、长老低头）交替出现。每 10 集一次大场（宗门大比、秘境、灭门反杀）。"}, {"name": "越级取胜必须写条件", "content": "地形、暗器、符箓、对手有伤、对方轻敌、借阵法，条件缺一不可。禁写随手越两大境还毫发无伤。"}, {"name": "反派宗门阶梯", "content": "同门→执事长老→他宗→魔道→上界势力，每级多一种手段（人多、术法、法宝、规则）。反派要会算计、会埋伏、会借势。"}, {"name": "战斗要能看清", "content": "竖屏拍近身与招式，一集最多两回合；每回合写清谁出什么招、怎么破、付什么代价。不写「一掌灭山」的抽象大场面，也不靠旁白说她赢了。"}, {"name": "师徒与道侣有立场", "content": "师父可能护他也可能利用他，道侣有自己的宗门与选择。感情线不拖主线；至少一次亲近的人站在对立面。"}, {"name": "每集留一个扣", "content": "神秘人、遗书、血脉觉醒、隐世老祖、旧玉佩、残缺功法。卡点切在一个未解的来历上，观众才追。"}, {"name": "整剧禁忌清单", "content": "禁写：无代价越级、临时加设定补漏洞、反派排队送死、功法随手就有、把修炼写成刷数值、女主只会等救。"}]}, {"id": "short_suspense_twist", "name": "悬疑反转·全员恶人", "category": "短剧", "summary": "不可能的现场、每人一个秘密、反转要回收前文", "rules": [{"name": "开场一个不可能的现场", "content": "密室、死者手里握着的东西、监控少了一秒、所有人都说他昨晚在家。第一集给一个用常理解释不了的画面，观众才会停下来。"}, {"name": "每个角色都有一条见不得光的事", "content": "3～5 个角色，每人一个秘密（钱、情、仇、病、身份），彼此不重叠。秘密要在他被逼问时露一角，不能一次说完。"}, {"name": "线索公平，误导有动机", "content": "关键线索必须在揭晓前以画面出现过；误导线索要用人物动机解释（谁在遮掩什么）。禁只在最后一集拿出决定性证据。"}, {"name": "反转节奏：3～4 集一小翻，8～10 集一大翻", "content": "小反转：证词对不上、物证被调包、某人说谎被拆。大反转：凶手换人、死者身份错、多年前旧案翻出。每个反转都要回收前文埋过的东西。"}, {"name": "讯问只问可验证的细节", "content": "几点、吃什么、谁在场、灯亮没亮、走哪条路、用了多久。抓矛盾用具体对照（你说九点在家，可小票是九点二十）。禁问「是你杀的吧」。"}, {"name": "时间表制度", "content": "每人每时段在哪、谁作证、空档为什么空。主角的推论必须回到时间表上，不能只在脑内成立；表上对不上的那一格就是破口。"}, {"name": "破案不能靠巧合", "content": "只能靠已铺垫的线索、人物失误、或主角主动设局。禁靠偶然听见、恰好下雨、临时良心发现收案。"}, {"name": "全员恶人要收得住", "content": "每个人都要为自己的恶付代价，赢家也不是纯善。结局留一点未解的余味（一个没找到的人、一封没拆的信），但主线必须闭合。"}, {"name": "竖屏悬疑的视觉钩", "content": "特写物证、镜面反射里的人影、门外脚步、手机弹窗、监控时间戳、反复出现的同一物件。用画面制造不安，不靠配乐吓人。"}, {"name": "整剧禁忌清单", "content": "禁写：叙述欺骗（主视角隐瞒所见）、最后一集才给关键证据、靠巧合与超自然破案、凶手没有动机、反转只为炫技不回收前文。"}]}]};
+const PACKS = DATA.packs;
+
+/* 体系维度：导入时按关键词自动归组（对应 DB 新增的 group 字段） */
+const GROUPS = ['题材定位','结构节奏','人物与视角','文风语言','逻辑约束','禁忌清单','考据制度'];
+function pickGroup(packCat, packName, name){
+  // 只看规则名与包分类，不看正文，避免长文里到处命中关键词
+  if (/禁忌/.test(name)) return '禁忌清单';
+  if (packCat === '制度' || /官场|三省|六部|政事堂|票拟|批红|品级|铨选|卫所|州县|科举|法度/.test(name)) return '考据制度';
+  if (/台词|文风|语言|描写|短句|用词|腔调/.test(name)) return '文风语言';
+  if (/时间表|物证|线索|证据|常识|限制|监控|通讯|法医|账|链条|价格|损耗|流程|机制|边界|代价|对账|讯问|问话/.test(name)) return '逻辑约束';
+  if (/结构|集数|单集|秒|章|节奏|卡点|开场|钩子|删集|反转|密度|收尾|开局|集末|整剧|场景|成本|规格|三定|爽点|打脸|反制|翻盘/.test(name)) return '结构节奏';
+  if (/人物|角色|主角|反派|嫌疑|配角|关系|情感|视角|动机|人设|证人|侦探|女主|男主|村民|干部/.test(name)) return '人物与视角';
+  return '题材定位';
+}
+
+let myRules = [];
+let uid = 0;
+function importPack(pack, idxs){
+  idxs.forEach(i=>{
+    const r = pack.rules[i];
+    myRules.push({
+      id:'r'+(uid++), name:r.name, content:r.content,
+      packId:pack.id, packName:pack.name, packCat:pack.category,
+      group:pickGroup(pack.category, pack.name, r.name),
+      enabled:true
+    });
+  });
+}
+
+/* 初始：悬疑推理 12 + 短剧通则 10 + 都市逆袭 5 = 27，再手动补几条到 38 的规模感 */
+const P = id => PACKS.find(p=>p.id===id);
+importPack(P('suspense_mystery'), P('suspense_mystery').rules.map((_,i)=>i));
+importPack(P('short_craft'), P('short_craft').rules.map((_,i)=>i));
+importPack(P('short_urban_slap'), [0,1,2,5,6]);
+
+const state = { group:'ALL', activeId: (myRules.find(r=>/法医/.test(r.name))||myRules[0]).id, q:'', libCat:'短剧', libPack:'short_craft', sel:{}, editing:false };
+
+function visible(){
+  let list = myRules;
+  if (state.group !== 'ALL'){
+    if (state.group.startsWith('PACK:')) list = list.filter(r=>r.packName===state.group.slice(5));
+    else list = list.filter(r=>r.group===state.group);
+  }
+  if (state.q){
+    const q = state.q.toLowerCase();
+    list = list.filter(r=>(r.name+r.content).toLowerCase().includes(q));
+  }
+  return list;
+}
+function counts(){
+  const m = {}; GROUPS.forEach(g=>m[g]=0);
+  myRules.forEach(r=>{ m[r.group] = (m[r.group]||0)+1; });
+  return m;
+}
+function renderTree(){
+  const c = counts();
+  let h = `<div class="cap"><span>规则体系</span><span title="demo 未实现">＋ 分组</span></div>
+    <div class="gi all ${state.group==='ALL'?'on':''}" data-g="ALL"><span class="nm">全部规则</span><span class="n">${myRules.length}</span></div>`;
+  GROUPS.forEach(g=>{
+    h += `<div class="gi ${state.group===g?'on':''}" data-g="${g}"><span class="nm">${g}</span><span class="n">${c[g]||0}</span></div>`;
+  });
+  const byPack = {};
+  myRules.forEach(r=>{ byPack[r.packName] = (byPack[r.packName]||0)+1; });
+  h += `<div style="height:6px"></div><div class="cap" style="padding-top:10px"><span>来源</span></div>`;
+  Object.keys(byPack).forEach(pn=>{
+    h += `<div class="gi ${state.group==='PACK:'+pn?'on':''}" data-pack="${pn}"><span class="nm" style="font-weight:${state.group==='PACK:'+pn?600:400}">${pn}</span><span class="n">${byPack[pn]}</span></div>`;
+  });
+  const t = document.getElementById('tree');
+  t.innerHTML = h;
+  t.querySelectorAll('.gi').forEach(el=>{
+    el.onclick = ()=>{
+      state.group = el.dataset.pack ? 'PACK:'+el.dataset.pack : el.dataset.g;
+      const v = visible();
+      state.activeId = v.length ? v[0].id : null;
+      state.editing = false;
+      renderAll();
+    };
+  });
+}
+function renderList(){
+  const list = visible();
+  document.getElementById('listTitle').textContent =
+    state.group==='ALL' ? '全部规则'
+    : state.group.startsWith('PACK:') ? '来源 · '+state.group.slice(5) : state.group;
+  document.getElementById('listMeta').textContent =
+    `${list.length} 条 · 启用 ${list.filter(r=>r.enabled).length}`;
+  document.getElementById('tabMineN').textContent = myRules.length;
+  document.getElementById('headCnt').textContent =
+    `${myRules.length} 条 · 全部启用 ${myRules.filter(r=>r.enabled).length}`;
+  const rows = document.getElementById('rows');
+  if (!list.length){ rows.innerHTML = '<div class="empty">这个分组下还没有规则</div>'; return; }
+  rows.innerHTML = list.map(r=>{
+    const first = r.content.split('。')[0] + '。';
+    return `<div class="r ${r.id===state.activeId?'on':''} ${r.enabled?'':'off'}" data-id="${r.id}">
+      <div class="body">
+        <div class="nm"><span class="nt">${r.name}</span></div>
+        <div class="sub">${first}</div>
+        <div class="meta"><span class="chip pk">${r.packName}</span><span class="chip">${r.group}</span></div>
+      </div>
+      <div class="sw ${r.enabled?'on':''}" data-sw="${r.id}"></div>
+    </div>`;
+  }).join('');
+  rows.querySelectorAll('.r').forEach(el=>{
+    el.onclick = e=>{
+      if (e.target.classList.contains('sw')) return;
+      state.activeId = el.dataset.id; state.editing = false;
+      renderList(); renderDetail();
+    };
+  });
+  rows.querySelectorAll('.sw').forEach(el=>{
+    el.onclick = e=>{
+      e.stopPropagation();
+      const r = myRules.find(x=>x.id===el.dataset.sw);
+      r.enabled = !r.enabled;
+      renderList(); renderDetail();
+    };
+  });
+}
+function clauses(content){
+  return content.split(/[。；]/).map(s=>s.replace(/^[一二三四五六七八九十]+是/,'').trim()).filter(Boolean);
+}
+function numbers(content){
+  const unit = '(?:秒|分钟|小时|天|个|条|人|字|集|章|元|万|%|次|场|倍|页|厘米|米)';
+  const re = new RegExp('\\d+(?:\\.\\d+)?\\s?(?:～|~|-)\\s?\\d+(?:\\.\\d+)?\\s?' + unit + '?|\\d+(?:\\.\\d+)?\\s?' + unit, 'g');
+  const m = content.match(re) || [];
+  return Array.from(new Set(m.map(s=>s.replace(/\s+/g,' ').trim()))).slice(0,6);
+}
+function shortPhrase(s){
+  const head = s.split('，')[0].replace(/^[一二三四五六七八九十0-9]+是?/,'').trim();
+  return head.length > 20 ? head.slice(0,20) + '…' : head;
+}
+function checks(content){
+  const raw = content.split(/[。；]/).map(s=>s.trim()).filter(Boolean)
+    .filter(s=>/必须|禁止|不许|不能|每|至少|不超过|只在|只允许/.test(s))
+    .map(shortPhrase).filter(Boolean);
+  return Array.from(new Set(raw)).slice(0,4);
+}
+function renderDetail(){
+  const box = document.getElementById('detail');
+  const r = myRules.find(x=>x.id===state.activeId);
+  if (!r){ box.innerHTML = '<div class="empty">左侧选一条规则</div>'; return; }
+
+  const head = `<div class="dh">
+    <div class="crumb">智能体规则 <span>›</span> <b>${r.group}</b></div>
+    <h2>${r.name}</h2>
+    <div class="tags">
+      <span class="chip pk">${r.packName}</span>
+      <span class="chip">${r.packCat}</span>
+      <span class="chip">${r.enabled?'已启用':'已停用'}</span>
+    </div>
+  </div>`;
+
+  if (state.editing){
+    box.innerHTML = head + `<div class="db"><div class="sec">名称</div>
+      <input id="edName" value="${r.name}" style="width:100%;border:1px solid #e4e4df;border-radius:9px;padding:8px 10px;font:inherit;outline:none">
+      <div class="sec">条款正文</div>
+      <textarea id="edBody" style="width:100%;height:360px;border:1px solid #e4e4df;border-radius:9px;padding:10px;font:inherit;line-height:1.7;resize:vertical;outline:none">${r.content}</textarea>
+      <div style="margin-top:14px;display:flex;gap:8px"><button class="btn" id="saveRule">保存</button><button class="btn ghost" id="cancelEdit">取消</button></div>
+      </div>`;
+    box.querySelector('#cancelEdit').onclick = ()=>{ state.editing=false; renderDetail(); };
+    box.querySelector('#saveRule').onclick = ()=>{
+      r.name = box.querySelector('#edName').value.trim() || r.name;
+      r.content = box.querySelector('#edBody').value.trim() || r.content;
+      state.editing = false; renderList(); renderDetail(); toast('已保存 · 右栏编辑不用整页跳转');
+    };
+    return;
+  }
+
+  const cls = clauses(r.content);
+  const cks = checks(r.content).filter(p=>!r.content.startsWith(p.replace('…','')));
+  const nums = numbers(r.content);
+  const sibs = myRules.filter(x=>x.group===r.group && x.id!==r.id).slice(0,3);
+  const order = myRules.filter(x=>x.enabled).indexOf(r) + 1;
+
+  box.innerHTML = head + `<div class="db">
+    <div class="sec">条款</div>
+    ${cls.map((s,i)=>`<div class="cl"><span class="no">${String(i+1).padStart(2,'0')}</span><span>${s}。</span></div>`).join('')}
+
+    ${nums.length?`<div class="sec">硬约束 · 条款里的数字与阈值</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${nums.map(n=>`<span class="chip" style="background:#fff">${n}</span>`).join('')}</div>`:''}
+
+    <div class="sec">自检项（写章后可勾）</div>
+    ${cks.length ? cks.map((s,i)=>`<div class="ck" data-ck="${i}"><div class="box"></div><span>${s}</span></div>`).join('')
+      : `<div style="font-size:11.5px;color:#b0b6be;padding:2px 0">这条还没填自检项 · <span style="color:#4a4f57;cursor:pointer">＋ 添加检查点</span></div>`}
+
+    <div class="sec">同组关联</div>
+    ${sibs.map(s=>`<div class="rel" data-go="${s.id}"><i></i><span>${s.name}</span></div>`).join('') || '<div style="font-size:12px;color:#b0b6be">暂无</div>'}
+
+    <div class="sec">送达位置</div>
+    <div class="hit">
+      <div class="hh"><span>拼进提示词时</span><span>顺序</span></div>
+      <div class="hl">作用于全书 · 每次生成都送<span></span><em>第 ${order||1} 位</em></div>
+      <div class="hl">本组共 ${myRules.filter(x=>x.group===r.group).length} 条 · 启用 ${myRules.filter(x=>x.group===r.group&&x.enabled).length}<span></span><em>${r.group}</em></div>
+    </div>
+  </div>
+  <div class="df">
+    <button class="btn" id="editBtn">编辑</button>
+    <button class="btn ghost" id="tryBtn">试写对比</button>
+    <button class="del" id="delBtn">${r.enabled?'停用':'启用'}</button>
+  </div>`;
+
+  box.querySelectorAll('.ck').forEach(el=>{
+    el.onclick = ()=>el.classList.toggle('done');
+  });
+  box.querySelectorAll('.rel').forEach(el=>{
+    el.onclick = ()=>{ state.activeId = el.dataset.go; renderList(); renderDetail(); };
+  });
+  box.querySelector('#editBtn').onclick = ()=>{ state.editing = true; renderDetail(); };
+  box.querySelector('#tryBtn').onclick = ()=>toast('试写对比：同一段正文，带这条规则 / 不带，左右并排给两版');
+  box.querySelector('#delBtn').onclick = ()=>{
+    r.enabled = !r.enabled; renderList(); renderDetail();
+  };
+}
+
+/* ---------- 规则库 ---------- */
+function renderCatalog(){
+  const cats = {};
+  PACKS.forEach(p=>{ cats[p.category] = (cats[p.category]||0)+1; });
+  const order = ['短剧','推理','古代','男频','女频','科幻','种田','系统流','都市','制度'];
+  let h = `<div class="cap" style="padding:0 8px 8px"><span>分类</span></div>`;
+  order.filter(c=>cats[c]).forEach(c=>{
+    h += `<div class="gi ${state.libCat===c?'on':''}" data-cat="${c}"><span class="nm">${c}</span><span class="n">${cats[c]}</span></div>`;
+  });
+  const box = document.getElementById('libCat');
+  box.innerHTML = h;
+  box.querySelectorAll('.gi').forEach(el=>{
+    el.onclick = ()=>{
+      state.libCat = el.dataset.cat;
+      const first = PACKS.find(p=>p.category===state.libCat);
+      state.libPack = first ? first.id : null;
+      renderCatalog(); renderPacks(); renderPackDetail();
+    };
+  });
+}
+function importedCount(pid){
+  return myRules.filter(r=>r.packId===pid).length;
+}
+function renderPacks(){
+  const list = PACKS.filter(p=>p.category===state.libCat);
+  document.getElementById('libPacks').innerHTML = list.map(p=>{
+    const n = importedCount(p.id);
+    let badge = '';
+    if (n >= p.rules.length) badge = `<span class="imp all">已全导入 ${n}/${p.rules.length}</span>`;
+    else if (n > 0) badge = `<span class="imp">已导入 ${n}/${p.rules.length}</span>`;
+    else badge = `<span class="imp">${p.rules.length} 条</span>`;
+    return `<div class="pcard ${state.libPack===p.id?'on':''}" data-p="${p.id}">
+      <div class="pn">${p.name}${badge}</div>
+      <div class="ps">${p.summary}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('libPacks').querySelectorAll('.pcard').forEach(el=>{
+    el.onclick = ()=>{ state.libPack = el.dataset.p; renderPacks(); renderPackDetail(); };
+  });
+}
+function renderCart(){
+  const packs = Object.keys(state.sel).filter(pid=>state.sel[pid] && state.sel[pid].size);
+  const total = packs.reduce((a,pid)=>a+state.sel[pid].size,0);
+  const cart = document.getElementById('cart');
+  if (!total){
+    cart.innerHTML = `<span>已选 0 条 · 可跨包勾选，一次导入</span><span class="sum">合计 0</span>`;
+  } else {
+    cart.innerHTML = `<span>已选</span>` +
+      packs.map(pid=>{
+        const p = PACKS.find(x=>x.id===pid);
+        return `<span class="citem">${p.name} <b>${state.sel[pid].size}</b></span>`;
+      }).join('') +
+      `<span class="sum">合计 ${total} 条</span>`;
+  }
+}
+function renderPackDetail(){
+  const box = document.getElementById('libDetail');
+  const p = PACKS.find(x=>x.id===state.libPack);
+  if (!p){ box.innerHTML = '<div class="empty">左侧选一个分类</div>'; renderCart(); return; }
+  if (!state.sel[p.id]) state.sel[p.id] = new Set();
+  const sel = state.sel[p.id];
+  const n = importedCount(p.id);
+  const free = p.rules.map((r,i)=>i).filter(i=>!myRules.some(x=>x.packId===p.id && x.name===p.rules[i].name));
+
+  box.innerHTML = `<div class="dh">
+    <div class="crumb">规则库 <span>›</span> <b>${p.category}</b></div>
+    <h2>${p.name}</h2>
+    <div class="tags">
+      <span class="chip">${p.rules.length} 条</span>
+      <span class="chip pk">${n?`本作品已导入 ${n} 条`:'尚未导入'}</span>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:#8b9199;line-height:1.6">${p.summary}</div>
+  </div>
+  <div class="db" style="padding:10px 12px">
+    <div style="display:flex;align-items:center;gap:8px;padding:0 4px 6px">
+      <span class="sec" style="margin:0">包内规则</span>
+      <span style="margin-left:auto;font-size:11px;color:#a2a8b0;cursor:pointer" id="selAll">${free.length?((free.every(i=>sel.has(i)))?'取消全选':'全选可导入 '+free.length+' 条'):'已全部在库'}</span>
+    </div>
+    ${p.rules.map((r,i)=>{
+      const already = myRules.some(x=>x.packId===p.id && x.name===r.name);
+      return `<div class="lr ${sel.has(i)?'sel':''} ${already?'locked':''}" data-i="${i}" data-locked="${already?1:0}">
+        <div class="box"></div>
+        <div class="lt"><b>${r.name}${already?' <span class="chip" style="margin-left:4px">已在库</span>':''}</b><p>${r.content}</p></div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div class="df">
+    <button class="btn" id="doImport">导入 ${sel.size} 条</button>
+    <span style="font-size:11px;color:#a2a8b0">自动归入 ${GROUPS.length} 个维度</span>
+    <button class="del" id="clearSel">清空已选</button>
+  </div>`;
+
+  box.querySelectorAll('.lr').forEach(el=>{
+    el.onclick = ()=>{
+      const i = +el.dataset.i;
+      if (el.dataset.locked === '1'){ toast('「'+p.rules[i].name+'」已经在库里了，不会重复导入'); return; }
+      if (sel.has(i)) sel.delete(i); else sel.add(i);
+      renderPackDetail(); renderCart();
+    };
+  });
+  box.querySelector('#selAll').onclick = ()=>{
+    const allSel = free.length && free.every(i=>sel.has(i));
+    if (allSel) state.sel[p.id] = new Set();
+    else state.sel[p.id] = new Set(free);
+    renderPackDetail(); renderCart();
+  };
+  box.querySelector('#clearSel').onclick = ()=>{
+    state.sel = {}; renderPackDetail(); renderCart();
+  };
+  box.querySelector('#doImport').onclick = ()=>{
+    if (!sel.size) { toast('先勾选要导入的规则'); return; }
+    let total = 0;
+    Object.keys(state.sel).forEach(pid=>{
+      if (!state.sel[pid].size) return;
+      const pk = PACKS.find(x=>x.id===pid);
+      const skip = pk.rules.map((r,i)=>i).filter(i=>myRules.some(x=>x.packId===pid && x.name===pk.rules[i].name));
+      const todo = [...state.sel[pid]].filter(i=>!skip.includes(i));
+      if (todo.length){ importPack(pk, todo); total += todo.length; }
+    });
+    state.sel = {};
+    state.group = 'ALL';
+    const v = visible(); state.activeId = v.length ? v[0].id : null;
+    switchTab('mine');
+    renderAll();
+    toast(`已导入 ${total} 条 · 按维度自动归组，规则数 ${myRules.length}`);
+  };
+  renderCart();
+}
+
+/* ---------- 通用 ---------- */
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.innerHTML = msg;
+  t.classList.add('on');
+  clearTimeout(t._tm);
+  t._tm = setTimeout(()=>t.classList.remove('on'), 2600);
+}
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on', el.dataset.tab===name));
+  document.getElementById('view-mine').classList.toggle('on', name==='mine');
+  document.getElementById('view-lib').classList.toggle('on', name==='lib');
+  if (name==='lib'){ renderCatalog(); renderPacks(); renderPackDetail(); }
+}
+function renderAll(){ renderTree(); renderList(); renderDetail(); }
+
+document.querySelectorAll('.tab').forEach(el=>{
+  el.onclick = ()=>switchTab(el.dataset.tab);
+});
+document.getElementById('q').oninput = e=>{
+  state.q = e.target.value.trim();
+  const v = visible();
+  if (!v.some(r=>r.id===state.activeId)) state.activeId = v.length ? v[0].id : null;
+  renderList(); renderDetail();
+};
+document.getElementById('groupSw').onclick = e=>{
+  const list = visible();
+  const allOn = list.every(r=>r.enabled);
+  list.forEach(r=>r.enabled = !allOn);
+  e.currentTarget.classList.toggle('on', !allOn);
+  renderList(); renderDetail();
+};
+
+renderAll();
+if (location.hash === '#lib') switchTab('lib'); else switchTab('mine');
+
+
+</script>
+</body>
+</html>

@@ -31,6 +31,11 @@ const revericSkillsCatalogUrl =
 const revericPluginMarketplaceIndexUrl =
     'https://downloads.reveric.app/plugins/index.json';
 
+/// 规则库热更清单地址：清单与各数据文件同目录，版本号递增即可热更。
+/// 为空表示只使用安装包内置规则库，不发网络请求。
+const revericRulePackManifestUrl =
+    'https://raw.githubusercontent.com/zhnn456/shutong-studio/main/rule_packs/manifest.json';
+
 /// AGPLv3 第 7 条附加条款要求修改版保留的作者署名，与 NOTICES 保持一致，不做本地化。
 const revericAttribution = 'Based on Reveric by looplj.';
 
