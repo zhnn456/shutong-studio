@@ -324,6 +324,33 @@ class _PackListColumn extends StatelessWidget {
   final String? selectedPackId;
   final ValueChanged<String> onSelect;
 
+  /// 包数量变多（小说 + 短剧）后，按 category 分段显示，避免一长条平铺。
+  List<_PackGroupRow> get _groupedRows {
+    final counts = <String, int>{};
+    final order = <String>[];
+    for (final pack in packs) {
+      final key = _categoryOf(pack);
+      if (!counts.containsKey(key)) {
+        order.add(key);
+        counts[key] = 0;
+      }
+      counts[key] = counts[key]! + 1;
+    }
+    final rows = <_PackGroupRow>[];
+    for (final key in order) {
+      rows.add(_PackGroupRow.header(key, counts[key]!));
+      for (final pack in packs) {
+        if (_categoryOf(pack) == key) {
+          rows.add(_PackGroupRow.pack(pack));
+        }
+      }
+    }
+    return rows;
+  }
+
+  static String _categoryOf(AgentRulePack pack) =>
+      pack.category.trim().isEmpty ? '其他' : pack.category.trim();
+
   @override
   Widget build(BuildContext context) {
     final colors = RevericTheme.colorsOf(context);
@@ -363,9 +390,24 @@ class _PackListColumn extends StatelessWidget {
                   ),
                 )
               : ListView.builder(
-                  itemCount: packs.length,
+                  itemCount: _groupedRows.length,
                   itemBuilder: (context, index) {
-                    final pack = packs[index];
+                    final row = _groupedRows[index];
+                    final pack = row.pack;
+                    if (pack == null) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          top: index == 0 ? 0 : RevericSpacing.sm,
+                          bottom: RevericSpacing.xxs,
+                        ),
+                        child: Text(
+                          '${row.header}（${row.count}）',
+                          style: typo.uiTinySemibold.copyWith(
+                            color: colors.textSubtle,
+                          ),
+                        ),
+                      );
+                    }
                     return _PackListItem(
                       pack: pack,
                       active: pack.id == selectedPackId,
@@ -377,6 +419,15 @@ class _PackListColumn extends StatelessWidget {
       ],
     );
   }
+}
+
+class _PackGroupRow {
+  const _PackGroupRow.header(this.header, this.count) : pack = null;
+  const _PackGroupRow.pack(this.pack) : header = null, count = 0;
+
+  final String? header;
+  final int count;
+  final AgentRulePack? pack;
 }
 
 class _PackListItem extends StatelessWidget {

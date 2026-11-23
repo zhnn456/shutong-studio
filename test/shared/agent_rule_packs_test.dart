@@ -11,8 +11,13 @@ void main() {
   test('内置规则包可加载且结构完整', () async {
     final packs = await loadAgentRulePacks(refresh: true);
 
-    expect(packs, isNotEmpty, reason: 'assets/rule_packs/rule_packs.json 应可被读取');
-    expect(packs.length, greaterThanOrEqualTo(8), reason: '题材包数量不应被意外删减');
+    expect(packs, isNotEmpty, reason: 'assets/rule_packs 下的资源应可被读取');
+    expect(packs.length, greaterThanOrEqualTo(20), reason: '小说 + 短剧两套资源合起来不应少于 20 个包');
+    expect(
+      packs.where((pack) => pack.category == '短剧').length,
+      greaterThanOrEqualTo(10),
+      reason: '竖屏短剧流派包不应少于 10 个',
+    );
 
     final ids = <String>{};
     final names = <String>{};

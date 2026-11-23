@@ -1,6 +1,7 @@
-// 职责: 读取内置规则包资源，并把选中的规则包写入作品内容库。
+// 职责: 读取内置规则包资源（小说 + 短剧两套资源），并把选中的规则包写入作品内容库。
 // 关联文件:
 //   assets/rule_packs/rule_packs.json
+//   assets/rule_packs/short_drama_packs.json
 //   lib/shared/models/agent_rule_pack.dart
 //   lib/shared/services/agent_rule_copy_service.dart
 //   lib/desktop/widgets/agent_management/agent_rule_pack_dialog.dart
@@ -19,34 +20,53 @@ import 'novel_content.dart';
 
 final _log = AppLogger.forModule('AgentRulePack');
 
+/// 内置规则包资源清单：小说题材包 + 竖屏短剧流派包，按顺序合并。
+const List<String> rulePackAssetPaths = <String>[
+  'assets/rule_packs/rule_packs.json',
+  'assets/rule_packs/short_drama_packs.json',
+];
+
 const String _assetPath = 'assets/rule_packs/rule_packs.json';
 
 List<AgentRulePack>? _cache;
 
-/// 读取内置规则包（assets/rule_packs/rule_packs.json），进程内缓存一次。
+/// 读取内置规则包（[rulePackAssetPaths] 里的全部资源），进程内缓存一次。
 Future<List<AgentRulePack>> loadAgentRulePacks({bool refresh = false}) async {
   final cached = _cache;
   if (cached != null && !refresh) {
     return cached;
   }
-  try {
-    final raw = await rootBundle.loadString(_assetPath);
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map<String, dynamic>) {
-      throw const FormatException('rule_packs.json 顶层不是对象');
+  final packs = <AgentRulePack>[];
+  var loadedAny = false;
+  for (final assetPath in rulePackAssetPaths) {
+    try {
+      final raw = await rootBundle.loadString(assetPath);
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        throw FormatException('$assetPath 顶层不是对象');
+      }
+      packs.addAll(<AgentRulePack>[
+        for (final item in (decoded['packs'] as List? ?? const []))
+          if (item is Map<String, dynamic>) AgentRulePack.fromJson(item),
+      ]);
+      loadedAny = true;
+    } catch (error, stackTrace) {
+      // 单个资源坏掉不应让整套规则库失效，其余包照常可用。
+      _log.error(
+        'load rule packs failed asset=$assetPath',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
-    final packs = <AgentRulePack>[
-      for (final item in (decoded['packs'] as List? ?? const []))
-        if (item is Map<String, dynamic>) AgentRulePack.fromJson(item),
-    ].where((pack) {
-      return pack.id.isNotEmpty && pack.name.isNotEmpty && pack.rules.isNotEmpty;
-    }).toList(growable: false);
-    _cache = packs;
-    return packs;
-  } catch (error, stackTrace) {
-    _log.error('load rule packs failed asset=$_assetPath', error: error, stackTrace: stackTrace);
+  }
+  if (!loadedAny) {
     return const <AgentRulePack>[];
   }
+  final usable = packs.where((pack) {
+    return pack.id.isNotEmpty && pack.name.isNotEmpty && pack.rules.isNotEmpty;
+  }).toList(growable: false);
+  _cache = usable;
+  return usable;
 }
 
 /// 把规则包中的规则写入目标作品，跳过目标里已有的同名规则。
