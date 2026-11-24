@@ -2015,6 +2015,7 @@ abstract final class LocaleKeys {
   static const commonChangeTrim = 'common.change_trim';
   static const commonChapterNumber = 'common.chapter_number';
   static const commonClose = 'common.close';
+  static const commonWhatsNewGotIt = 'common.whats_new_got_it';
   static const commonCollapse = 'common.collapse';
   static const commonCollapseSidebar = 'common.collapse_sidebar';
   static const commonComplexity = 'common.complexity';

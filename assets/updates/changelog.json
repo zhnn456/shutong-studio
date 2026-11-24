@@ -1,0 +1,38 @@
+{
+  "releases": [
+    {
+      "version": "0.6.15",
+      "date": "2026-11-24",
+      "title": {
+        "zh": "开书骨架补齐了，更新也不用你自己猜",
+        "en": "Full skeleton for new books, and updates now tell you what changed"
+      },
+      "items": [
+        {
+          "zh": "一键开书先搭好整个骨架：世界观 5 条、核心角色 6–8 张，每张写满九项设定，动机、秘密、成长线、说话习惯都在",
+          "en": "Setup lays the full skeleton first: five worldbuilding entries and 6–8 core characters, each with nine fields"
+        },
+        {
+          "zh": "每一卷都有一份卷合同：从哪开始、到哪结束、什么必须发生、什么不许提前写完，一次说清",
+          "en": "Every volume gets a contract: where it starts, where it ends, what must happen, what may not be resolved early"
+        },
+        {
+          "zh": "每一卷的每一章都有标题和梗概，不再是清一色的「第 X 章」",
+          "en": "Every chapter in every volume now has a title and a synopsis"
+        },
+        {
+          "zh": "概览页直接列出还缺什么——缺卷合同、缺章节标题、当前卷缺章纲，看到就能补",
+          "en": "The overview page lists what is still missing, so you can fill it in right away"
+        },
+        {
+          "zh": "「按卷补章」一次把当前这一卷排到位，最多 35 章，每章自动带上六项章纲",
+          "en": "Fill chapters by volume: plan a whole volume at once, up to 35 chapters with six-field outlines"
+        },
+        {
+          "zh": "从现在起，每次更新后首页右下角会告诉你这次改了什么，看完点一下关掉就不再出现",
+          "en": "From now on, each update shows a short note on the home screen; dismiss it once and it stays gone"
+        }
+      ]
+    }
+  ]
+}

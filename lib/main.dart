@@ -44,6 +44,7 @@ import 'shared/components/reveric_placeholder.dart';
 import 'shared/localization/locale_keys.dart';
 import 'desktop/widgets/settings/settings_dialog.dart';
 import 'desktop/pages/onboarding.dart';
+import 'desktop/widgets/whats_new/whats_new_host.dart';
 import 'mobile/app.dart';
 import 'mobile/pages/settings_page.dart';
 import 'shared/widgets/update/reminder.dart';
@@ -590,7 +591,9 @@ class MyApp extends ConsumerWidget {
             },
             data: (completed) {
               _log.info('MyApp: onboarding loaded completed=$completed');
-              return completed ? const NovelHomePage() : const OnboardingPage();
+              return completed
+                  ? const WhatsNewHost(child: NovelHomePage())
+                  : const OnboardingPage();
             },
           );
         }

@@ -72,6 +72,21 @@ git checkout sync/f2-screenplay-canvas
 
 - 状态：未开始
 
+### 第 5 步：更新后的首页浮窗（What's New）
+
+- 状态：**已完成**（与第 1–3 步一起打进 0.6.15）
+- 改动文件：
+  - `assets/updates/changelog.json`（新建）：本地更新说明，按语言存 zh/en，只写用户能得到的好处，不写技术细节。
+  - `lib/shared/services/whats_new_service.dart`（新建）：读说明 + 比对已读版本 + 写入已读；任何异常静默返回 null，不弹。
+  - `lib/desktop/widgets/whats_new/whats_new_host.dart`（新建）：首页右下角浮窗，滑入 + 淡入，关闭走了 `markSeen`。
+  - `lib/main.dart`：首页 `NovelHomePage` 外包一层 `WhatsNewHost`（只包 onboarding 完成后的桌面首页，移动端与 onboarding 页不受影响）。
+  - `pubspec.yaml`：assets 增加 `assets/updates/`（**Flutter 不递归扫描，不声明就打不进包**）；版本 `0.6.14` → `0.6.15+1`。
+  - `lib/shared/app_config.dart`：`appVersion` → `0.6.15`。
+  - `assets/translations/{zh-CN,en}/common.json` + `lib/shared/localization/locale_keys.dart`：新增 `common.whats_new_got_it`。
+- 行为：版本号变化后首次进入首页弹一次；点「知道了」或右上角关闭即记录已读，同版本永不再弹。已读键是 `SharedPreferences` 的 `whats_new_seen_version`，删掉该键即可让它重现。
+- **发版约定（必须遵守）**：以后每次发版，`pubspec.yaml` 的 `version`、`app_config.dart` 的 `appVersion`、`changelog.json` 里最新一条的 `version` **三处同时改**，少一处就会出现"更新了但不弹"或"弹的是上一版内容"。
+- 想临时关掉浮窗：把 `main.dart` 里 `WhatsNewHost(child: NovelHomePage())` 改回 `NovelHomePage()` 即可，其余功能不受影响。
+
 ## 不适用的处理原则
 
 接入后若发现用起来不合适，优先**调参数而不是拆机制**：窗口大小（50 章）、每 5 章预算、角色数量下限、梗概字数这些都是常量，可单独调；只有机制本身判断错误时才整步回滚。
