@@ -3,6 +3,8 @@
 //   lib/shared/providers/ai_shortcut_action_providers.dart
 //   lib/shared/database/daos/ai_shortcut_action_dao.dart
 //   lib/shared/database/app_database.dart
+//   lib/shared/models/builtin_shortcut_prompts.dart（内置动作的完整提示词）
+import 'builtin_shortcut_prompts.dart';
 
 enum AiShortcutActionLocation {
   novel_description,
@@ -109,6 +111,7 @@ class BuiltinAiShortcutAction {
     required this.locations,
     this.autoSend = false,
     this.enabled = true,
+    this.promptRevision = 1,
   });
 
   final String id;
@@ -117,6 +120,9 @@ class BuiltinAiShortcutAction {
   final List<AiShortcutActionLocation> locations;
   final bool autoSend;
   final bool enabled;
+
+  /// 提示词版本号。升级内置提示词时递增，初始化时据此覆盖用户库里仍是旧版的条目。
+  final int promptRevision;
 
   AiShortcutActionDefinition toDefinition({required int sortOrder}) {
     return AiShortcutActionDefinition(
@@ -136,37 +142,42 @@ const builtinAiShortcutActions = <BuiltinAiShortcutAction>[
   BuiltinAiShortcutAction(
     id: 'outline_beat_generate_chapter_outlines',
     name: '生成章纲',
-    prompt: '请根据当前选中的节拍和所属大纲，生成这个节拍覆盖的所有章节大纲。',
+    prompt: builtinPromptOutlineBeatToChapters,
     locations: [AiShortcutActionLocation.outline_beat],
+    promptRevision: 2,
   ),
   BuiltinAiShortcutAction(
     id: 'chapter_generate_draft',
     name: '生成正文',
-    prompt: '请根据当前章节的大纲、上下文和小说设定，生成这一章的正文草稿。',
+    prompt: builtinPromptChapterDraft,
     locations: [AiShortcutActionLocation.chapter],
+    promptRevision: 2,
   ),
   BuiltinAiShortcutAction(
     id: 'chapter_polish',
     name: '润色本章',
-    prompt: '请润色当前章节，保持原有剧情与作者声音，优化节奏、表达和细节。',
+    prompt: builtinPromptChapterPolish,
     locations: [AiShortcutActionLocation.chapter],
+    promptRevision: 2,
   ),
   BuiltinAiShortcutAction(
     id: 'chapter_summarize',
     name: '总结本章',
-    prompt: '请总结当前章节的关键剧情、人物变化、伏笔和后续需要注意的连续性问题。',
+    prompt: builtinPromptChapterSummarize,
     locations: [AiShortcutActionLocation.chapter],
+    promptRevision: 2,
   ),
   BuiltinAiShortcutAction(
     id: 'character_generate_arc',
     name: '生成角色弧光',
-    prompt: '请根据当前角色资料，设计或完善这个角色的成长弧光、关键选择和剧情作用。',
+    prompt: builtinPromptCharacterArc,
     locations: [AiShortcutActionLocation.character],
+    promptRevision: 2,
   ),
   BuiltinAiShortcutAction(
     id: 'setting_expand',
     name: '扩写设定',
-    prompt: '请根据当前引用的设定条目扩写内容，补充可用于写作的细节、限制、冲突和剧情用途。',
+    prompt: builtinPromptSettingExpand,
     locations: [
       AiShortcutActionLocation.worldbuilding,
       AiShortcutActionLocation.material,
@@ -175,18 +186,21 @@ const builtinAiShortcutActions = <BuiltinAiShortcutAction>[
       AiShortcutActionLocation.faction,
       AiShortcutActionLocation.creature,
     ],
+    promptRevision: 2,
   ),
   BuiltinAiShortcutAction(
     id: 'foreshadowing_payoff_plan',
     name: '设计兑现方案',
-    prompt: '请根据当前伏笔，设计多个兑现方案，并说明每个方案的情绪效果、风险和适用章节。',
+    prompt: builtinPromptForeshadowPayoffPlan,
     locations: [AiShortcutActionLocation.foreshadowing],
+    promptRevision: 2,
   ),
   BuiltinAiShortcutAction(
     id: 'novel_generate_book_plan',
     name: '生成全书创作规划',
-    prompt: '请根据当前小说简介，生成全书创作规划，包括核心卖点、结构、主要冲突、人物线和写作推进建议。',
+    prompt: builtinPromptBookPlan,
     locations: [AiShortcutActionLocation.novel_description],
+    promptRevision: 2,
   ),
 ];
 

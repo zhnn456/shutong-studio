@@ -1,6 +1,36 @@
 {
   "releases": [
     {
+      "version": "0.6.16",
+      "date": "2026-11-24",
+      "title": {
+        "zh": "8 个快捷动作，从一句话变成一整套方法",
+        "en": "The eight shortcut actions now carry full instructions"
+      },
+      "items": [
+        {
+          "zh": "「生成章纲」「生成正文」「润色本章」「总结本章」「生成角色弧光」「扩写设定」「设计兑现方案」「生成全书创作规划」8 个动作全部换成完整提示词，原来每条只有一句话",
+          "en": "All eight built-in actions now use full prompts instead of one-liners"
+        },
+        {
+          "zh": "生成正文会先校准大纲与前文，再给场景清单：章末钩子、伏笔、人物声音、字数范围都有硬要求",
+          "en": "Drafting now verifies the outline and previous chapters first, then works from a scene list with hard rules on hooks, foreshadowing, voice and length"
+        },
+        {
+          "zh": "润色本章按 12 类 AI 腔清单逐条清，明确不动剧情、不改伏笔、不换章末钩子",
+          "en": "Polishing clears twelve AI-writing habits while leaving plot, foreshadowing and the chapter hook untouched"
+        },
+        {
+          "zh": "角色弧光给到伤口、错误信念、想要与需要的错位、三个关键节点和六道压力测试；伏笔给三个机制不同的兑现方案并逐个评风险",
+          "en": "Character arcs now cover the wound, the lie, want versus need, three turning points and six pressure tests; foreshadowing gets three distinct payoff plans with risk notes"
+        },
+        {
+          "zh": "你自己改过的内置提示词不会被覆盖，没改过的会在升级后自动换成新版",
+          "en": "Your edited built-in prompts are preserved; untouched ones upgrade automatically"
+        }
+      ]
+    },
+    {
       "version": "0.6.15",
       "date": "2026-11-24",
       "title": {
@@ -27,10 +57,6 @@
         {
           "zh": "「按卷补章」一次把当前这一卷排到位，最多 35 章，每章自动带上六项章纲",
           "en": "Fill chapters by volume: plan a whole volume at once, up to 35 chapters with six-field outlines"
-        },
-        {
-          "zh": "从现在起，每次更新后首页右下角会告诉你这次改了什么，看完点一下关掉就不再出现",
-          "en": "From now on, each update shows a short note on the home screen; dismiss it once and it stays gone"
         }
       ]
     }
