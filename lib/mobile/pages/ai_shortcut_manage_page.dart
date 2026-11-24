@@ -162,7 +162,9 @@ class MobileAiShortcutManagePage extends ConsumerWidget {
                             ),
                             const SizedBox(height: RevericSpacing.xs),
                             MobileSectionPreviewText(
-                              preview: action.prompt,
+                              preview:
+                                  builtinShortcutSummaryOf(action.builtinId) ??
+                                  action.prompt,
                               emptyPlaceholder: context.t(
                                 LocaleKeys.agentShortcutPrompt,
                               ),

@@ -233,7 +233,7 @@ class _ShortcutActionCard extends ConsumerWidget {
               const SizedBox(height: RevericSpacing.lg),
               Expanded(
                 child: Text(
-                  action.prompt,
+                  builtinShortcutSummaryOf(action.builtinId) ?? action.prompt,
                   style: typo.uiSmall.copyWith(
                     color: colors.textMuted,
                     height: 1.45,

@@ -138,6 +138,28 @@ class BuiltinAiShortcutAction {
   }
 }
 
+// ── 内置动作的卡片简介 ──
+// 提示词完整版太长，列表与卡片只展示「这个动作能做什么」，不展示指令正文。
+const builtinShortcutSummaries = <String, String>{
+  'outline_beat_generate_chapter_outlines':
+      '按节拍排出章节骨架：每章给标题、梗概与六项结构，覆盖节拍内全部事件。',
+  'chapter_generate_draft':
+      '先校准大纲与前文再动笔：章末钩子、伏笔、人物声音与字数都按规矩来。',
+  'chapter_polish': '清 AI 腔、修节奏、统一人物声音，明确不动剧情与伏笔。',
+  'chapter_summarize': '抽出七块状态档案：事件、人物变化、认知边界、伏笔、欠账与章末状态。',
+  'character_generate_arc': '用伤口、错误信念和想要与需要的错位，设计三个节点的成长轨迹。',
+  'setting_expand': '把一条设定扩成能限制人物、制造冲突、反复使用的写作资源。',
+  'foreshadowing_payoff_plan': '为一条伏笔给三个机制不同的回收方案，并逐个评风险。',
+  'novel_generate_book_plan':
+      '从简介推出八块规划：卖点、类型承诺、三幕节点、分卷、冲突阶梯与伏笔总账。',
+};
+
+/// 取内置动作的卡片简介；自定义动作返回 null，由调用方回落到提示词原文。
+String? builtinShortcutSummaryOf(String? builtinId) {
+  if (builtinId == null || builtinId.isEmpty) return null;
+  return builtinShortcutSummaries[builtinId];
+}
+
 const builtinAiShortcutActions = <BuiltinAiShortcutAction>[
   BuiltinAiShortcutAction(
     id: 'outline_beat_generate_chapter_outlines',
