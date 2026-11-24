@@ -6233,6 +6233,7 @@ abstract final class LocaleKeys {
   static const flowStyleDialogBody = 'flow.style_dialog_body';
   static const flowStyleHint = 'flow.style_hint';
   static const flowPlanChaptersPrompt = 'flow.plan_chapters_prompt';
+  static const flowPlanVolumeChaptersPrompt = 'flow.plan_volume_chapters_prompt';
   // ── flow.tools：页尾工具行（低频动作的固定归属地）─────────
   static const flowToolsLabel = 'flow.tools_label';
   static const flowToolsGoal = 'flow.tools_goal';

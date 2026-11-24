@@ -35,6 +35,7 @@
 //   assets/translations/en/screenplay.json
 //   assets/translations/zh-CN/screenplay.json
 import '../../../shared/app_config.dart';
+import '../../../shared/services/story_skeleton_checker.dart';
 
 import '../../features/production/region.dart';
 import '../../features/production/status.dart';
@@ -1123,30 +1124,85 @@ class NovelWorkspacePanel extends ConsumerWidget {
     }
   }
 
-  /// 「按目标排章」：让 AI 依据已有大纲与目标，批量创建章节节点并写入五字段章纲。
+  /// 「按目标排章」：让 AI 依据已有大纲与目标，批量创建章节节点并写入章纲。
   ///
-  /// 一章章手输是流程里最枯燥的一环；目标给了章数，这一批就该由软件按数字补齐。
-  /// 每批最多 10 章：一次生成上百章章纲既容易空转，也难以及时纠偏。
+  /// 有分卷时**按卷推进**：一次把当前卷补齐（上限 35 章），并强制传 volume_id，
+  /// 避免章节平铺到根目录或跨卷挂错；没有分卷时才退回全书补齐（一次 10 章）。
   Future<void> _planChapters(BuildContext context, WidgetRef ref) async {
     final goal = await readNovelGoal(ref.read(appDatabaseProvider), novel.id);
     if (goal == null || !goal.isUsable) return;
     final styleSample = await ref.read(novelStyleProvider(novel.id).future);
-    final planned = chapters
-        .where((chapter) => !chapter.isVolume && chapter.outline.trim().isNotEmpty)
-        .length;
-    final remaining = goal.chapters - planned;
-    if (remaining <= 0) return;
-    const batch = 10;
-    final count = remaining > batch ? batch : remaining;
-    final prompt = context.t(
-      LocaleKeys.flowPlanChaptersPrompt,
-      namedArgs: {
-        'chapters': '${goal.chapters}',
-        'per': '${goal.wordsPerChapter}',
-        'existing': '$planned',
-        'batch': '$count',
-      },
-    );
+
+    final bodyChapters = chapters
+        .where((chapter) => chapter.isNumberedChapter)
+        .toList()
+      ..sort((a, b) => (a.chapterNum ?? 0).compareTo(b.chapterNum ?? 0));
+    final volumes = chapters
+        .where((chapter) => chapter.isVolume)
+        .toList()
+      ..sort((a, b) => (a.volumeNum ?? 0).compareTo(b.volumeNum ?? 0));
+
+    final currentVolumeId = currentVolumeIdOf(bodyChapters);
+    Chapter? currentVolume;
+    var volumeIndex = -1;
+    for (var index = 0; index < volumes.length; index++) {
+      if (volumes[index].id == currentVolumeId) {
+        currentVolume = volumes[index];
+        volumeIndex = index;
+        break;
+      }
+    }
+
+    String prompt;
+    if (currentVolume == null) {
+      // 还没分卷：退回全书补齐，一次 10 章，避免一次铺上百章难纠偏。
+      final planned = bodyChapters
+          .where((chapter) => chapter.outline.trim().isNotEmpty)
+          .length;
+      final remaining = goal.chapters - planned;
+      if (remaining <= 0) return;
+      final count = remaining > 10 ? 10 : remaining;
+      prompt = context.t(
+        LocaleKeys.flowPlanChaptersPrompt,
+        namedArgs: {
+          'chapters': '${goal.chapters}',
+          'per': '${goal.wordsPerChapter}',
+          'existing': '$planned',
+          'batch': '$count',
+        },
+      );
+    } else {
+      // 分卷后按卷补齐：本卷章数按全书目标均分，末卷吃掉余数。
+      final volume = currentVolume;
+      final targetVolumeChapters = volumeIndex == volumes.length - 1
+          ? goal.chapters - (goal.chapters ~/ volumes.length) * (volumes.length - 1)
+          : goal.chapters ~/ volumes.length;
+      final volumeChapters = bodyChapters
+          .where(
+            (chapter) => (chapter.parentId?.trim() ?? '') == volume.id,
+          )
+          .toList();
+      final remaining = targetVolumeChapters - volumeChapters.length;
+      if (remaining <= 0) return;
+      final count = remaining > 35 ? 35 : remaining;
+      final startNum = volumeChapters.isEmpty
+          ? (bodyChapters.isEmpty ? 1 : (bodyChapters.last.chapterNum ?? 0) + 1)
+          : (volumeChapters.last.chapterNum ?? 0) + 1;
+      prompt = context.t(
+        LocaleKeys.flowPlanVolumeChaptersPrompt,
+        namedArgs: {
+          'volume': volume.title ?? volume.displayTitle,
+          'volumeId': volume.id,
+          'volumeChapters': '$targetVolumeChapters',
+          'existing': '${volumeChapters.length}',
+          'chapters': '${goal.chapters}',
+          'per': '${goal.wordsPerChapter}',
+          'batch': '$count',
+          'start': '$startNum',
+        },
+      );
+    }
+
     final briefing = buildPlanChaptersBriefingReference(
       novel: novel,
       chapters: chapters,

@@ -47,13 +47,26 @@ git checkout sync/f2-screenplay-canvas
 
 ### 第 2 步：校验器移植（QianBi mustscan）
 
-- 状态：未开始
-- 计划改动：`lib/shared/services/story_skeleton_checker.dart` 改为移植实现 + 新增规则表 JSON
+- 状态：**已完成** → commit `bc5170d7`
+- 改动文件：
+  - `lib/shared/services/story_skeleton_checker.dart`（整份重写）
+  - `lib/desktop/widgets/workspace/novel_overview.dart`（接入新缺口）
+  - `assets/translations/{zh-CN,en}/workspace.json` + `lib/shared/localization/locale_keys.dart`
 - 依据上游：`third/upstreams/qianbi-novel/app/mustscan.py`、`app/core/scan.py`（MIT）
+- 移植的是判定纪律，不是 Python 代码：只有可指认的确定性缺口才标 blocking，判不准的一律 advisory / note；规则条数从 11 加到 13。
+- 新增两条规则：`chapterTitleMissing`（标题只有「第 X 章」）、`volumeContractMissing`（卷纲缺「禁止提前完成 / 卷末未解决」）。
+- **行为变化**：概览页原先对全部章节查"缺章纲"，一本 120 章的书会报「90 章缺章纲」；现在只查当前卷（后续卷章纲为空是设计允许的）。
+- 回滚此步：`git revert bc5170d7`。
 
 ### 第 3 步：按卷补章入口改造
 
-- 状态：未开始
+- 状态：**已完成**（commit 见 `git log` 中 `feat(plan)` 一条）
+- 改动文件：
+  - `lib/desktop/widgets/workspace/novel_workspace_panel.dart`（`_planChapters` 整段替换）
+  - `assets/translations/{zh-CN,en}/workspace.json`（新增 `flow.plan_volume_chapters_prompt`）
+  - `lib/shared/localization/locale_keys.dart`
+- 行为变化：有分卷时按当前卷补齐，一次最多 35 章，强制传 `volume_id`，并要求写 `brief` 与六字段 `outline`；未分卷时保留原来"全书一次 10 章"。
+- 卷目标章数按全书目标均分，末卷吃掉余数。**这是可调参数**：若发现均分不合适，改 `_planChapters` 里 `targetVolumeChapters` 的算法即可，不需要回滚整步。
 
 ### 第 4 步：骨架看板
 

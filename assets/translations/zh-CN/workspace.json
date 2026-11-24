@@ -521,6 +521,7 @@
   "flow.style_dialog_body": "贴 1-5 段你自己写的文字（不超过 2000 字）。软件会算出句长、段长、对白密度和常见 AI 味套话，写章时按这个腔调写，而不是按模型的默认语气。",
   "flow.style_hint": "把你满意的一段正文贴在这里……",
   "flow.goal_cancel": "取消",
+  "flow.plan_volume_chapters_prompt": "按卷补齐章节：本卷「{volume}」应共 {volumeChapters} 章，当前本卷已有 {existing} 章，全书目标 {chapters} 章、每章约 {per} 字。\n请用 Create 工具为 chapters 创建本卷接下来的 {batch} 章，从第 {start} 章起，参数必须满足：\n- volume_id 传「{volumeId}」；不传会挂到其他卷或根目录\n- title 要有信息量，不许只写「第 X 章」\n- brief 写 40–100 字：谁做了什么、局面变成什么\n- outline 写六字段（本章目的 / 出场人物及状态 / 冲突与阻力 / 关键转折 / 章末钩子 / 信息不对称），且不得越过本卷大纲的「禁止提前完成」清单\n- 接在本卷已有最后一章之后，不重复已有章节，不写正文\n创建完成后用一句话报告新建了哪几章、以及有没有触碰到禁止提前完成项。",
   "flow.plan_chapters_prompt": "按全书目标补齐章节：目标共 {chapters} 章，每章约 {per} 字，当前已有 {existing} 章有章纲。\n请依据已有全书大纲与角色档案，用 Create 工具为 chapters 创建接下来的章节：本章次最多创建 {batch} 章，标题要具体，每章 outline 写入六字段（本章目的 / 出场人物及状态 / 冲突与阻力 / 关键转折 / 章末钩子 / 信息不对称：谁不知道什么），接在现有最后一章之后，不要重复已有章节，不要写正文。创建完成后用一句话报告本次新建了哪几章。",
   "workspace.world_manual": "世界观手册"
 }
