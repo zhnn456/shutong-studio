@@ -38,6 +38,7 @@ import '../../../shared/models/outline.dart';
 import '../../../shared/services/chapter_cast.dart';
 import '../../../shared/services/novel_goal.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/services/story_skeleton_checker.dart';
 import '../agent_management/agent_model_settings_page.dart';
 import '../novel_create_submitter.dart';
 import 'hero.dart';
@@ -1731,7 +1732,17 @@ class _FlowProgressCard extends StatelessWidget {
         onAction: onPlanChapters,
       );
     } else {
-      final missingOutline = bodyChapters
+      // 只查当前卷：后续卷章纲为空是设计允许的（planning-windows.md 两档深度），
+      // 全量检查会让一本 120 章的书天天报「90 章缺章纲」，把真缺口淹掉。
+      final currentVolumeId = currentVolumeIdOf(bodyChapters);
+      final currentVolumeChapters = currentVolumeId == null
+          ? const <Chapter>[]
+          : bodyChapters
+              .where(
+                (chapter) => (chapter.parentId?.trim() ?? '') == currentVolumeId,
+              )
+              .toList();
+      final missingOutline = currentVolumeChapters
           .where((chapter) => chapter.outline.trim().isEmpty)
           .toList();
       if (missingOutline.isNotEmpty) {
@@ -1769,6 +1780,46 @@ class _FlowProgressCard extends StatelessWidget {
               section: NovelWorkspaceSection.chapters,
               itemId: unsettled.first.id,
             ),
+          ),
+        );
+      }
+
+      // 标题只有「第 X 章」等于没取标题：读者翻目录看不出任何信息。
+      final titleMissing =
+          bodyChapters.where(isPlaceholderChapterTitle).toList();
+      if (titleMissing.isNotEmpty) {
+        addRow(
+          label: context.t(
+            LocaleKeys.flowGapChapterTitle,
+            namedArgs: {'count': '${titleMissing.length}'},
+          ),
+          actionLabel: context.t(LocaleKeys.flowGapActionOutline),
+          onAction: () => onSelectionChanged(
+            WorkspaceSelection(
+              section: NovelWorkspaceSection.chapters,
+              itemId: titleMissing.first.id,
+            ),
+          ),
+        );
+      }
+
+      // 卷合同缺「禁止提前完成 / 卷末未解决」：最容易写成提前把后面的牌打完。
+      final contractMissing = outlineEntries
+          .where(
+            (outline) =>
+                !outline.content.contains('禁止提前完成') ||
+                !outline.content.contains('卷末未解决'),
+          )
+          .toList();
+      if (bodyChapters.length >= 20 && contractMissing.isNotEmpty) {
+        addRow(
+          label: context.t(
+            LocaleKeys.flowGapVolumeContract,
+            namedArgs: {'count': '${contractMissing.length}'},
+          ),
+          actionLabel: context.t(LocaleKeys.flowGapActionOutline),
+          onAction: () => onSelectionChanged(
+            const WorkspaceSelection(section: NovelWorkspaceSection.outlines),
           ),
         );
       }

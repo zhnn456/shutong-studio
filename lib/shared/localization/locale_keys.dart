@@ -6173,6 +6173,8 @@ abstract final class LocaleKeys {
   static const flowGapCharacterUnplaced = 'flow.gap_character_unplaced';
   static const flowGapChapters = 'flow.gap_chapters';
   static const flowGapChapterOutline = 'flow.gap_chapter_outline';
+  static const flowGapChapterTitle = 'flow.gap_chapter_title';
+  static const flowGapVolumeContract = 'flow.gap_volume_contract';
   static const flowGapSettle = 'flow.gap_settle';
   static const flowGapActionDescription = 'flow.gap_action_description';
   static const flowGapActionWorld = 'flow.gap_action_world';

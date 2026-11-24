@@ -446,6 +446,8 @@
   "flow.gap_character_unplaced": "{count} 个角色还没落位（首次出场章节空着）",
   "flow.gap_chapters": "还一章都没排，先把章节骨架排出来",
   "flow.gap_chapter_outline": "{count} 章还缺章纲",
+  "flow.gap_chapter_title": "{count} 章还没取标题（只有「第 X 章」）",
+  "flow.gap_volume_contract": "{count} 卷大纲缺「禁止提前完成 / 卷末未解决」",
   "flow.gap_settle": "{count} 章写完还没沉淀",
   "flow.gap_action_description": "去写简介",
   "flow.gap_action_world": "去添加",

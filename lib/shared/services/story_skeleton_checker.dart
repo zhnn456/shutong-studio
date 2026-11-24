@@ -1,17 +1,22 @@
-// 职责: 骨架完整性校验 — 判断一本书的 L2 骨架（世界观/角色/卷/章纲/梗概）是否齐、
+// 职责: 骨架完整性校验 — 判断一本书的 L2 骨架（世界观/角色/卷/卷合同/章纲/梗概）是否齐、
 //   引用是否闭合、已写正文是否沉淀，供概览页自检与「补下一卷」入口共用一套口径。
 // 关联文件:
 //   lib/desktop/widgets/workspace/novel_overview.dart（自检清单展示）
 //   lib/desktop/widgets/workspace/novel_workspace_panel.dart（按卷补章）
-//   assets/bundled_skills/setup/SKILL.md（L2 五段与自检 5 条）
+//   assets/bundled_skills/setup/SKILL.md（L2 五段与自检 7 条）
+//   assets/bundled_skills/setup/references/planning-windows.md（三级冻结与卷合同）
 // 遵循的 Rules:
 //   .agents/rules/error-handling.md
 //
-// 设计取舍:
-//   1. 只做可判定的结构检查，不猜语义（例如"力量上限是否被突破"需要模型判断，
-//      留给技能自检，不在代码里硬编码关键词匹配，避免误报把用户吓退）。
-//   2. 问题按严重度分级：critical 阻塞开书，warning 影响质量，info 只是提醒。
-//   3. 文案不在这里拼中文：返回 code + 计数，由 UI 走 LocaleKeys 渲染，遵守 i18n。
+// 设计取舍（判定纪律移植自 QianBi-Novel app/mustscan.py，MIT，见 third/upstreams）:
+//   1. 只有**可指认的确定性缺口**才标 blocking：世界观为空、没有章、核心角色不足。
+//      判不准的一律 advisory / note。对不确定的东西亮红只会制造假阻断，最终把人
+//      训练成无脑点「强制通过」，整套闸门就废了。
+//   2. 不猜语义。例如「力量上限是否被突破」需要模型判断，留给技能自检，不在代码里
+//      做关键词匹配。
+//   3. 后续卷的章纲为空是**设计允许**的（见 planning-windows.md 两档深度），
+//      只有当前卷缺章纲才算缺口。否则一本 120 章的书天天报「90 章缺章纲」。
+//   4. 文案不在这里拼中文：返回 code + 计数，由 UI 走 LocaleKeys 渲染。
 import '../database/novel_content_database.dart'
     show
         CharacterProfile,
@@ -22,11 +27,15 @@ import '../database/novel_content_database.dart'
         chapterStatWriting,
         foreshadowingStatusPlanted,
         normalizeChapterStat;
-import 'chapter.dart' show Chapter;
+import '../models/chapter.dart' show Chapter;
+import '../models/character_profile.dart' show CharacterProfileX;
+import '../models/outline_draft.dart' show OutlineDraft;
 import 'novel_goal.dart' show NovelGoal;
-import 'outline.dart' show OutlineDraft;
 
-/// 问题严重度。
+/// 问题严重度。语义对标上游 mustscan 的三档：
+/// - [critical] = blocking，硬缺口，不许宣称开书完成
+/// - [warning] = advisory，该补但不拦续写
+/// - [info] = note，老数据常态，只提示
 enum SkeletonIssueSeverity { critical, warning, info }
 
 /// 问题类型。UI 按 code 取文案，新增 code 必须同步 locale key 与中英文案。
@@ -43,6 +52,10 @@ enum SkeletonIssueCode {
   volumeMissing,
   foreshadowOpen,
   settlePending,
+
+  // 2026-11 新增：对齐 planning-windows.md 的卷合同与逐章标题要求
+  chapterTitleMissing,
+  volumeContractMissing,
 }
 
 class SkeletonIssue {
@@ -98,14 +111,13 @@ class SkeletonReport {
 }
 
 /// 规则总数：改动规则必须同步这个数，否则 passed/total 会失真。
-const int _skeletonRuleCount = 11;
+const int _skeletonRuleCount = 13;
 
 /// 核心角色至少需要的数量（SKILL.md 的 L2 要求 6–8，低于 3 明显不成戏）。
 const int _criticalCharacterCount = 3;
 const int _fullCharacterCount = 6;
 
 /// 世界观条目下限（L2 要求 5 条）。
-const int _criticalWorldCount = 1;
 const int _fullWorldCount = 5;
 
 /// 超过这个章数仍未分卷，视为结构缺失。
@@ -114,6 +126,36 @@ const int _volumeRequiredChapterCount = 20;
 /// 角色卡的合格线：6 个可直接映射的字段里至少填了 3 个。
 /// 「怕什么 / 底线 / 能力 / 关系」没有独立列，约定写在 description 里，按 1 个字段计。
 const int _characterFieldThreshold = 3;
+
+/// 卷合同的两个必填项在卷纲文本里的字面锚点。
+/// 这是确定性文本检查，不是语义判断：只认字段名在不在，不评价写得对不对。
+const String _contractForbiddenAnchor = '禁止提前完成';
+const String _contractUnresolvedAnchor = '卷末未解决';
+
+/// 当前卷：含第一个"还没写正文"的章节所在的卷。
+/// 全书都写完时返回 null——此时没有"当前卷"，后续卷章纲为空不算缺口。
+///
+/// 概览页与校验器必须用同一口径，否则会出现"校验器说没问题、概览页报 90 章缺章纲"。
+String? currentVolumeIdOf(List<Chapter> sortedChapters) {
+  for (final chapter in sortedChapters) {
+    final written = chapter.content.trim().isNotEmpty || chapter.wordCount > 0;
+    if (!written) {
+      final parent = chapter.parentId?.trim() ?? '';
+      if (parent.isNotEmpty) return parent;
+    }
+  }
+  return null;
+}
+
+/// 「第 X 章」这种用序号充数的标题不算真标题。
+/// 这是确定性文本判定（正则），不猜语义，所以可以作为硬一点的提示。
+final RegExp _placeholderTitlePattern =
+    RegExp(r'^第\s*[0-9一二三四五六七八九十百千]+\s*章$');
+
+bool isPlaceholderChapterTitle(Chapter chapter) {
+  final name = chapter.title?.trim() ?? '';
+  return name.isEmpty || _placeholderTitlePattern.hasMatch(name);
+}
 
 SkeletonReport checkStorySkeleton({
   required List<Chapter> chapters,
@@ -132,7 +174,7 @@ SkeletonReport checkStorySkeleton({
       .toList()
     ..sort((a, b) => (a.chapterNum ?? 0).compareTo(b.chapterNum ?? 0));
 
-  // ── 世界观 ──────────────────────────────────────────────────────────
+  // ── 1. 世界观 ───────────────────────────────────────────────────────
   if (lore.isEmpty) {
     issues.add(
       const SkeletonIssue(
@@ -153,7 +195,7 @@ SkeletonReport checkStorySkeleton({
     passed++;
   }
 
-  // ── 角色数量 ────────────────────────────────────────────────────────
+  // ── 2. 核心角色数量 ─────────────────────────────────────────────────
   final coreCharacters = characters
       .where((profile) => profile.normalizedRole != characterRoleMinor)
       .where((profile) => profile.name.trim().isNotEmpty)
@@ -181,7 +223,7 @@ SkeletonReport checkStorySkeleton({
     passed++;
   }
 
-  // ── 角色卡完整度 ────────────────────────────────────────────────────
+  // ── 3. 角色卡完整度 ─────────────────────────────────────────────────
   final thinCharacters = coreCharacters.where((profile) {
     bool filled(String value) => value.trim().isNotEmpty;
     final mapped = [
@@ -210,7 +252,7 @@ SkeletonReport checkStorySkeleton({
     passed++;
   }
 
-  // ── 首次登场未挂章 ──────────────────────────────────────────────────
+  // ── 4. 首次登场未挂章 ───────────────────────────────────────────────
   if (bodyChapters.isNotEmpty) {
     final unplaced = coreCharacters.where((profile) {
       final first = profile.firstAppearChapterId?.trim() ?? '';
@@ -234,7 +276,7 @@ SkeletonReport checkStorySkeleton({
     passed++;
   }
 
-  // ── 角色是否进过章纲 ────────────────────────────────────────────────
+  // ── 5. 角色是否进过章纲 ─────────────────────────────────────────────
   if (bodyChapters.isNotEmpty && coreCharacters.isNotEmpty) {
     final haystack = bodyChapters
         .map((chapter) =>
@@ -261,7 +303,7 @@ SkeletonReport checkStorySkeleton({
     passed++;
   }
 
-  // ── 章数是否铺够 ────────────────────────────────────────────────────
+  // ── 6. 章数是否铺够 ─────────────────────────────────────────────────
   if (goal != null && goal.isUsable) {
     if (bodyChapters.length < goal.chapters) {
       issues.add(
@@ -289,25 +331,54 @@ SkeletonReport checkStorySkeleton({
     }
   }
 
-  // ── 章纲缺失 ────────────────────────────────────────────────────────
-  final missingOutline = bodyChapters
-      .where((chapter) => chapter.outline.trim().isEmpty)
-      .toList();
-  if (missingOutline.isNotEmpty) {
-    issues.add(
-      SkeletonIssue(
-        code: SkeletonIssueCode.outlineMissing,
-        severity: SkeletonIssueSeverity.warning,
-        count: missingOutline.length,
-        total: bodyChapters.length,
-        firstId: missingOutline.first.id,
-      ),
-    );
+  // ── 7. 章标题（不许用"第 X 章"充数） ───────────────────────────────
+  if (bodyChapters.isNotEmpty) {
+    final titleMissing = bodyChapters.where(isPlaceholderChapterTitle).toList();
+    if (titleMissing.isNotEmpty) {
+      issues.add(
+        SkeletonIssue(
+          code: SkeletonIssueCode.chapterTitleMissing,
+          severity: SkeletonIssueSeverity.warning,
+          count: titleMissing.length,
+          total: bodyChapters.length,
+          firstId: titleMissing.first.id,
+        ),
+      );
+    } else {
+      passed++;
+    }
   } else {
     passed++;
   }
 
-  // ── 梗概缺失（L2 新增要求，老数据普遍命中，所以只算 info） ──────────
+  // ── 8. 章纲缺失（**只查当前卷**，后续卷为空是设计允许） ──────────────
+  final currentVolumeId = currentVolumeIdOf(bodyChapters);
+  if (currentVolumeId != null) {
+    final currentChapters = bodyChapters
+        .where((chapter) => (chapter.parentId?.trim() ?? '') == currentVolumeId)
+        .toList();
+    final missingOutline = currentChapters
+        .where((chapter) => chapter.outline.trim().isEmpty)
+        .toList();
+    if (missingOutline.isNotEmpty) {
+      issues.add(
+        SkeletonIssue(
+          code: SkeletonIssueCode.outlineMissing,
+          severity: SkeletonIssueSeverity.warning,
+          count: missingOutline.length,
+          total: currentChapters.length,
+          firstId: missingOutline.first.id,
+        ),
+      );
+    } else {
+      passed++;
+    }
+  } else {
+    // 没有当前卷（全书已写完或无章）：这一条不参与统计。
+    passed++;
+  }
+
+  // ── 9. 梗概缺失（老数据普遍命中，所以只算 info） ────────────────────
   final missingBrief = bodyChapters
       .where((chapter) => chapter.brief.trim().isEmpty)
       .toList();
@@ -325,7 +396,7 @@ SkeletonReport checkStorySkeleton({
     passed++;
   }
 
-  // ── 卷结构（卷节点 + 卷级大纲轨道，缺任一侧都算未分卷） ─────────────
+  // ── 10. 卷结构（卷节点 + 卷级大纲轨道，缺任一侧都算未分卷） ───────────
   final targetChapters = goal?.isUsable == true ? goal!.chapters : 0;
   final needsVolumes = bodyChapters.length >= _volumeRequiredChapterCount &&
       targetChapters >= _volumeRequiredChapterCount;
@@ -342,7 +413,31 @@ SkeletonReport checkStorySkeleton({
     passed++;
   }
 
-  // ── 伏笔：已埋未收 ──────────────────────────────────────────────────
+  // ── 11. 卷合同（planning-windows.md 的 5 项，只认字段名在不在） ─────
+  if (needsVolumes && outlines.isNotEmpty) {
+    final missingContract = outlines.where((outline) {
+      final content = outline.content;
+      return !content.contains(_contractForbiddenAnchor) ||
+          !content.contains(_contractUnresolvedAnchor);
+    }).toList();
+    if (missingContract.isNotEmpty) {
+      issues.add(
+        SkeletonIssue(
+          code: SkeletonIssueCode.volumeContractMissing,
+          severity: SkeletonIssueSeverity.warning,
+          count: missingContract.length,
+          total: outlines.length,
+        ),
+      );
+    } else {
+      passed++;
+    }
+  } else {
+    // 还没到需要分卷的规模：这一条不参与统计。
+    passed++;
+  }
+
+  // ── 12. 伏笔：已埋未收 ──────────────────────────────────────────────
   final openForeshadowings = foreshadowings.where((item) {
     if (item.status != foreshadowingStatusPlanted) return false;
     final payoff = item.payoffChapterId?.trim() ?? '';
@@ -362,7 +457,7 @@ SkeletonReport checkStorySkeleton({
     passed++;
   }
 
-  // ── 已写未沉淀（漂移起点） ──────────────────────────────────────────
+  // ── 13. 已写未沉淀（漂移起点） ──────────────────────────────────────
   final unsettled = bodyChapters.where((chapter) {
     final written = chapter.wordCount > 0 || chapter.content.trim().isNotEmpty;
     if (!written) return false;
@@ -383,7 +478,6 @@ SkeletonReport checkStorySkeleton({
     passed++;
   }
 
-  // 章纲轨道为空不单独报：上面「未分卷」已经覆盖同类缺口，重复报会让清单变吵。
   return SkeletonReport(
     issues: issues,
     passed: passed,

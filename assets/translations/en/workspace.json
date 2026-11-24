@@ -446,6 +446,8 @@
   "flow.gap_character_unplaced": "{count} character(s) have no first-appearance chapter",
   "flow.gap_chapters": "No chapters laid out yet; lay out the chapter skeleton first",
   "flow.gap_chapter_outline": "{count} chapter(s) still have no outline",
+  "flow.gap_chapter_title": "{count} chapter(s) have no real title (only 'Chapter N')",
+  "flow.gap_volume_contract": "{count} volume outline(s) missing 'Do not resolve early / Unresolved at volume end'",
   "flow.gap_settle": "{count} written chapter(s) have not been settled",
   "flow.gap_action_description": "Write synopsis",
   "flow.gap_action_world": "Add",
