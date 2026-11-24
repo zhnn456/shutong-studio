@@ -184,10 +184,19 @@ print(f'Version set to $Version')
   }
 
   # ----- 清理旧产物 -----
-  Write-Step "清理旧 EXE 产物..."
+  # 只清本次版本目录里的 EXE。原实现递归删 dist 下所有 exe，会连用户解压的
+  # 便携版副本和历史安装包一起删掉；未指定 -Version 时不清理，宁可覆盖也不误删。
+  Write-Step "清理本次版本的旧 EXE 产物..."
   $distPath = Join-Path $ProjectRoot $OutputDir
   if (Test-Path $distPath) {
-    Get-ChildItem $distPath -Recurse -Include "*.exe" | Remove-Item -Force
+    if ($Version) {
+      $versionDir = Join-Path $distPath $Version
+      if (Test-Path $versionDir) {
+        Get-ChildItem $versionDir -Recurse -Include "*.exe" | Remove-Item -Force
+      }
+    } else {
+      Write-Warning "未指定 -Version，跳过清理，避免误删其他版本产物"
+    }
   }
 
   # ----- 构建 EXE 安装包 -----

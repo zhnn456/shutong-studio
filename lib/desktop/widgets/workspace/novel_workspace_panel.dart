@@ -1185,9 +1185,11 @@ class NovelWorkspacePanel extends ConsumerWidget {
       final remaining = targetVolumeChapters - volumeChapters.length;
       if (remaining <= 0) return;
       final count = remaining > 35 ? 35 : remaining;
-      final startNum = volumeChapters.isEmpty
-          ? (bodyChapters.isEmpty ? 1 : (bodyChapters.last.chapterNum ?? 0) + 1)
-          : (volumeChapters.last.chapterNum ?? 0) + 1;
+      // 章号全书连续：始终接在全书最后一章之后，不按卷重置。
+      // 旧数据若已是"每卷从第 1 章开始"，这里也会从当前最大号继续往后排，不会回落。
+      final startNum = bodyChapters.isEmpty
+          ? 1
+          : (bodyChapters.last.chapterNum ?? 0) + 1;
       prompt = context.t(
         LocaleKeys.flowPlanVolumeChaptersPrompt,
         namedArgs: {
