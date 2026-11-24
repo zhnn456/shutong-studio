@@ -179,7 +179,7 @@ final Map<String, AiProviderTypeConfig> aiProviderTypeConfigs = {
     modelIdSource: ModelIdSource.open,
     textModelKinds: _chatOnlyKinds,
     imageProtocol: ImageProtocol.new_api_images,
-    videoProtocol: VideoProtocol.new_api_video,
+    videoProtocol: VideoProtocol.media_gateway,
     audioProtocol: AudioProtocol.new_api_speech,
     fixedBaseUrl: true,
     usesNewApi: true,

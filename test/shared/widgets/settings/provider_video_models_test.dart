@@ -31,7 +31,7 @@ void main() {
       TargetPlatform.android,
     ])
       for (final type in ['api88'])
-        (type, platform, ['seedance-2.0官方版', 'veo-3.1']),
+        (type, platform, ['minimax-h3', 'MiniMax-H3']),
     for (final platform in [
       TargetPlatform.windows,
       TargetPlatform.macOS,

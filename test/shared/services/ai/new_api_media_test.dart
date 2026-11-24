@@ -571,11 +571,11 @@ void main() {
 
   test('Seedance 2.0 mini alias omits the audio switch 88api rejects', () {
     expect(
-      lookupVideoChannelModel('api88', 'seedance-2.0-mini官方版')!.requiresAudio,
+      lookupVideoChannelModel('ooki', 'seedance-2.0-mini官方版')!.requiresAudio,
       isFalse,
     );
     expect(
-      lookupVideoChannelModel('api88', 'seedance-2.0官方版')!.requiresAudio,
+      lookupVideoChannelModel('ooki', 'seedance-2.0官方版')!.requiresAudio,
       isTrue,
     );
     final transport = MockClient(
@@ -669,7 +669,7 @@ void main() {
     addTearDown(transport.close);
     final client = NewApiVideoClient(
       httpClient: transport,
-      providerType: 'api88',
+      providerType: 'ooki',
       endpoint: Uri.parse('https://gateway.test/v1'),
       apiKey: 'key',
     );

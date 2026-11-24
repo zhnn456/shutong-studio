@@ -26,6 +26,7 @@ import 'package:reveric/shared/services/ai/video/openrouter.dart';
 import 'package:reveric/shared/services/ai/video/agnes.dart';
 import 'package:reveric/shared/services/ai/video/client.dart';
 import 'package:reveric/shared/services/ai/video/minimax.dart';
+import 'package:reveric/shared/services/ai/video/media_gateway.dart';
 import 'package:reveric/shared/services/ai/video/purefox.dart';
 import 'package:reveric/shared/services/ai/video/wan.dart';
 import '../../../../helpers/media_provider_types.dart';
@@ -50,7 +51,8 @@ VideoRequest request(
       : protocol == VideoProtocol.ark_video ||
             protocol == VideoProtocol.new_api_video
       ? '720p'
-      : protocol == VideoProtocol.minimax_video_v2
+      : protocol == VideoProtocol.minimax_video_v2 ||
+            protocol == VideoProtocol.media_gateway
       ? '768P'
       : '720P',
   ratio:
@@ -75,7 +77,8 @@ VideoRequest request(
             ? true
             : null)
       : protocol == VideoProtocol.minimax_video_v2 ||
-            protocol == VideoProtocol.agnes_video
+            protocol == VideoProtocol.agnes_video ||
+            protocol == VideoProtocol.media_gateway
       ? null
       : true,
   promptExtend: protocol == VideoProtocol.wan_video ? true : null,
@@ -148,6 +151,12 @@ VideoClient client(VideoProtocol protocol, http.Client transport) =>
         endpoint: Uri.parse('https://example.com/proxy/v1'),
         apiKey: 'secret',
       ),
+      VideoProtocol.media_gateway => MediaGatewayVideoClient(
+        httpClient: transport,
+        providerType: videoProviderType(protocol),
+        endpoint: Uri.parse('https://example.com/proxy/v1'),
+        apiKey: 'secret',
+      ),
     };
 
 Map<String, dynamic> receipt(VideoProtocol protocol) => switch (protocol) {
@@ -170,6 +179,9 @@ Map<String, dynamic> receipt(VideoProtocol protocol) => switch (protocol) {
   VideoProtocol.purefox_media => throw UnimplementedError(
     'PureFox receipts are NDJSON frames, covered by purefox_test.dart',
   ),
+  VideoProtocol.media_gateway => {
+    'data': {'task_id': 'task-1'},
+  },
 };
 Map<String, dynamic> result(
   VideoProtocol protocol,
@@ -228,6 +240,24 @@ Map<String, dynamic> result(
   VideoProtocol.purefox_media => throw UnimplementedError(
     'PureFox results are NDJSON frames, covered by purefox_test.dart',
   ),
+  VideoProtocol.media_gateway => {
+    'state': switch (status) {
+      'succeeded' => 'success',
+      'failed' => 'failed',
+      'cancelled' => 'cancelled',
+      _ => status,
+    },
+    'status': switch (status) {
+      'queued' => 'queued',
+      'running' => 'running',
+      'succeeded' => 'completed',
+      'failed' => 'failed',
+      _ => status,
+    },
+    'is_final':
+        status == 'succeeded' || status == 'failed' || status == 'cancelled',
+    if (withUrl) 'result_url': 'https://result.example/movie.mp4',
+  },
 };
 
 void main() {
@@ -920,11 +950,12 @@ void main() {
     // Seedance 的多模态字段断言只适用于这两个型号；AtlasCloud 其他端点
     // 的字段、模式和查询契约由 atlascloud_test.dart 覆盖。
     for (final model
-        in protocol == VideoProtocol.new_api_video
-            ? const <String>[]
-            : protocol == VideoProtocol.atlascloud_video
-            ? ['bytedance/seedance-2.5', 'bytedance/seedance-2.0']
-            : videoModelsForProvider(videoProviderType(protocol))) {
+        in protocol == VideoProtocol.new_api_video ||
+            protocol == VideoProtocol.media_gateway
+        ? const <String>[]
+        : protocol == VideoProtocol.atlascloud_video
+        ? ['bytedance/seedance-2.5', 'bytedance/seedance-2.0']
+        : videoModelsForProvider(videoProviderType(protocol))) {
       test('$model reference request and original-ID query contract', () async {
         final seen = <http.Request>[];
         final transport = MockClient((r) async {
@@ -1315,4 +1346,85 @@ void main() {
       );
     },
   );
+
+  test('media gateway submits /v1/media/generate and polls task-status', () async {
+    final seen = <http.Request>[];
+    final transport = MockClient((r) async {
+      seen.add(r);
+      if (r.method == 'POST') {
+        return http.Response(
+          jsonEncode({
+            'code': 200,
+            'data': {'task_id': 12345},
+          }),
+          200,
+        );
+      }
+      return http.Response(
+        jsonEncode({
+          'state': 'success',
+          'status': 'completed',
+          'is_final': true,
+          'result_url': 'https://result.example/movie.mp4',
+        }),
+        200,
+      );
+    });
+    final api = client(VideoProtocol.media_gateway, transport);
+    const model = 'minimax-h3';
+    final submission = await api.submitNative(
+      request(VideoProtocol.media_gateway, model),
+      [],
+    );
+    expect(submission.taskId, '12345');
+    expect(seen.first.url.path, '/proxy/v1/media/generate');
+    final body = jsonDecode(seen.first.body) as Map;
+    expect(body['model'], model);
+    expect(body['prompt'], 'A bird flying');
+    expect(body['params'], {
+      'duration': '5',
+      'resolution': '768P',
+      'aspect_ratio': '16:9',
+    });
+    final output = await api.queryNative(submission);
+    expect(output.status, VideoRemoteStatus.succeeded);
+    expect(output.videoUrl.toString(), 'https://result.example/movie.mp4');
+    expect(seen.last.url.path, '/proxy/v1/skills/task-status');
+    expect(seen.last.url.queryParameters, {'task_id': '12345'});
+  });
+
+  test('media gateway reference mode groups images videos and audios', () async {
+    final seen = <http.Request>[];
+    final transport = MockClient((r) async {
+      seen.add(r);
+      return http.Response(
+        jsonEncode({'data': {'task_id': 'task-1'}}),
+        200,
+      );
+    });
+    final api = client(VideoProtocol.media_gateway, transport);
+    await api.submitNative(
+      request(
+        VideoProtocol.media_gateway,
+        'minimax-h3',
+        mode: VideoMode.reference,
+      ),
+      [
+        reference(VideoInputRole.reference_image),
+        reference(VideoInputRole.reference_video),
+        reference(VideoInputRole.reference_audio),
+      ],
+    );
+    final body = jsonDecode(seen.first.body) as Map;
+    expect(body['params']['mode'], 'cankaosheng');
+    expect(body['params']['image_url'], [
+      'https://reference.example/reference_image',
+    ]);
+    expect(body['params']['video_url'], [
+      'https://reference.example/reference_video',
+    ]);
+    expect(body['params']['audio_url'], [
+      'https://reference.example/reference_audio',
+    ]);
+  });
 }

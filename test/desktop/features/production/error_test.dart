@@ -247,7 +247,7 @@ void main() {
           .map((role) => productionSubmitRole(mode, role))
           .toList();
       try {
-        const VideoCapabilities('api88').validateParameters(
+        const VideoCapabilities('ooki').validateParameters(
           VideoRequest(
             modelId: model,
             prompt: 'bird',
@@ -264,7 +264,7 @@ void main() {
         expect(
           productionReferenceErrorKey(
             channel: resolveVideoModel(
-              aiProviderBuiltinById('openai')!.copyWith(type: 'api88'),
+              aiProviderBuiltinById('openai')!.copyWith(type: 'ooki'),
               model,
             )!,
             mode: mode,
@@ -276,7 +276,7 @@ void main() {
     });
   }
   test('New API Veo accepts the same image as a single first frame', () {
-    const VideoCapabilities('api88').validateParameters(
+    const VideoCapabilities('ooki').validateParameters(
       const VideoRequest(
         modelId: 'veo-3.1',
         prompt: 'bird',

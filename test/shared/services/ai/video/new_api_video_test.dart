@@ -136,7 +136,7 @@ void main() {
   });
   tearDownAll(() => aiProviderTypeConfigs.remove('future_new_api'));
   for (final type in [
-    'api88',
+    // api88 视频已切到 media_gateway，不再走 New API /v1/videos 契约。
     'ooki',
     'apikey',
     'infistar',

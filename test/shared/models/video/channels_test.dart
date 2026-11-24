@@ -369,10 +369,10 @@ void main() {
     );
   });
 
-  test('Seedance 2.5 Flash shares its catalog with 88API and OpenRouter', () {
+  test('Seedance 2.5 Flash shares its catalog with New API gateway and OpenRouter', () {
     const id = 'doubao-seedance-2-5-flash-261115';
     final gateway = lookupVideoChannelModel(
-      'api88',
+      'ooki',
       'doubao-seedance-2.5-flash',
     )!;
     final router = lookupVideoChannelModel(

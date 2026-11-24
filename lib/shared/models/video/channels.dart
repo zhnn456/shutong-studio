@@ -2538,6 +2538,16 @@ final videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
       ),
     ),
   },
+  VideoProtocol.media_gateway: {
+    'minimax-h3': VideoChannelModel(
+      catalogId: 'MiniMax-H3',
+      capabilities: VideoModelCapabilities(framesRequireAdaptiveRatio: true),
+    ),
+    'MiniMax-H3': VideoChannelModel(
+      catalogId: 'MiniMax-H3',
+      capabilities: VideoModelCapabilities(framesRequireAdaptiveRatio: true),
+    ),
+  },
 };
 
 const _metasoH3Capabilities = VideoModelCapabilities(
@@ -2731,7 +2741,8 @@ VideoChannelModel? lookupVideoChannelModel(
       catalogId: catalogId,
       capabilities: VideoModelCapabilities(
         // https://88api.ai/zh/docs/api/video/seedance-multi-resolution/
-        supportsAudioOnlyReference: providerType == 'api88' ? false : null,
+        supportsAudioOnlyReference:
+            {'api88', 'ooki'}.contains(providerType) ? false : null,
       ),
     );
   }

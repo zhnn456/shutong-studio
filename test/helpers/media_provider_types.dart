@@ -9,7 +9,8 @@ import 'package:reveric/shared/models/video/request.dart';
 
 /// 原生协议选可接中转站的 provider，保持型号识别回退；聚合平台只认精确 ID。
 String videoProviderType(VideoProtocol protocol) => switch (protocol) {
-  VideoProtocol.new_api_video => 'api88',
+  // api88 视频已切到 media_gateway；New API 视频协议的代表渠道用 ooki。
+  VideoProtocol.new_api_video => 'ooki',
   VideoProtocol.ark_video => 'doubao',
   VideoProtocol.minimax_video_v2 => 'minimax',
   VideoProtocol.wan_video => 'qwen',
@@ -17,6 +18,7 @@ String videoProviderType(VideoProtocol protocol) => switch (protocol) {
   VideoProtocol.openrouter_video => 'openrouter',
   VideoProtocol.atlascloud_video => 'atlascloud',
   VideoProtocol.purefox_media => 'purefox_media',
+  VideoProtocol.media_gateway => 'api88',
 };
 
 String audioProviderType(AudioProtocol protocol) => switch (protocol) {

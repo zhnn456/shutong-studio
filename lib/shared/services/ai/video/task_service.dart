@@ -49,6 +49,7 @@ import '../../../agent/agent_tool_dispatcher.dart';
 import 'plugin.dart';
 import 'draft.dart';
 import 'minimax.dart';
+import 'media_gateway.dart';
 import 'openrouter.dart';
 import 'purefox.dart';
 import '../new_api.dart';
@@ -1503,6 +1504,12 @@ class VideoTaskService {
         apiKey: apiKey,
       ),
       VideoProtocol.purefox_media => PurefoxVideoClient(
+        httpClient: transport,
+        providerType: type,
+        endpoint: endpoint,
+        apiKey: apiKey,
+      ),
+      VideoProtocol.media_gateway => MediaGatewayVideoClient(
         httpClient: transport,
         providerType: type,
         endpoint: endpoint,
