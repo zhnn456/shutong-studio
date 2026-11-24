@@ -100,3 +100,14 @@ git checkout sync/f2-screenplay-canvas
 ## 不适用的处理原则
 
 接入后若发现用起来不合适，优先**调参数而不是拆机制**：窗口大小（50 章）、每 5 章预算、角色数量下限、梗概字数这些都是常量，可单独调；只有机制本身判断错误时才整步回滚。
+
+## 第 7 步：正文自动沉淀 + 骨架看板（0.6.17）
+
+- 上游：cn-dev/chinese-summary 1.0.5（npm，MIT，Copyright (c) 2025 北京锋通科技有限公司）
+  源码留档 `third/upstreams/chinese-summary/`，Dart 移植在
+  `lib/shared/services/text_summary/chinese_summary.dart`。
+- 沉淀产出与闸门：`lib/shared/services/chapter_auto_settle.dart`，
+  接入点 `lib/shared/services/novel_content.dart` 的 `_writeChapterContent`。
+- 看板：`lib/desktop/widgets/workspace/skeleton_board.dart`，
+  入口在 `novel_overview.dart` 的写作进度卡。
+- 详细记录与回滚见 `docs/chapter-auto-settle-log.md`。

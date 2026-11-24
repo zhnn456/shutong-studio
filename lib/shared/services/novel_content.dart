@@ -8,6 +8,7 @@
 // 遵循的 Rules:
 //   .agents/rules/json.md
 import 'screenplay/staging_edit.dart';
+import 'chapter_auto_settle.dart';
 import 'package:reveric/shared/models/asset_purpose.dart';
 import 'dart:io';
 
@@ -730,6 +731,99 @@ class NovelContentService {
       rethrow;
     }
     await _syncNovelWordCount();
+    await _autoSettleChapter(existing: existing, content: content);
+  }
+
+  /// 正文落盘后自动沉淀（纯代码，不调 AI）。
+  ///
+  /// 三道闸门，避免每次自动保存都重算、避免覆盖别人写好的总结：
+  /// 1. 只有普通章节（非卷）、正文达到阈值才做；
+  /// 2. 已有 brief 且不是"从本章正文抽出来的" → 视为 AI/作者成果，只补状态不动文本；
+  /// 3. 算出来的结果与库里一致 → 不写库。
+  Future<void> _autoSettleChapter({
+    required Chapter existing,
+    required String content,
+  }) async {
+    try {
+      if (existing.isVolume) return;
+      if (!shouldAutoSettle(content)) return;
+
+      final stat = normalizeChapterStat(existing.stat);
+      final published = stat == chapterStatPublished;
+      final needsStat = !published &&
+          (stat == chapterStatDraft || stat == chapterStatWriting);
+      final currentBrief = existing.brief.trim();
+      final briefIsAuto =
+          currentBrief.isEmpty || briefLooksExtracted(currentBrief, content);
+
+      if (!briefIsAuto) {
+        await _advanceToReviewedIfNeeded(existing.id, needsStat);
+        return;
+      }
+
+      final settlement = settleChapter(
+        content,
+        knownNames: await _knownCharacterNames(),
+      );
+      if (settlement == null) return;
+
+      final unchanged = currentBrief == settlement.brief &&
+          (existing.events?.isNotEmpty ?? false) &&
+          (existing.emotion?.isNotEmpty ?? false);
+      if (unchanged) {
+        await _advanceToReviewedIfNeeded(existing.id, needsStat);
+        return;
+      }
+
+      await (_database.update(_database.chapters)
+            ..where((table) => table.id.equals(existing.id)))
+          .write(
+        ChaptersCompanion(
+          brief: Value(settlement.brief),
+          events: Value(settlement.events),
+          tension: Value(settlement.tension),
+          emotion: Value(settlement.emotions),
+          stat: Value(chapterStatReviewed),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    } catch (error, stackTrace) {
+      // 沉淀是附带动作：失败绝不能影响正文保存本身。
+      _log.error(
+        '[AutoSettle] settle failed, id=${existing.id}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// 只推进状态，不动文本。
+  Future<void> _advanceToReviewedIfNeeded(String chapterId, bool needed) async {
+    if (!needed) return;
+    await (_database.update(_database.chapters)
+          ..where((table) => table.id.equals(chapterId)))
+        .write(
+      const ChaptersCompanion(stat: Value(chapterStatReviewed)),
+    );
+  }
+
+  /// 人物卡的名字与别名，用于统计"本章出场"。人物卡还没建时返回空。
+  Future<List<String>> _knownCharacterNames() async {
+    try {
+      final profiles = await _database.characterProfileDao.getAll();
+      final names = <String>[];
+      for (final profile in profiles) {
+        final name = profile.name.trim();
+        if (name.isNotEmpty) names.add(name);
+        for (final alias in profile.aliases) {
+          final trimmed = alias.trim();
+          if (trimmed.isNotEmpty) names.add(trimmed);
+        }
+      }
+      return names;
+    } catch (_) {
+      return const <String>[];
+    }
   }
 
   Future<void> updateChapterContentPartial({

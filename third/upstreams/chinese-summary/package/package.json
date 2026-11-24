@@ -1,0 +1,56 @@
+{
+  "name": "chinese-summary",
+  "version": "1.0.5",
+  "description": "中文文本概要提取库（TextRank + 位置加权 + TF-IDF + MMR）",
+  "author": "郭玉峰, 吴琼 <gyfinjava@163.com> (北京锋通科技有限公司)",
+  "license": "MIT",
+  "keywords": [
+    "chinese",
+    "summary",
+    "textrank",
+    "nlp",
+    "extractive-summarization",
+    "中文摘要",
+    "文本摘要",
+    "自动摘要"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cn-dev/chinese-summary.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cn-dev/chinese-summary/issues"
+  },
+  "homepage": "https://github.com/cn-dev/chinese-summary#readme",
+  "main": "dist/chinese-summary.cjs",
+  "module": "dist/chinese-summary.mjs",
+  "types": "dist/chinese-summary.d.ts",
+  "browser": "dist/chinese-summary.iife.js",
+  "exports": {
+    ".": {
+      "types": "./dist/chinese-summary.d.ts",
+      "browser": "./dist/chinese-summary.iife.js",
+      "import": "./dist/chinese-summary.mjs",
+      "require": "./dist/chinese-summary.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "test",
+    "docs",
+    "tsconfig.json",
+    "tsup.config.ts"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "npx tsx test/test.ts",
+    "test:long": "npx tsx test/test-long.ts",
+    "test:robust": "npx tsx test/test-robust.ts"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.4.0"
+  }
+}

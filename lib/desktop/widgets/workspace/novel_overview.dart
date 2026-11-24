@@ -42,6 +42,7 @@ import '../../../shared/services/story_skeleton_checker.dart';
 import '../agent_management/agent_model_settings_page.dart';
 import '../novel_create_submitter.dart';
 import 'hero.dart';
+import 'skeleton_board.dart';
 import '../../../shared/widgets/media_asset_image.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -1564,6 +1565,19 @@ class _FlowProgressCard extends StatelessWidget {
                     ),
                     style: typo.uiSmall.copyWith(color: colors.textMuted),
                     overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: RevericSpacing.sm),
+                RevericButton.text(
+                  label:
+                      '${context.t(LocaleKeys.workspaceSkeletonBoardTitle)} ›',
+                  size: RevericButtonSize.compact,
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => SkeletonBoardPage(
+                      chapters: chapters,
+                      goal: goal,
+                    ),
                   ),
                 ),
               ],

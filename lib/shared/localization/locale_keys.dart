@@ -5665,6 +5665,32 @@ abstract final class LocaleKeys {
   static const toolRunFfmpegExecute = 'tool.run_ffmpeg_execute';
 
   // ── workspace ────────────────────────────────────────
+  static const workspaceSkeletonBoardTitle = 'workspace.skeleton_board_title';
+  static const workspaceSkeletonBoardSummary =
+      'workspace.skeleton_board_summary';
+  static const workspaceSkeletonBoardClose = 'workspace.skeleton_board_close';
+  static const workspaceSkeletonBoardHint = 'workspace.skeleton_board_hint';
+  static const workspaceSkeletonBoardAllBook =
+      'workspace.skeleton_board_all_book';
+  static const workspaceSkeletonBoardVolumeStats =
+      'workspace.skeleton_board_volume_stats';
+  static const workspaceSkeletonBoardVolumeDetail =
+      'workspace.skeleton_board_volume_detail';
+  static const workspaceSkeletonBoardEmpty = 'workspace.skeleton_board_empty';
+  static const workspaceSkeletonBoardNoBrief =
+      'workspace.skeleton_board_no_brief';
+  static const workspaceSkeletonBoardGapOutline =
+      'workspace.skeleton_board_gap_outline';
+  static const workspaceSkeletonBoardGapSettle =
+      'workspace.skeleton_board_gap_settle';
+  static const workspaceSkeletonBoardGapWords =
+      'workspace.skeleton_board_gap_words';
+  static const workspaceSkeletonBoardUnwritten =
+      'workspace.skeleton_board_unwritten';
+  static const workspaceSkeletonBoardStatSettled =
+      'workspace.skeleton_board_stat_settled';
+  static const workspaceSkeletonBoardStatDraft =
+      'workspace.skeleton_board_stat_draft';
   static const workspaceAddChapter = 'workspace.add_chapter';
   static const workspaceAddChapterOrVolume = 'workspace.add_chapter_or_volume';
   static const workspaceAddDocumentOrFolder =

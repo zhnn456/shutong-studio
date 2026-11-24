@@ -1,6 +1,36 @@
 {
   "releases": [
     {
+      "version": "0.6.17",
+      "date": "2026-11-24",
+      "title": {
+        "zh": "写完就自动沉淀，还能一眼看完整本书的骨架",
+        "en": "Chapters settle themselves, and the whole skeleton is now visible"
+      },
+      "items": [
+        {
+          "zh": "保存正文后自动生成章节梗概、章内事件、紧张度与情绪标签，不用再手动跑一次总结",
+          "en": "Saving a chapter now produces its brief, inner events, tension and emotion tags automatically"
+        },
+        {
+          "zh": "梗概是从你这章正文里原样抽出来的句子，不调 AI、不联网，也不会编出没写过的情节",
+          "en": "Briefs are sentences extracted straight from your own text — no AI call, no invented plot"
+        },
+        {
+          "zh": "你自己写的或让 AI 写过的章节总结不会被覆盖，只把状态补成已沉淀",
+          "en": "Briefs you wrote yourself, or had the AI write, are never overwritten"
+        },
+        {
+          "zh": "概览页新增「骨架看板」：按卷看每一章的梗概、字数和状态，缺章纲、待沉淀、字数偏少都会标出来",
+          "en": "New Skeleton Board on the overview page: every chapter's brief, word count and state, with missing outlines and unsettled chapters flagged"
+        },
+        {
+          "zh": "章节状态会从草稿自动推进到已沉淀，概览页的缺口也跟着实时减少",
+          "en": "Chapter state advances from draft to settled automatically, and the overview gap list shrinks in real time"
+        }
+      ]
+    },
+    {
       "version": "0.6.16",
       "date": "2026-11-24",
       "title": {
