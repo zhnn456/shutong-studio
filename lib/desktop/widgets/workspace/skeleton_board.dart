@@ -37,9 +37,10 @@ class _VolumeStats {
           chapter.wordCount > 0 || chapter.content.trim().isNotEmpty)
       .length;
 
-  int get settled => chapters
-      .where((chapter) => normalizeChapterStat(chapter.stat) != chapterStatDraft)
-      .length;
+  int get settled => chapters.where((chapter) {
+        final stat = normalizeChapterStat(chapter.stat);
+        return stat == chapterStatReviewed || stat == chapterStatPublished;
+      }).length;
 
   int get words =>
       chapters.fold<int>(0, (sum, chapter) => sum + chapter.wordCount);
@@ -114,9 +115,10 @@ class _SkeletonBoardPageState extends State<SkeletonBoardPage> {
         .where((chapter) =>
             chapter.wordCount > 0 || chapter.content.trim().isNotEmpty)
         .length;
-    final totalSettled = bodyChapters
-        .where((chapter) => normalizeChapterStat(chapter.stat) != chapterStatDraft)
-        .length;
+    final totalSettled = bodyChapters.where((chapter) {
+      final stat = normalizeChapterStat(chapter.stat);
+      return stat == chapterStatReviewed || stat == chapterStatPublished;
+    }).length;
     final totalWords =
         bodyChapters.fold<int>(0, (sum, chapter) => sum + chapter.wordCount);
 
@@ -330,6 +332,8 @@ class _ChapterList extends StatelessWidget {
       itemBuilder: (context, index) {
         final chapter = chapters[index];
         final stat = normalizeChapterStat(chapter.stat);
+        final settledNow =
+            stat == chapterStatReviewed || stat == chapterStatPublished;
         final written =
             chapter.wordCount > 0 || chapter.content.trim().isNotEmpty;
         final hasOutline = chapter.outline.trim().isNotEmpty;
@@ -376,9 +380,7 @@ class _ChapterList extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: typo.uiSmall.copyWith(color: colors.textSecondary),
                     ),
-                    if (!hasOutline ||
-                        (written && stat != chapterStatReviewed) ||
-                        thinWords)
+                    if (!hasOutline || (written && !settledNow) || thinWords)
                       Padding(
                         padding: const EdgeInsets.only(top: RevericSpacing.xxs),
                         child: Wrap(
@@ -388,7 +390,7 @@ class _ChapterList extends StatelessWidget {
                               label: context
                                   .t(LocaleKeys.workspaceSkeletonBoardGapOutline),
                             ),
-                            if (written && stat != chapterStatReviewed)
+                            if (written && !settledNow)
                               _GapChip(
                                 label: context
                                     .t(LocaleKeys.workspaceSkeletonBoardGapSettle),

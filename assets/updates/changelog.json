@@ -1,6 +1,32 @@
 {
   "releases": [
     {
+      "version": "0.6.18",
+      "date": "2026-11-25",
+      "title": {
+        "zh": "自动沉淀更稳了，写起来更顺",
+        "en": "Auto-settling is steadier and typing stays smooth"
+      },
+      "items": [
+        {
+          "zh": "已发布的章节改完正文后，仍然保持「已发布」，不会被当成没写完的稿子",
+          "en": "Published chapters stay published after you edit them"
+        },
+        {
+          "zh": "你自己整理过或让 AI 整理过的章内事件，不会再被自动总结覆盖",
+          "en": "Event lists you or the AI already wrote are never overwritten by auto-summary"
+        },
+        {
+          "zh": "大章节边写边存更顺：只改几个字时不会每次都重算一遍梗概",
+          "en": "Long chapters no longer recompute the brief on every small edit"
+        },
+        {
+          "zh": "「骨架看板」的已沉淀、已发布统计更准，正在写的章节不会再被算成已完成",
+          "en": "Skeleton board tallies settled and published chapters correctly"
+        }
+      ]
+    },
+    {
       "version": "0.6.17",
       "date": "2026-11-24",
       "title": {

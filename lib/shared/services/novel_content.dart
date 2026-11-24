@@ -761,6 +761,17 @@ class NovelContentService {
         return;
       }
 
+      // 节流：上一轮已经写过自动梗概，而这次正文只改了几个字（字数变动 <8%）
+      // 就跳过重算。编辑器是防抖自动保存，不节流会让每敲几键就跑一次 TextRank。
+      final newWords = _countWords(content);
+      final oldWords = existing.wordCount;
+      if (currentBrief.isNotEmpty &&
+          oldWords > 0 &&
+          (newWords - oldWords).abs() / oldWords < 0.08) {
+        await _advanceToReviewedIfNeeded(existing.id, needsStat);
+        return;
+      }
+
       final settlement = settleChapter(
         content,
         knownNames: await _knownCharacterNames(),
@@ -775,15 +786,24 @@ class NovelContentService {
         return;
       }
 
+      // events 只在"确认是上一轮自动写的"时才覆盖。
+      // 梗概非空说明上一轮已经是我们写的，events 同源；
+      // 梗概空但 events 非空，说明这些事件来自 chronicler 或作者，不能动。
+      final overwriteEvents =
+          currentBrief.isNotEmpty || (existing.events?.isEmpty ?? true);
+
       await (_database.update(_database.chapters)
             ..where((table) => table.id.equals(existing.id)))
           .write(
         ChaptersCompanion(
           brief: Value(settlement.brief),
-          events: Value(settlement.events),
+          events: overwriteEvents
+              ? Value(settlement.events)
+              : const Value.absent(),
           tension: Value(settlement.tension),
           emotion: Value(settlement.emotions),
-          stat: Value(chapterStatReviewed),
+          // 已发布的章节改正文后仍保持"已发布"，不能被打回"已沉淀"。
+          stat: Value(published ? chapterStatPublished : chapterStatReviewed),
           updatedAt: Value(DateTime.now()),
         ),
       );

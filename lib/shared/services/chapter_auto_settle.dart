@@ -241,7 +241,7 @@ String _eventTitle(String sentence) {
 String _stateChangeOf(String sentence) {
   const markers = <String>[
     '于是', '从此', '再也', '决定', '答应', '只能', '必须', '不再',
-    '终于', '再也', '转而', '从此', '改成', '改为',
+    '终于', '转而', '改成', '改为',
   ];
   for (final clause in splitClauses(sentence, minLength: 4)) {
     for (final marker in markers) {
@@ -284,17 +284,16 @@ int _tensionOf(
       punctuationDensity * 1.2 +
       shortRatio * 2.0;
 
-  // 选中的句子若是全章最激烈的那批，再补一点（说明高潮进了梗概）。
+  // 选中的句子是否明显高于全章中位数（说明这一章的高潮确实进了梗概）。
   if (summary.isNotEmpty) {
     final averageSummaryScore = summary
             .map((sentence) => sentence.score)
             .reduce((a, b) => a + b) /
         summary.length;
-    final averageAll = sentences
-            .map((sentence) => sentence.score)
-            .reduce((a, b) => a + b) /
-        sentences.length;
-    if (averageAll > 0 && averageSummaryScore > averageAll * 1.1) {
+    final allScores = sentences.map((sentence) => sentence.score).toList()
+      ..sort();
+    final median = allScores[allScores.length ~/ 2];
+    if (median > 0 && averageSummaryScore > median * 1.1) {
       score += 0.6;
     }
   }
