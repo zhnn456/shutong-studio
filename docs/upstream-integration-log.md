@@ -36,7 +36,7 @@ git checkout sync/f2-screenplay-canvas
 
 ### 第 1 步：开书技能接入窗口制（分级冻结）
 
-- 状态：**已完成**（commit 见 `git log --oneline 40e2594f..HEAD` 中标注 `feat(setup)` 的一条）
+- 状态：**已完成** → commit `e4476405`
 - 改动文件：
   - `assets/bundled_skills/setup/SKILL.md`
   - `assets/bundled_skills/setup/references/original.md`
