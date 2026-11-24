@@ -140,6 +140,7 @@ const List<_BundledControlSkillSpec> _bundledControlSkillSpecs = [
       'assets/bundled_skills/setup/references/fanfic.md',
       'assets/bundled_skills/setup/references/sequel.md',
       'assets/bundled_skills/setup/references/imitation.md',
+      'assets/bundled_skills/setup/references/planning-windows.md',
     ],
   ),
   _BundledControlSkillSpec(
