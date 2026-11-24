@@ -86,6 +86,8 @@ git checkout sync/f2-screenplay-canvas
 - 行为：版本号变化后首次进入首页弹一次；点「知道了」或右上角关闭即记录已读，同版本永不再弹。已读键是 `SharedPreferences` 的 `whats_new_seen_version`，删掉该键即可让它重现。
 - **发版约定（必须遵守）**：以后每次发版，`pubspec.yaml` 的 `version`、`app_config.dart` 的 `appVersion`、`changelog.json` 里最新一条的 `version` **三处同时改**，少一处就会出现"更新了但不弹"或"弹的是上一版内容"。
 - 想临时关掉浮窗：把 `main.dart` 里 `WhatsNewHost(child: NovelHomePage())` 改回 `NovelHomePage()` 即可，其余功能不受影响。
+- 本次提交：`6f617d0b`；打包产物 `dist/0.6.15+1/reveric-0.6.15-windows-setup.exe` 与 `dist/0.6.15+1/reveric-0.6.15-windows-portable.zip`。
+- 单独撤回本步：`git revert 6f617d0b`（只撤浮窗与版本号，第 1–3 步的开书改造保留）。
 
 ## 不适用的处理原则
 
