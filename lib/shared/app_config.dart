@@ -10,7 +10,7 @@
 /// 应用版本号。
 /// 与 pubspec.yaml 的 version 字段保持同步，由 release.sh 一同更新。
 /// 供需要同步获取版本号的场景使用（如匿名上报），避免 PackageInfo 异步调用。
-const appVersion = '0.6.19';
+const appVersion = '0.6.20';
 
 /// 匿名诊断接收地址，包含完整路径；请求不追加业务 API 后缀。
 /// 为空表示本构建不接匿名诊断：不上报，也不展示 opt-in 入口。
@@ -64,3 +64,4 @@ const ideationCanvasEnabled = bool.fromEnvironment(
   'ENABLE_IDEATION_CANVAS',
   defaultValue: false,
 );
+

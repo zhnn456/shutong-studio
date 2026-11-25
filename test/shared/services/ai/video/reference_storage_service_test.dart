@@ -427,4 +427,45 @@ void main() {
       expect(storage.loads, 0);
     },
   );
+  test('星辰AI 域名没有上传接口：图片走内联，视频要求对象存储', () async {
+    final provider = aiProviderBuiltinById('api88')!;
+    final storage = service(null);
+    addTearDown(storage.dispose);
+
+    final refs = await storage.prepare([
+      (input, file, media),
+    ], provider: provider);
+    expect(refs.single.url, startsWith('data:image/png;base64,'));
+
+    await expectLater(
+      storage.prepare([
+        (
+          const VideoInput(
+            role: VideoInputRole.reference_video,
+            assetId: 'video',
+            mimeType: 'video/mp4',
+          ),
+          file,
+          media,
+        ),
+      ], provider: provider),
+      throwsA(
+        isA<VideoException>().having(
+          (e) => e.code,
+          'code',
+          VideoErrorCode.configuration_required,
+        ),
+      ),
+    );
+
+    final handle = await file.open(mode: FileMode.write);
+    await handle.truncate(12 * 1024 * 1024);
+    await handle.close();
+    await expectLater(
+      storage.prepare([(input, file, media)], provider: provider),
+      throwsA(
+        isA<VideoException>().having((e) => e.field, 'field', 'file_size'),
+      ),
+    );
+  });
 }

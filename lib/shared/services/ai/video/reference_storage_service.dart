@@ -50,6 +50,20 @@ typedef ReferenceUploader =
 
 final _log = AppLogger.forModule('ReferenceStorage');
 
+/// 星辰AI 主／备域名只暴露 `/v1/media/generate` 系列接口，没有 `/v1/media/uploads`，
+/// 因此参考图／音频按平台规则内联 `data:` URL，参考视频只能走公网直链或对象存储。
+const _mediaGatewayUploadlessHosts = {'api.lk888.ai', 'api.lk666.ai'};
+
+/// 平台内联规则：单文件解码后 ≤10MB，单次请求合计 ≤30MB。
+const _mediaGatewayInlineMaxFileBytes = 10 * 1024 * 1024;
+const _mediaGatewayInlineMaxTotalBytes = 30 * 1024 * 1024;
+
+bool _inlineOnlyChannel(AiProvider provider) {
+  final host = Uri.tryParse(provider.effectiveBaseUrl)?.host ?? '';
+  return provider.typeConfig.uploadProtocol == UploadProtocol.api88_media &&
+      _mediaGatewayUploadlessHosts.contains(host);
+}
+
 class ReferenceStorageService {
   ReferenceStorageService({
     required this.probe,
@@ -241,6 +255,10 @@ class ReferenceStorageService {
 
   Future<bool> _hasUpload(AiProvider provider) async {
     if (provider.pluginId == null) {
+      // 星辰AI 域名没有上传接口，声明了 uploadProtocol 也只能走内联／对象存储。
+      if (_inlineOnlyChannel(provider)) {
+        return false;
+      }
       return provider.typeConfig.uploadProtocol != null;
     }
     final host = pluginHost;
@@ -321,13 +339,18 @@ class ReferenceStorageService {
     final target = channel ? null : await _storageTarget();
     if (target == null && !channel) {
       var encodedSize = 0;
+      var decodedSize = 0;
       for (final (input, file, _) in inputs) {
         if (!_canInline(input)) {
           throw _storageRequired();
         }
-        encodedSize += ((await file.length() + 2) ~/ 3) * 4;
+        final size = await file.length();
+        encodedSize += ((size + 2) ~/ 3) * 4;
+        decodedSize += size;
       }
-      if (encodedSize > videoInlineRequestMaxBytes) {
+      if (encodedSize > videoInlineRequestMaxBytes ||
+          (_inlineOnlyChannel(provider) &&
+              decodedSize > _mediaGatewayInlineMaxTotalBytes)) {
         throw const VideoException(
           VideoErrorCode.invalid_request,
           field: 'file_size',
@@ -393,6 +416,7 @@ class ReferenceStorageService {
         ? await _storageTarget(cancellation: cancellation)
         : null;
     var encodedSize = 0;
+    var decodedSize = 0;
     for (final (index, (input, file, _)) in inputs.indexed) {
       if (certified.containsKey(index)) {
         continue;
@@ -410,10 +434,22 @@ class ReferenceStorageService {
         if (!_canInline(input)) {
           throw _storageRequired();
         }
+        final wrongType = !input.mimeType.startsWith('image/') &&
+            !input.mimeType.startsWith('audio/');
+        if (_inlineOnlyChannel(provider) &&
+            (size > _mediaGatewayInlineMaxFileBytes || wrongType)) {
+          throw const VideoException(
+            VideoErrorCode.invalid_request,
+            field: 'file_size',
+          );
+        }
         encodedSize += ((size + 2) ~/ 3) * 4;
+        decodedSize += size;
       }
     }
-    if (encodedSize > videoInlineRequestMaxBytes) {
+    if (encodedSize > videoInlineRequestMaxBytes ||
+        (_inlineOnlyChannel(provider) &&
+            decodedSize > _mediaGatewayInlineMaxTotalBytes)) {
       throw const VideoException(
         VideoErrorCode.invalid_request,
         field: 'file_size',
@@ -922,6 +958,17 @@ class ReferenceStorageService {
     final size = await file.length();
     if (inline &&
         (size < 1 || ((size + 2) ~/ 3) * 4 > videoInlineRequestMaxBytes)) {
+      throw const VideoException(
+        VideoErrorCode.invalid_request,
+        field: 'file_size',
+      );
+    }
+    // 星辰AI 的内联口径更紧：只收图片／音频，单文件 ≤10MB。
+    final wrongInlineType = !input.mimeType.startsWith('image/') &&
+        !input.mimeType.startsWith('audio/');
+    if (inline &&
+        _inlineOnlyChannel(provider!) &&
+        (size > _mediaGatewayInlineMaxFileBytes || wrongInlineType)) {
       throw const VideoException(
         VideoErrorCode.invalid_request,
         field: 'file_size',

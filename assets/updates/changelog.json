@@ -1,6 +1,28 @@
 {
   "releases": [
     {
+      "version": "0.6.20",
+      "date": "2026-11-25",
+      "title": {
+        "zh": "参考图能带上了，全能参考不再卡在第一步",
+        "en": "Reference images now go through, all-reference mode no longer stalls"
+      },
+      "items": [
+        {
+          "zh": "星辰AI 的全能参考型号可以正常带参考图、参考音频生成，不再报「参考素材上传失败」",
+          "en": "Aliyun-style all-reference models on 星辰AI now accept reference images and audio instead of failing at the upload step"
+        },
+        {
+          "zh": "参考图或参考音频超过 10MB 时，提交前就会提示，省掉一次白跑",
+          "en": "Files over 10MB are flagged before submission, so you no longer wait for a failed run"
+        },
+        {
+          "zh": "还没接入素材云存储时，参考视频会直接说明需要接入，而不是给一个看不懂的报错",
+          "en": "Without asset cloud storage, reference videos now state exactly what is missing instead of a cryptic error"
+        }
+      ]
+    },
+    {
       "version": "0.6.19",
       "date": "2026-11-25",
       "title": {
