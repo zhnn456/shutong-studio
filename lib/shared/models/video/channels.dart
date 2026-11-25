@@ -17,6 +17,34 @@ class VideoProtocolOptions {
   final bool supportsOmniReferenceTaskType;
 }
 
+/// 星辰AI 媒体网关（`POST /v1/media/generate`）逐型号的字段名差异。
+///
+/// 站点按系列定义了不同的参数名（Seedance 用 `aspect_ratio`，万相用 `ratio`；
+/// 万相参考生用 `reference_urls`），还有系列级必填项（万相的 `version`）。
+/// 字段名与必填项取自 `GET /v1/skills/models?type=video` 的 params。
+class MediaGatewayVideoOptions extends VideoProtocolOptions {
+  const MediaGatewayVideoOptions({
+    this.ratioField = 'aspect_ratio',
+    this.frameImagesField = 'images',
+    this.referenceImageField = 'image_url',
+    this.referenceVideoField = 'video_url',
+    this.referenceAudioField = 'audio_url',
+    this.sendsRatio = true,
+    this.fixedParams = const {},
+  });
+
+  /// 画面比例字段名；[sendsRatio] 为 false 的型号（首尾帧跟随首帧）不发送。
+  final String ratioField;
+  final String frameImagesField;
+  final String referenceImageField;
+  final String referenceVideoField;
+  final String referenceAudioField;
+  final bool sendsRatio;
+
+  /// 系列级必填项，例如万相的 `version: standard`（不指定版本站点会拒绝）。
+  final Map<String, String> fixedParams;
+}
+
 /// AtlasCloud 的不同生成端点使用不同字段，不能统一套用 Seedance 请求。
 class AtlasCloudVideoOptions extends VideoProtocolOptions {
   const AtlasCloudVideoOptions({
@@ -2547,6 +2575,349 @@ final videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
       catalogId: 'MiniMax-H3',
       capabilities: VideoModelCapabilities(framesRequireAdaptiveRatio: true),
     ),
+
+    // ── 星辰AI（api88）媒体网关：Seedance / 万相系列 ──
+    // 站点把「文生 / 参考生 / 全能参考 / 首尾帧」拆成独立型号名，参数名与必填项
+    // 各不相同；下面的能力值取自 GET /v1/skills/models?type=video（2026-11-25）。
+    // 目录型号沿用本地已有的官方规格，只有与官方不同时才在渠道层覆盖。
+
+    // Seedance 2.5（480p / 720p / 1080p，4~30 秒）
+    'doubao-seedance-2-5-260628': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-260628',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.text],
+        resolutions: _mgSeedance25Resolutions,
+        durations: _mgSeedance25Durations,
+        ratios: _mgSeedanceRatios,
+        maxReferences: 0,
+        references: _mgNoReferences,
+      ),
+    ),
+    'doubao-seedance-2-5-cankaosheng': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-260628',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.reference],
+        resolutions: _mgSeedance25Resolutions,
+        durations: _mgSeedance25Durations,
+        ratios: _mgSeedanceRatios,
+        maxReferences: 30,
+        references: {
+          VideoMediaKind.image: _mgImage30,
+          VideoMediaKind.video: null,
+          VideoMediaKind.audio: null,
+        },
+      ),
+    ),
+    'doubao-seedance-2-5-quannengcankao': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-260628',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.reference],
+        resolutions: _mgSeedance25Resolutions,
+        durations: _mgSeedance25Durations,
+        ratios: _mgSeedanceRatios,
+        maxReferences: 50,
+        references: {
+          VideoMediaKind.image: _mgImage30,
+          VideoMediaKind.video: _mgVideo10,
+          VideoMediaKind.audio: _mgAudio10,
+        },
+      ),
+    ),
+    'doubao-seedance-2-5-shouweizhen': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-260628',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.first_frame, VideoMode.first_last_frame],
+        resolutions: _mgSeedance25Resolutions,
+        durations: _mgSeedance25Durations,
+        ratios: _mgSeedanceRatios,
+        frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
+        maxReferences: 2,
+        references: {VideoMediaKind.image: _mgImage2},
+      ),
+    ),
+    for (final id in ['seedance-2.5-guanfang', 'seedance-2.5-guanfang-anmiao'])
+      id: VideoChannelModel(
+        catalogId: 'doubao-seedance-2-5-260628',
+        requestDefaults: _mgNoAudio,
+        capabilities: const VideoModelCapabilities(
+          modes: [
+            VideoMode.text,
+            VideoMode.first_frame,
+            VideoMode.first_last_frame,
+            VideoMode.reference,
+          ],
+          resolutions: _mgSeedance25Resolutions,
+          durations: _mgSeedance25Durations,
+          ratios: _mgSeedanceRatios,
+          framesRequireAdaptiveRatio: true,
+          maxReferences: 50,
+          references: {
+            VideoMediaKind.image: _mgImage30,
+            VideoMediaKind.video: _mgVideo10,
+            VideoMediaKind.audio: _mgAudio10,
+          },
+        ),
+      ),
+    'seedance-2.5-flash': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-flash-261115',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [
+          VideoMode.text,
+          VideoMode.first_frame,
+          VideoMode.first_last_frame,
+          VideoMode.reference,
+        ],
+        resolutions: {'480p', '720p'},
+        durations: _mgSeedance25Durations,
+        ratios: _mgSeedanceRatios,
+        framesRequireAdaptiveRatio: true,
+        maxReferences: 50,
+        references: {
+          VideoMediaKind.image: _mgImage30,
+          VideoMediaKind.video: _mgVideo10,
+          VideoMediaKind.audio: _mgAudio10,
+        },
+      ),
+    ),
+    // Seedance 2.5 按次：只有 720p，5~30 秒
+    'seedance-2.5-anci': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-260628',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.text, VideoMode.reference],
+        resolutions: {'720p'},
+        durations: _mgSeedance25AnciDurations,
+        ratios: {'16:9', '9:16', '1:1'},
+        maxReferences: 9,
+        references: {VideoMediaKind.image: _mgImage9},
+      ),
+    ),
+    'seedance-2.5-anmiao': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-260628',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.reference],
+        maxReferences: 30,
+        references: {VideoMediaKind.image: _mgImage30},
+      ),
+    ),
+    'seedance-2.5-anmiao-quannengcankao': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-260628',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.reference],
+        maxReferences: 50,
+        references: {
+          VideoMediaKind.image: _mgImage30,
+          VideoMediaKind.video: _mgVideo10,
+          VideoMediaKind.audio: _mgAudio10,
+        },
+      ),
+    ),
+    'seedance-2.5-anmiao-shouweizhen': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-260628',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.first_frame, VideoMode.first_last_frame],
+        frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
+        maxReferences: 2,
+        references: {VideoMediaKind.image: _mgImage2},
+      ),
+    ),
+    'seedance-2.5-anmiao-wensheng': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-5-260628',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.text],
+        maxReferences: 0,
+        references: _mgNoReferences,
+      ),
+    ),
+
+    // Seedance 2.0（480p / 720p / 1080p / 4K，4~15 秒）
+    for (final id in ['seedance-2.0-guanfang', 'seedance-2.0-guanfang-anmiao'])
+      id: VideoChannelModel(
+        catalogId: 'doubao-seedance-2-0-260128',
+        requestDefaults: _mgNoAudio,
+        capabilities: const VideoModelCapabilities(
+          modes: [
+            VideoMode.text,
+            VideoMode.first_frame,
+            VideoMode.first_last_frame,
+            VideoMode.reference,
+          ],
+          resolutions: _mgSeedance20Resolutions,
+          durations: _mgSeedance20Durations,
+          ratios: _mgSeedanceRatios,
+          framesRequireAdaptiveRatio: true,
+          supportsAudioOnlyReference: false,
+          maxReferences: 15,
+          references: {
+            VideoMediaKind.image: _mgImage9,
+            VideoMediaKind.video: _mgVideo3,
+            VideoMediaKind.audio: _mgAudio3,
+          },
+        ),
+      ),
+    'seedance-2.0-anci': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-0-260128',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.reference],
+        resolutions: {'720p'},
+        durations: _mgSeedance20Durations,
+        ratios: {'16:9', '9:16', '1:1', '4:3', '3:4'},
+        maxReferences: 9,
+        references: {VideoMediaKind.image: _mgImage9},
+      ),
+    ),
+    'seedance-2.0-anmiao': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-0-260128',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [
+          VideoMode.text,
+          VideoMode.first_frame,
+          VideoMode.first_last_frame,
+        ],
+        resolutions: _mgSeedance20Resolutions,
+        durations: _mgSeedance20Durations,
+        ratios: _mgSeedanceRatios,
+        frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
+        maxReferences: 2,
+        references: {VideoMediaKind.image: _mgImage2},
+      ),
+    ),
+    'seedance-2.0-anmiao-cankaosheng': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-0-260128',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.reference],
+        maxReferences: 9,
+        references: {VideoMediaKind.image: _mgImage9},
+      ),
+    ),
+    'seedance-2.0-anmiao-quannengcankao': VideoChannelModel(
+      catalogId: 'doubao-seedance-2-0-260128',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.reference],
+        resolutions: _mgSeedance20Resolutions,
+        durations: _mgSeedance20Durations,
+        ratios: _mgSeedanceRatios,
+        supportsAudioOnlyReference: false,
+        maxReferences: 15,
+        references: {
+          VideoMediaKind.image: _mgImage9,
+          VideoMediaKind.video: _mgVideo3,
+          VideoMediaKind.audio: _mgAudio3,
+        },
+      ),
+    ),
+
+    // 万相 3.0：比例字段叫 ratio，版本必填（standard 单价最低），首尾帧不发送比例
+    'wan3.0': VideoChannelModel(
+      catalogId: 'wan3.0-video',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [
+          VideoMode.text,
+          VideoMode.first_frame,
+          VideoMode.first_last_frame,
+          VideoMode.reference,
+        ],
+        resolutions: _mgWanResolutions,
+        durations: _mgWanDurations,
+        ratios: _mgWanRatios,
+        framesRequireAdaptiveRatio: true,
+        maxReferences: 20,
+        references: {
+          VideoMediaKind.image: _mgImage10,
+          VideoMediaKind.video: _mgVideo5,
+          VideoMediaKind.audio: _mgAudio5,
+        },
+      ),
+      protocolOptions: const MediaGatewayVideoOptions(
+        ratioField: 'ratio',
+        fixedParams: {'version': 'standard'},
+      ),
+    ),
+    'wan3.0-video': VideoChannelModel(
+      catalogId: 'wan3.0-video',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.text],
+        resolutions: _mgWanResolutions,
+        durations: _mgWanDurations,
+        ratios: _mgWanRatios,
+        maxReferences: 0,
+        references: _mgNoReferences,
+      ),
+      protocolOptions: const MediaGatewayVideoOptions(
+        ratioField: 'ratio',
+        fixedParams: {'version': 'standard'},
+      ),
+    ),
+    'wan3.0-video-cankaosheng': VideoChannelModel(
+      catalogId: 'wan3.0-video',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.reference],
+        resolutions: _mgWanResolutions,
+        durations: _mgWanDurations,
+        ratios: _mgWanRatios,
+        maxReferences: 10,
+        references: {VideoMediaKind.image: _mgImage10},
+      ),
+      protocolOptions: const MediaGatewayVideoOptions(
+        ratioField: 'ratio',
+        referenceImageField: 'reference_urls',
+        fixedParams: {'version': 'standard'},
+      ),
+    ),
+    'wan3.0-video-shouweizhen': VideoChannelModel(
+      catalogId: 'wan3.0-video',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.first_frame, VideoMode.first_last_frame],
+        resolutions: _mgWanResolutions,
+        durations: _mgWanDurations,
+        ratios: {'adaptive'},
+        frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
+        maxReferences: 2,
+        references: {VideoMediaKind.image: _mgImage2},
+      ),
+      protocolOptions: const MediaGatewayVideoOptions(
+        ratioField: 'ratio',
+        sendsRatio: false,
+        fixedParams: {'version': 'standard'},
+      ),
+    ),
+    'wan3.0-video-quannengcankao': VideoChannelModel(
+      catalogId: 'wan3.0-video',
+      requestDefaults: _mgNoAudio,
+      capabilities: const VideoModelCapabilities(
+        modes: [VideoMode.reference],
+        resolutions: _mgWanResolutions,
+        durations: _mgWanDurations,
+        ratios: _mgWanRatios,
+        maxReferences: 20,
+        references: {
+          VideoMediaKind.image: _mgImage10,
+          VideoMediaKind.video: _mgVideo5,
+          VideoMediaKind.audio: _mgAudio5,
+        },
+      ),
+      protocolOptions: const MediaGatewayVideoOptions(
+        ratioField: 'ratio',
+        fixedParams: {'version': 'standard'},
+      ),
+    ),
   },
 };
 
@@ -2755,3 +3126,82 @@ const _newApiSingleFrame = VideoModelCapabilities(
   modes: [VideoMode.text, VideoMode.first_frame, VideoMode.first_last_frame],
   references: {VideoMediaKind.image: VideoReferenceLimits(maxCount: 1)},
 );
+
+// ============ 星辰AI 媒体网关：能力常量 ============
+// 全部取自 GET /v1/skills/models?type=video 的 params（2026-11-25 拉取），
+// 站点未公布的输入尺寸校验不在这里编造，交给服务端。
+
+const _mgNoAudio = VideoRequestDefaults(audio: ConfigValue<bool>(null));
+
+const _mgNoReferences = <VideoMediaKind, VideoReferenceLimits?>{
+  VideoMediaKind.image: null,
+  VideoMediaKind.video: null,
+  VideoMediaKind.audio: null,
+};
+
+const _mgImage2 = VideoReferenceLimits(maxCount: 2);
+const _mgImage9 = VideoReferenceLimits(maxCount: 9);
+const _mgImage10 = VideoReferenceLimits(maxCount: 10);
+const _mgImage30 = VideoReferenceLimits(maxCount: 30);
+
+/// 参考视频：站点要求单条 2~30 秒、合计不超过 30 秒。
+const _mgVideo3 = VideoReferenceLimits(
+  maxCount: 3,
+  minDurationMs: ConfigValue<int>(2000),
+  maxDurationMs: ConfigValue<int>(30000),
+  maxTotalDurationMs: ConfigValue<int>(30000),
+);
+const _mgVideo5 = VideoReferenceLimits(
+  maxCount: 5,
+  minDurationMs: ConfigValue<int>(2000),
+  maxDurationMs: ConfigValue<int>(30000),
+  maxTotalDurationMs: ConfigValue<int>(30000),
+);
+const _mgVideo10 = VideoReferenceLimits(
+  maxCount: 10,
+  minDurationMs: ConfigValue<int>(2000),
+  maxDurationMs: ConfigValue<int>(30000),
+  maxTotalDurationMs: ConfigValue<int>(30000),
+);
+
+/// 参考音频：同样按 2~30 秒、合计 30 秒校验。
+const _mgAudio3 = VideoReferenceLimits(
+  maxCount: 3,
+  minDurationMs: ConfigValue<int>(2000),
+  maxDurationMs: ConfigValue<int>(30000),
+  maxTotalDurationMs: ConfigValue<int>(30000),
+);
+const _mgAudio5 = VideoReferenceLimits(
+  maxCount: 5,
+  minDurationMs: ConfigValue<int>(2000),
+  maxDurationMs: ConfigValue<int>(30000),
+  maxTotalDurationMs: ConfigValue<int>(30000),
+);
+const _mgAudio10 = VideoReferenceLimits(
+  maxCount: 10,
+  minDurationMs: ConfigValue<int>(2000),
+  maxDurationMs: ConfigValue<int>(30000),
+  maxTotalDurationMs: ConfigValue<int>(30000),
+);
+
+const _mgSeedance25Resolutions = {'480p', '720p', '1080p'};
+const _mgSeedance20Resolutions = {'480p', '720p', '1080p', '4K'};
+const _mgWanResolutions = {'480P', '720P', '1080P'};
+
+const _mgSeedanceRatios = {
+  'adaptive',
+  '16:9',
+  '4:3',
+  '1:1',
+  '3:4',
+  '9:16',
+  '21:9',
+};
+const _mgWanRatios = {'adaptive', '16:9', '9:16', '1:1', '4:3', '3:4'};
+
+// dart format off
+const _mgSeedance25Durations = {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
+const _mgSeedance25AnciDurations = {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
+const _mgSeedance20Durations = {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+const _mgWanDurations = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
+// dart format on

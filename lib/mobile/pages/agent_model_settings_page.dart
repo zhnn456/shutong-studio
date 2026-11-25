@@ -155,6 +155,7 @@ class MobileAgentModelSettingsPage extends HookConsumerWidget {
     final agentsAsync = ref.watch(globalSubAgentsProvider);
     final chatRowKey = useMemoized(GlobalKey.new);
     final imageRowKey = useMemoized(GlobalKey.new);
+    final videoRowKey = useMemoized(GlobalKey.new);
     final agentsRowKey = useMemoized(GlobalKey.new);
     final ready = settingsAsync.hasValue && agentsAsync.hasValue;
     final guide = useAutoGuideTour(
@@ -205,6 +206,7 @@ class MobileAgentModelSettingsPage extends HookConsumerWidget {
             agents: agents,
             chatRowKey: chatRowKey,
             imageRowKey: imageRowKey,
+            videoRowKey: videoRowKey,
             agentsRowKey: agentsRowKey,
 
             onDefaultChanged: (kind, optionId) =>
@@ -354,6 +356,7 @@ class _MobileAgentModelSettingsContent extends StatelessWidget {
     required this.agents,
     this.chatRowKey,
     this.imageRowKey,
+    this.videoRowKey,
     this.agentsRowKey,
 
     required this.onDefaultChanged,
@@ -366,6 +369,7 @@ class _MobileAgentModelSettingsContent extends StatelessWidget {
   final List<SubAgent> agents;
   final GlobalKey? chatRowKey;
   final GlobalKey? imageRowKey;
+  final GlobalKey? videoRowKey;
   final GlobalKey? agentsRowKey;
   final Future<void> Function(AiModelKind kind, String? optionId)
   onDefaultChanged;
@@ -407,6 +411,15 @@ class _MobileAgentModelSettingsContent extends StatelessWidget {
         modelKind: AiModelKind.image,
         selectedId: settings.aiSettings.defaultImageModelId,
         onChanged: (optionId) => onDefaultChanged(AiModelKind.image, optionId),
+      ),
+      _MobileModelSettingItem(
+        key: const ValueKey('mobile_model_setting_video'),
+        title: context.t(LocaleKeys.agentStudioVideo),
+        description: context.t(LocaleKeys.agentStudioVideoDescription),
+        icon: RevericIcons.movie_outlined,
+        modelKind: AiModelKind.video,
+        selectedId: settings.aiSettings.defaultVideoModelId,
+        onChanged: (optionId) => onDefaultChanged(AiModelKind.video, optionId),
       ),
       for (final agent in builtinAgents)
         () {
@@ -450,7 +463,8 @@ class _MobileAgentModelSettingsContent extends StatelessWidget {
         final guideKey = switch (itemIndex) {
           0 => chatRowKey,
           1 => imageRowKey,
-          2 => agentsRowKey,
+          2 => videoRowKey,
+          3 => agentsRowKey,
           _ => null,
         };
         final card = _MobileModelSettingCard(

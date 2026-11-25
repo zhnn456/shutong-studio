@@ -1187,6 +1187,8 @@ abstract final class LocaleKeys {
   static const agentStudioEditPrompt = 'agent_studio.edit_prompt';
   static const agentStudioImage = 'agent_studio.image';
   static const agentStudioImageDescription = 'agent_studio.image_description';
+  static const agentStudioVideo = 'agent_studio.video';
+  static const agentStudioVideoDescription = 'agent_studio.video_description';
   static const agentStudioModelLabel = 'agent_studio.model_label';
   static const agentStudioModelSettings = 'agent_studio.model_settings';
   static const agentStudioModelSettingsDescription =
@@ -1198,8 +1200,7 @@ abstract final class LocaleKeys {
   static const agentStudioReview = 'agent_studio.review';
   static const agentStudioReviewDescription = 'agent_studio.review_description';
   static const agentStudioSearchExperts = 'agent_studio.search_experts';
-  static const agentStudioStylePolish = 'agent_studio.style_polish';
-  static const agentStudioStylePolishDescription =
+  static const agentStudioStylePolish = 'agent_studio.style_polish';  static const agentStudioStylePolishDescription =
       'agent_studio.style_polish_description';
   static const agentStudioWriter = 'agent_studio.writer';
   static const agentStudioWriterDescription = 'agent_studio.writer_description';

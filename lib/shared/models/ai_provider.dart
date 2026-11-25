@@ -1102,6 +1102,7 @@ class AiSettings {
   final String? defaultChatModelId;
   final String? defaultChatReasoningEffort;
   final String? defaultImageModelId;
+  final String? defaultVideoModelId;
   final String? defaultAsrModelId;
   final String? defaultPlannerModelId;
   final String? defaultWriterModelId;
@@ -1114,6 +1115,7 @@ class AiSettings {
     this.defaultChatModelId,
     this.defaultChatReasoningEffort,
     this.defaultImageModelId,
+    this.defaultVideoModelId,
     this.defaultAsrModelId,
     this.defaultPlannerModelId,
     this.defaultWriterModelId,
@@ -1141,6 +1143,7 @@ class AiSettings {
       defaultChatModelId: json['defaultChatModelId'] as String?,
       defaultChatReasoningEffort: json['defaultChatReasoningEffort'] as String?,
       defaultImageModelId: json['defaultImageModelId'] as String?,
+      defaultVideoModelId: json['defaultVideoModelId'] as String?,
       defaultAsrModelId: json['defaultAsrModelId'] as String?,
       defaultPlannerModelId: json['defaultPlannerModelId'] as String?,
       defaultWriterModelId: json['defaultWriterModelId'] as String?,
@@ -1152,6 +1155,7 @@ class AiSettings {
     if (defaultChatReasoningEffort != null)
       'defaultChatReasoningEffort': defaultChatReasoningEffort,
     if (defaultImageModelId != null) 'defaultImageModelId': defaultImageModelId,
+    if (defaultVideoModelId != null) 'defaultVideoModelId': defaultVideoModelId,
     'defaultAsrModelId': ?defaultAsrModelId,
     if (defaultPlannerModelId != null)
       'defaultPlannerModelId': defaultPlannerModelId,
@@ -1164,6 +1168,7 @@ class AiSettings {
     Object? defaultChatModelId = _sentinel,
     Object? defaultChatReasoningEffort = _sentinel,
     Object? defaultImageModelId = _sentinel,
+    Object? defaultVideoModelId = _sentinel,
     Object? defaultAsrModelId = _sentinel,
     Object? defaultPlannerModelId = _sentinel,
     Object? defaultWriterModelId = _sentinel,
@@ -1181,6 +1186,9 @@ class AiSettings {
       defaultImageModelId: defaultImageModelId == _sentinel
           ? this.defaultImageModelId
           : defaultImageModelId as String?,
+      defaultVideoModelId: defaultVideoModelId == _sentinel
+          ? this.defaultVideoModelId
+          : defaultVideoModelId as String?,
       defaultAsrModelId: defaultAsrModelId == _sentinel
           ? this.defaultAsrModelId
           : defaultAsrModelId as String?,
@@ -1222,6 +1230,9 @@ class AiSettings {
       AiModelKind.asr: previous.availableAsrModels.toSet().difference(
         provider.availableAsrModels.toSet(),
       ),
+      AiModelKind.video: _normalizeModels(
+        previous.videoModels,
+      ).toSet().difference(_normalizeModels(provider.videoModels).toSet()),
     };
     return updated._clearDefaultSelectionsWhere((kind, optionId) {
       final prefix = '${provider.id}::';
@@ -1322,8 +1333,9 @@ class AiSettings {
   String? defaultOptionIdForKind(AiModelKind kind) => switch (kind) {
     AiModelKind.chat => defaultChatModelId,
     AiModelKind.image => defaultImageModelId,
+    AiModelKind.video => defaultVideoModelId,
     AiModelKind.asr => defaultAsrModelId,
-    AiModelKind.video || AiModelKind.audio => null,
+    AiModelKind.audio => null,
   };
 
   String? defaultOptionIdForRole(AiModelRole role) => switch (role) {
@@ -1346,9 +1358,10 @@ class AiSettings {
               ),
       ),
       AiModelKind.image => copyWith(defaultImageModelId: optionId),
+      AiModelKind.video => copyWith(defaultVideoModelId: optionId),
       AiModelKind.asr => copyWith(defaultAsrModelId: optionId),
-      AiModelKind.video || AiModelKind.audio => throw UnsupportedError(
-        'Video requests choose their model explicitly',
+      AiModelKind.audio => throw UnsupportedError(
+        'Audio requests choose their model explicitly',
       ),
     };
   }
@@ -1382,6 +1395,7 @@ class AiSettings {
           ? defaultChatReasoningEffort
           : null,
       defaultImageModelId: keep(AiModelKind.image, defaultImageModelId),
+      defaultVideoModelId: keep(AiModelKind.video, defaultVideoModelId),
       defaultAsrModelId: keep(AiModelKind.asr, defaultAsrModelId),
       defaultPlannerModelId: keep(AiModelKind.chat, defaultPlannerModelId),
       defaultWriterModelId: keep(AiModelKind.chat, defaultWriterModelId),

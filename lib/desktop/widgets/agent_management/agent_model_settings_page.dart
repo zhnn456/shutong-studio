@@ -104,6 +104,7 @@ class AgentModelSettingsPage extends HookConsumerWidget {
     final agentsAsync = ref.watch(globalSubAgentsProvider);
     final chatRowKey = useMemoized(GlobalKey.new);
     final imageRowKey = useMemoized(GlobalKey.new);
+    final videoRowKey = useMemoized(GlobalKey.new);
     final agentsRowKey = useMemoized(GlobalKey.new);
     final ready = settingsAsync.hasValue && agentsAsync.hasValue;
     final guide = useAutoGuideTour(
@@ -159,6 +160,7 @@ class AgentModelSettingsPage extends HookConsumerWidget {
             agents: agents,
             chatRowKey: chatRowKey,
             imageRowKey: imageRowKey,
+            videoRowKey: videoRowKey,
             agentsRowKey: agentsRowKey,
 
             onEditPrompt: onEditPrompt,
@@ -309,6 +311,7 @@ class _AgentModelSettingsContent extends StatelessWidget {
     required this.agents,
     this.chatRowKey,
     this.imageRowKey,
+    this.videoRowKey,
     this.agentsRowKey,
 
     required this.onEditPrompt,
@@ -322,6 +325,7 @@ class _AgentModelSettingsContent extends StatelessWidget {
   final List<SubAgent> agents;
   final GlobalKey? chatRowKey;
   final GlobalKey? imageRowKey;
+  final GlobalKey? videoRowKey;
   final GlobalKey? agentsRowKey;
   final ValueChanged<SubAgent>? onEditPrompt;
   final Future<void> Function(AiModelKind kind, String? optionId)
@@ -365,6 +369,14 @@ class _AgentModelSettingsContent extends StatelessWidget {
         selectedId: settings.aiSettings.defaultImageModelId,
         onChanged: (optionId) => onDefaultChanged(AiModelKind.image, optionId),
       ),
+      _AgentModelSettingItem(
+        title: context.t(LocaleKeys.agentStudioVideo),
+        description: context.t(LocaleKeys.agentStudioVideoDescription),
+        icon: RevericIcons.movie_outlined,
+        modelKind: AiModelKind.video,
+        selectedId: settings.aiSettings.defaultVideoModelId,
+        onChanged: (optionId) => onDefaultChanged(AiModelKind.video, optionId),
+      ),
       for (final agent in builtinAgents)
         () {
           final copy = _builtinCopyKeys[agent.slug]!;
@@ -403,7 +415,8 @@ class _AgentModelSettingsContent extends StatelessWidget {
                 key: switch (index) {
                   0 => chatRowKey,
                   1 => imageRowKey,
-                  2 => agentsRowKey,
+                  2 => videoRowKey,
+                  3 => agentsRowKey,
                   _ => null,
                 },
                 item: items[index],

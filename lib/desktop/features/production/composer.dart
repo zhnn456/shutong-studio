@@ -37,6 +37,7 @@ import '../../../shared/models/storyboard/prompt.dart';
 import '../../../shared/models/video/capabilities.dart';
 import '../../../shared/providers/novel_providers.dart';
 import '../../../shared/providers/purefox_media_providers.dart';
+import '../../../shared/providers/settings_providers.dart';
 import '../../../shared/providers/video_tasks.dart';
 import '../../../shared/services/production/canvas_service.dart';
 import '../../../shared/services/production/generate_orchestrator.dart';
@@ -227,6 +228,75 @@ class _ComposerForm extends HookConsumerWidget {
       }
       return null;
     }, [modelSelection, editingModes.map((mode) => mode.name).join(',')]);
+    // 「模型设置 → 视频生成」里选的全局默认模型：新节点没有型号时自动带上，
+    // 并按该型号能接受的比例 / 分辨率 / 时长把默认值调到合法范围内。
+    final aiSettings = ref.watch(appSettingsProvider).value?.aiSettings;
+    final defaultVideoOptionId = aiSettings?.defaultOptionIdForKind(
+      AiModelKind.video,
+    );
+    useEffect(() {
+      if ((modelSelection?.$2 ?? '').trim().isNotEmpty ||
+          aiSettings == null ||
+          defaultVideoOptionId == null) {
+        return null;
+      }
+      final option = aiSettings.findModelOptionById(
+        kind: AiModelKind.video,
+        optionId: defaultVideoOptionId,
+      );
+      if (option == null) return null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        if ((form.getValue<(String, String)>(ShotField.model)?.$2 ?? '')
+            .trim()
+            .isNotEmpty) {
+          return;
+        }
+        final provider = providers.data
+            ?.where((p) => p.id == option.providerId)
+            .firstOrNull;
+        final config = provider == null
+            ? null
+            : resolveVideoModel(provider, option.model);
+        if (provider == null || config == null) return;
+        form.updateValue(ShotField.model, (option.providerId, option.model));
+        final modes = productionEditingModes(provider, config);
+        if (modes.isNotEmpty &&
+            !modes.any(
+              (item) => item.name == form.getValue<String>(ShotField.mode),
+            )) {
+          form.updateValue(ShotField.mode, modes.first.name);
+        }
+        final modeName = form.getValue<String>(ShotField.mode);
+        final frames =
+            modeName == VideoMode.first_frame.name ||
+            modeName == VideoMode.first_last_frame.name;
+        if (frames && config.capabilities.framesRequireAdaptiveRatio) {
+          form.updateValue(ShotField.ratio, 'adaptive');
+        } else if (!config.ratios.contains(
+          form.getValue<String>(ShotField.ratio),
+        )) {
+          form.updateValue(ShotField.ratio, config.ratios.first);
+        }
+        final resolution = form.getValue<String>(ShotField.resolution);
+        if (!config.resolutions.contains(resolution)) {
+          form.updateValue(ShotField.resolution, config.resolutions.first);
+        }
+        final duration = int.tryParse(
+          form.getValue<String>(ShotField.duration) ?? '',
+        );
+        if (duration == null ||
+            !config
+                .durationsForResolution(
+                  form.getValue<String>(ShotField.resolution) ??
+                      config.resolutions.first,
+                )
+                .contains(duration)) {
+          form.updateValue(ShotField.duration, '${config.minDurationSeconds}');
+        }
+      });
+      return null;
+    }, [defaultVideoOptionId, modelSelection?.$2, providers.hasData]);
     final tasks = useStream(
       useMemoized(
         () => service.library.database.generationTaskDao.watchSource(

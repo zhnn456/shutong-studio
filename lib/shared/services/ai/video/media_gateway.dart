@@ -10,6 +10,7 @@
 //     响应 data.task_id 为任务 ID；
 //   - 轮询: GET /v1/skills/task-status?task_id=xxx（原版 /v1/media/status 仍可用），
 //     终态字段 is_final / status_group / state / result_url / error。
+import '../../../models/video/channels.dart';
 import '../../../models/video/request.dart';
 import '../../../models/video/task_result.dart';
 import 'client.dart';
@@ -48,11 +49,21 @@ class MediaGatewayVideoClient extends VideoClient {
         field: 'prompt',
       );
     }
-    final params = <String, dynamic>{
-      'duration': request.durationSeconds.toString(),
-      'resolution': request.resolution,
-      'aspect_ratio': request.ratio,
+    // 站点按系列使用不同字段名（Seedance: aspect_ratio / 万相: ratio），
+    // 并有个别系列级必填项（万相: version）。字段差异登记在渠道层，这里读取。
+    final options = switch (lookupVideoChannelModel(
+      providerType,
+      request.modelId,
+    )?.protocolOptions) {
+      final MediaGatewayVideoOptions options => options,
+      _ => const MediaGatewayVideoOptions(),
     };
+    final params = <String, dynamic>{...options.fixedParams};
+    params['duration'] = request.durationSeconds.toString();
+    params['resolution'] = request.resolution;
+    if (options.sendsRatio) {
+      params[options.ratioField] = request.ratio;
+    }
 
     switch (request.mode) {
       case VideoMode.text:
@@ -67,7 +78,7 @@ class MediaGatewayVideoClient extends VideoClient {
             if (ref.role == VideoInputRole.last_frame) ref.url,
         ];
         if (frames.isNotEmpty) {
-          params['images'] = frames;
+          params[options.frameImagesField] = frames;
         }
       case VideoMode.reference:
         params['mode'] = 'cankaosheng';
@@ -83,9 +94,9 @@ class MediaGatewayVideoClient extends VideoClient {
             .where((ref) => ref.role.kind == VideoMediaKind.audio)
             .map((ref) => ref.url)
             .toList();
-        if (images.isNotEmpty) params['image_url'] = images;
-        if (videos.isNotEmpty) params['video_url'] = videos;
-        if (audios.isNotEmpty) params['audio_url'] = audios;
+        if (images.isNotEmpty) params[options.referenceImageField] = images;
+        if (videos.isNotEmpty) params[options.referenceVideoField] = videos;
+        if (audios.isNotEmpty) params[options.referenceAudioField] = audios;
     }
 
     return {

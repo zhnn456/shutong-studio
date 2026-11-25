@@ -1,6 +1,32 @@
 {
   "releases": [
     {
+      "version": "0.6.19",
+      "date": "2026-11-25",
+      "title": {
+        "zh": "视频模型选得到了，也跑得通",
+        "en": "Video models are now selectable and actually run"
+      },
+      "items": [
+        {
+          "zh": "星辰AI 的 seedance 2.5 / 2.0、万相 3.0 各型号补齐：视频节点的模型下拉里都能选到了",
+          "en": "Seedance 2.5 / 2.0 and Wan 3.0 variants from 星辰AI now appear in the video node model menu"
+        },
+        {
+          "zh": "文生、首尾帧、参考生、全能参考按型号自动区分，选好型号后比例、分辨率、时长只给你能用的值",
+          "en": "Text, first/last frame, reference, and all-reference modes come from the model itself; ratio, resolution, and duration only offer supported values"
+        },
+        {
+          "zh": "「模型设置」新增「视频生成」，可以指定默认视频模型，新开的视频节点会自动带上它",
+          "en": "Model Settings now has Video Generation; new video nodes start with your default video model"
+        },
+        {
+          "zh": "万相型号会自动带上站点要求的版本参数，参考图按站点字段名提交，减少提交即报错的来回",
+          "en": "Wan models send the required version field and use the site's own reference field names, cutting failed submissions"
+        }
+      ]
+    },
+    {
       "version": "0.6.18",
       "date": "2026-11-25",
       "title": {
