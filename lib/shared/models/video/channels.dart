@@ -2300,7 +2300,6 @@ final videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
         durations: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30},
         // dart format on
         frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
-        references: {VideoMediaKind.video: null, VideoMediaKind.audio: null},
         modes: VideoMode.values,
       ),
     ),
@@ -2309,7 +2308,6 @@ final videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
       capabilities: VideoModelCapabilities(
         ratios: {'16:9', '4:3', '1:1', '3:4', '9:16', '21:9'},
         maxReferences: 10,
-        references: {VideoMediaKind.video: null, VideoMediaKind.audio: null},
         supportsAudioOnlyReference: false,
         framesRequireAdaptiveRatio: false,
       ),
@@ -2321,14 +2319,17 @@ final videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
         ratios: {'1:1', '3:4', '9:16', '4:3', '16:9', '21:9', '9:21'},
         durations: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
         frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
-        references: {VideoMediaKind.video: null, VideoMediaKind.audio: null},
         modes: VideoMode.values,
       ),
     ),
     'bytedance/seedance-2.0-fast': VideoChannelModel(
       catalogId: 'seedance-2.0-fast',
       capabilities: VideoModelCapabilities(
-        references: {VideoMediaKind.video: null, VideoMediaKind.audio: null},
+        maxReferences: 15,
+        supportsAudioOnlyReference: false,
+        references: videoModelsCatalog['doubao-seedance-2-0-fast-260128']!
+            .capabilities
+            .references,
         modes: VideoMode.values,
       ),
       requestDefaults: VideoRequestDefaults(audio: ConfigValue(true)),
@@ -2340,7 +2341,6 @@ final videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
         ratios: {'1:1', '3:4', '9:16', '4:3', '16:9', '21:9', '9:21'},
         durations: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
         frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
-        references: {VideoMediaKind.video: null, VideoMediaKind.audio: null},
         modes: VideoMode.values,
       ),
     ),
@@ -2406,8 +2406,7 @@ final videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
         // dart format off
         durations: {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30},
         // dart format on
-        frameRoles: {VideoInputRole.first_frame},
-        references: {VideoMediaKind.video: null, VideoMediaKind.audio: null},
+        frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
         modes: VideoMode.values,
       ),
       requestDefaults: VideoRequestDefaults(audio: ConfigValue(true)),
@@ -2493,12 +2492,7 @@ final videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
         ratios: {'21:9', '16:9', '4:3', '1:1', '3:4', '9:16'},
         durations: {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
         frameRoles: {VideoInputRole.first_frame, VideoInputRole.last_frame},
-        references: {VideoMediaKind.video: null, VideoMediaKind.audio: null},
-        modes: [
-          VideoMode.text,
-          VideoMode.first_frame,
-          VideoMode.first_last_frame,
-        ],
+        modes: VideoMode.values,
       ),
       requestDefaults: VideoRequestDefaults(audio: ConfigValue(true)),
     ),
@@ -2550,12 +2544,14 @@ final videoChannelModels = <VideoProtocol, Map<String, VideoChannelModel>>{
     'heygen/heygen-video-1': VideoChannelModel(
       catalogId: 'heygen-video-1',
       capabilities: VideoModelCapabilities(
-        references: {VideoMediaKind.video: null, VideoMediaKind.audio: null},
-        modes: [
-          VideoMode.text,
-          VideoMode.first_frame,
-          VideoMode.first_last_frame,
-        ],
+        modes: VideoMode.values,
+        maxReferences: 12,
+        supportsAudioOnlyReference: false,
+        references: {
+          VideoMediaKind.image: VideoReferenceLimits(maxCount: 9),
+          VideoMediaKind.video: VideoReferenceLimits(maxCount: 3),
+          VideoMediaKind.audio: VideoReferenceLimits(maxCount: 3),
+        },
       ),
     ),
     'alibaba/happyhorse-1.1': VideoChannelModel(
