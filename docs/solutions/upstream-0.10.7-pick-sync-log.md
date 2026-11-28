@@ -24,14 +24,29 @@
   - `RevericTextField` → `TextField`（本项目无该封装）。
 - `canvas_work_test.dart`：仅导入上游新增用例需要的依赖，用例本体未改。
 
-## 已知既有失败（与本轮无关，0.6.20 基线一致）
+## 历史失败测试清理（canvas_work_test.dart 8 条 → 0 条）
 
-`canvas_work_test.dart` 8 条失败（空画布节点清单含「Character」、标题栏基线、tearDown 文件占用等），已在 1c737855 工作树复现同样 8 条，确认为本项目 UI 定制导致的历史偏差，未在本轮处理。
+`1c737855`（0.6.20）工作树上同样 8 条失败，属本项目 UI 定制与上游测试假设的偏差，逐条按「本项目真实行为」重写断言，不改产品行为：
+
+- 节点清单含「Character」：本项目面板本就有角色节点，断言改 `findsOneWidget`。
+- 文本节点「查看」：本项目弹窗里是可编辑的 `RevericMarkdownEditor`（上游是只读预览），断言改为编辑器存在 + 内容为 `Shared look`。
+- 附件名带上目录名：测试用 `'${temp.path}/script.md'` 拼出混合分隔符路径，`XFile.name` 按平台分隔符切分后带目录；改用 `p.join`，属测试写法问题，非产品缺陷。
+- 顶栏控件位置断言：画布头本身就是自定义标题行，剪辑/导演顶栏在正文区，统一改验证真正的不变量——不被窗口按钮压住、尺寸为正。
+- 规格芯片：与标题同排，改断言整体留在窗口按钮左侧。
+- 剪辑台打开时画布头整行卸下：断言 `canvas-work-title-label` 为 `findsNothing`。
+- 导演台：画布头若仍挂载，断言不与导演台顶栏重叠（Windows 上实测仍挂载，但两层不重叠，属设计内）。
+- 导出弹窗：导出前会 flush 工程（真实 IO），改为 `runAsync` 轮询等待弹窗出现。
+- `tearDownAll` 删不掉临时目录：根因是页面里有 provider 直接取全局 `AppDatabase()`，真正打开了临时目录下的 `reveric.sqlite` 并长期占用文件句柄；新增 `AppDatabase.debugFactoryOverride` 测试钩子把全局入口重定向到内存库，句柄不再落盘。
+
+`DesktopWindowFrame.sidebarLeadingInset` 原先用 `Platform.isMacOS` 判断，测试里的平台覆盖无效；改为与 `trailingInset` 一致的 `defaultTargetPlatform`。
+
+剪辑/导演那条用例只在 Windows 上验证：macOS 的标题栏拖拽区依赖真机 caption overlay，测试环境中导出按钮的点击会被整条标题栏吃掉，无法得到可信结论（本项目只发 Windows 包）。
 
 ## 验证
 
 - `dart analyze lib`：0 error / 0 warning
 - `flutter test`（canvas_package / channels / openrouter_media / reference_storage / drop / board）：59 条全过
+- `flutter test test/desktop/features/production/canvas_work_test.dart`：9 条全过（含 tearDownAll）
 - 产物：`dist/0.6.21+1/reveric-0.6.21-windows-setup.exe`、`...-windows-portable.zip`
 
 ## 未摘（后续候选）

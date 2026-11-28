@@ -59,8 +59,11 @@ class DesktopWindowFrame extends ConsumerWidget {
 
   /// Extra leading inset for the sidebar's first row so it clears the
   /// traffic-light buttons on macOS; 0 on other platforms.
+  /// 与 [trailingInset] 一致按 Flutter 目标平台判断，测试才能覆盖 macOS 分支。
   static double get sidebarLeadingInset =>
-      Platform.isMacOS ? macosTrafficLightWidth : 0.0;
+      defaultTargetPlatform == TargetPlatform.macOS
+      ? macosTrafficLightWidth
+      : 0.0;
 
   /// Extra trailing inset to avoid Windows/Linux min/max/close caption
   /// buttons; 0 on macOS (按钮在左侧)。

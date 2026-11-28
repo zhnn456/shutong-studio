@@ -1270,6 +1270,11 @@ final _log = AppLogger.forModule('Database');
 )
 class AppDatabase extends _$AppDatabase {
   factory AppDatabase() {
+    // 测试可以把全局入口重定向到内存库，避免真正打开磁盘上的工作台库。
+    final override = debugFactoryOverride;
+    if (override != null) {
+      return override();
+    }
     final cachedDatabase = _cachedDatabase;
     if (cachedDatabase != null) {
       cachedDatabase.referenceCount += 1;
@@ -1293,6 +1298,10 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.ephemeral(super.executor);
 
   static _CachedAppDatabase? _cachedDatabase;
+
+  /// 测试用：把 `AppDatabase()` 全局入口重定向到内存库。
+  @visibleForTesting
+  static AppDatabase Function()? debugFactoryOverride;
 
   static const currentSchemaVersion = 9;
 
