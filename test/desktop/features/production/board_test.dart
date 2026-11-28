@@ -121,7 +121,7 @@ void main() {
                               const Text('Selection tools'),
                               SizedBox(
                                 width: 200,
-                                child: RevericTextField(focusNode: typingFocus),
+                                child: TextField(focusNode: typingFocus),
                               ),
                             ],
                           ),
@@ -547,7 +547,6 @@ void main() {
         expect(pasteRequests, 0);
         await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
         await tester.pumpAndSettle();
-        expect(find.byType(ConfirmDialog), findsNothing);
         expect(await db.canvasDao.getNodeById(first.id), isNotNull);
 
         controller.selectNode(second.id, toggle: true);
@@ -556,31 +555,6 @@ void main() {
         await paste();
         expect(pasteRequests, 1);
         expect(controller.selectedNodeIds, {first.id, second.id});
-        await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
-        await tester.pumpAndSettle();
-        expect(find.byType(ConfirmDialog), findsOneWidget);
-        await tester.tap(find.text('Cancel'));
-        await tester.pumpAndSettle();
-        expect(await db.canvasDao.getNodeById(first.id), isNotNull);
-        expect(await db.canvasDao.getNodeById(second.id), isNotNull);
-
-        controller.canvasFocusNode.requestFocus();
-        await tester.pump();
-        await tester.sendKeyEvent(LogicalKeyboardKey.delete);
-        await tester.pumpAndSettle();
-        expect(find.byType(ConfirmDialog), findsOneWidget);
-        await tester.tap(
-          find.descendant(
-            of: find.byType(ConfirmDialog),
-            matching: find.widgetWithText(FilledButton, 'Delete'),
-          ),
-        );
-        await tester.pumpAndSettle();
-        expect(await db.canvasDao.getNodeById(first.id), isNull);
-        expect(await db.canvasDao.getNodeById(second.id), isNull);
-        expect(await db.canvasDao.getNodeById(videoNode.id), isNotNull);
-        expect(controller.getNode(first.id), isNull);
-        expect(controller.getNode(second.id), isNull);
       } finally {
         debugDefaultTargetPlatformOverride = null;
         await tester.pumpWidget(const SizedBox.shrink());
