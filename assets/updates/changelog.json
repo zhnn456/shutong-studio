@@ -1,6 +1,28 @@
 {
   "releases": [
     {
+      "version": "0.6.21",
+      "date": "2026-11-28",
+      "title": {
+        "zh": "画布一次能拖进一堆素材了",
+        "en": "Drop a pile of files into the canvas at once"
+      },
+      "items": [
+        {
+          "zh": "画布可以一次拖入多个文件、直接粘贴图片，导入过程有进度提示，不用再一张张来",
+          "en": "The canvas accepts multiple files at once and pasted images show import progress, instead of one file at a time"
+        },
+        {
+          "zh": "别人分享的画布包，即使里面引用了已删除的素材也能正常打开，不会再导入失败",
+          "en": "Shared canvas packages now open even when they reference deleted assets, instead of failing to import"
+        },
+        {
+          "zh": "画布节点里打字、复制粘贴不会误删节点，选中多个节点后复制粘贴也更顺手",
+          "en": "Typing or pasting inside a node no longer deletes it, and copy/paste with several nodes selected works as expected"
+        }
+      ]
+    },
+    {
       "version": "0.6.20",
       "date": "2026-11-25",
       "title": {
